@@ -68,9 +68,6 @@ instance/
 # Scrapy stuff:
 .scrapy
 
-# Sphinx documentation
-docs/_build/
-
 # PyBuilder
 .pybuilder/
 target/
@@ -104,6 +101,16 @@ celerybeat.pid
 # SageMath parsed files
 *.sage.py
 
+# Sphinx documentation
+docs/build/
+docs/sources/api/*rst
+
+# mkdocs documentation
+/site
+
+# PEP 582; used by e.g. github.com/David-OConnor/pyflow and github.com/pdm-project/pdm
+__pypackages__/
+
 # Environments
 .env
 .venv
@@ -117,11 +124,11 @@ venv.bak/
 .spyderproject
 .spyproject
 
+# VsCode
+.vscode/
+
 # Rope project settings
 .ropeproject
-
-# mkdocs documentation
-/site
 
 # mypy
 .mypy_cache/
@@ -136,3 +143,22 @@ dmypy.json
 
 # Cython debug symbols
 cython_debug/
+
+# distribution generated file
+src/**/_version.py
+
+# sourcery
+.sourcery.yaml
+.ruff_cache
+
+# common
+.work/
+builddir/
+.flatpak/
+.flatpak-builder/
+.notebooks
+
+# PDM
+.pdm-python
+.pdm-build
+.pdm-plugins
