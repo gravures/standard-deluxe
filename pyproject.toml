@@ -3,7 +3,7 @@
 #####################################################
 [project]
 name = "standard-deluxe"
-description = "A hanfull collection of python utilities."
+description = "A handfull collection of python utilities."
 authors = [{ name = "Gilles Coissac", email = "gilles@ideographe.fr" }]
 license = { text = "GPL-3.0" }
 readme = "README.md"
@@ -19,17 +19,15 @@ classifiers = [
   "Programming Language :: Python :: 3 :: Only",
   "Typing :: Typed",
 ]
+
+urls.homepage      = "https://github.com/gravures/standard-deluxe"
+urls.repository    = "https://github.com/gravures/standard-deluxe"
+urls.documentation = "https://github.com/gravures/standard-deluxe"
+urls.issue         = "https://github.com/gravures/standard-deluxe/issues"
+
+dynamic         = ["version"]
 requires-python = ">=3.9"
-dependencies = []
-dynamic = ["version"]
-
-[project.urls]
-homepage      = "https://github.com/gravures/standard-deluxe"
-repository    = "https://github.com/gravures/standard-deluxe"
-documentation = "https://github.com/gravures/standard-deluxe"
-issue         = "https://github.com/gravures/standard-deluxe/issues"
-
-[project.scripts]
+dependencies    = []
 
 #####################################################
 # PDM
@@ -40,13 +38,11 @@ build-backend = "pdm.backend"
 
 [tool.pdm]
 distribution = true
-plugins      = []
 
 [tool.pdm.build]
 package-dir      = "src"
+includes         = ["src/deluxe/"]
 editable-backend = "editables"
-
-[tool.pdm.options]
 
 [tool.pdm.version]
 source         = "scm"
@@ -62,7 +58,7 @@ dev = [
   "dead>=1.5.2",
   "pretty-errors>=1.2.25",
 ]
-
+monorepo = ["pdm>=2.16.1", "pdm-backend>=2.3.1"]
 test = ["pytest", "hypothesis", "coverage[toml]", "tox>=4.0"]
 
 [tool.pdm.scripts]
