@@ -1,0 +1,15 @@
+{
+    "pythonVersion": "3.9",
+    "stubPath": "./typings",
+    "ignore": [
+        "./typings"
+    ],
+    "pythonPlatform": "All",
+    "typeCheckingMode": "all",
+    "reportAny": false,
+    "reportUnusedVariable": false,
+    "reportUnusedCallResult": false,
+    "reportImplicitStringConcatenation": false,
+    "reportImplicitOverride": false,
+    "reportMissingSuperCall": false
+}
