@@ -2,10 +2,10 @@
 # It is not intended for manual editing.
 
 [metadata]
-groups = ["default", "dev", "monorepo", "test"]
+groups = ["default", "dev", "monorepo", "test", "tst"]
 strategy = ["cross_platform", "inherit_metadata"]
 lock_version = "4.4.2"
-content_hash = "sha256:16bb66894fcfbaa4e362a2c6010d02ceaf7d95c87325ea60b6b73f6b35be6ec8"
+content_hash = "sha256:d12a34594257a523ae383e087a15d3277b3bf506ff54700fed1fd0d430cc4242"
 
 [[package]]
 name = "anyio"
@@ -258,6 +258,17 @@ groups = ["dev", "monorepo", "test"]
 files = [
     {file = "distlib-0.3.8-py2.py3-none-any.whl", hash = "sha256:034db59a0b96f8ca18035f36290806a9a6e6bd9d1ff91e45a7f172eb17e51784"},
     {file = "distlib-0.3.8.tar.gz", hash = "sha256:1530ea13e350031b6312d8580ddb6b27a104275a31106523b8f123787f494f64"},
+]
+
+[[package]]
+name = "editables"
+version = "0.5"
+requires_python = ">=3.7"
+summary = "Editable installations"
+groups = ["test"]
+files = [
+    {file = "editables-0.5-py3-none-any.whl", hash = "sha256:61e5ffa82629e0d8bfe09bc44a07db3c1ab8ed1ce78a6980732870f19b5e7d4c"},
+    {file = "editables-0.5.tar.gz", hash = "sha256:309627d9b5c4adc0e668d8c6fa7bac1ba7c8c5d415c2d27f60f081f8e80d1de2"},
 ]
 
 [[package]]

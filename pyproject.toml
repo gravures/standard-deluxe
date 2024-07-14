@@ -59,8 +59,15 @@ dev = [
   "pretty-errors>=1.2.25",
 ]
 monorepo = ["pdm>=2.16.1", "pdm-backend>=2.3.1"]
-test = ["pytest", "hypothesis", "coverage[toml]", "tox>=4.0"]
+test = ["pytest", "hypothesis", "coverage[toml]", "tox>=4.0", "editables>=0.5"]
 
+#####################################################
+# PDM MONOREPO PACKAGES
+#####################################################
+
+#####################################################
+# PDM SCRIPTS
+#####################################################
 [tool.pdm.scripts]
 traceback   = "_traceback.py"
 xrequire    = "pdm export -f requirements -o requirements.txt"
