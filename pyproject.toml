@@ -63,6 +63,13 @@ test = ["pytest", "hypothesis", "coverage[toml]", "tox>=4.0", "editables>=0.5"]
 
 #####################################################
 # PDM MONOREPO PACKAGES
+[tool.pdm.monorepo.packages.importers]
+includes            = ["src/deluxe/importers.py"]
+excludes            = ["tests"]
+project.name        = "deluxe-importers"
+project.description = "Standard-deluxe importers module."
+project.classifiers = ["Development Status :: 3 - Alpha"]
+
 [tool.pdm.monorepo.packages.mappings]
 includes            = ["src/deluxe/mappings.py"]
 excludes            = ["tests"]
