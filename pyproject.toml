@@ -70,6 +70,14 @@ excludes            = ["tests"]
 project.name        = "deluxe-factory"
 project.description = "Standard-deluxe factory module."
 project.classifiers = ["Development Status :: 3 - Beta"]
+
+[tool.pdm.monorepo.packages.files]
+includes            = ["src/deluxe/files.py"]
+excludes            = ["tests"]
+project.name        = "deluxe-files"
+project.description = "Standard-deluxe files module."
+project.classifiers = ["Development Status :: 3 - Alpha"]
+
 [tool.pdm.monorepo.packages.importers]
 includes            = ["src/deluxe/importers.py"]
 excludes            = ["tests"]
