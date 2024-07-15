@@ -63,6 +63,13 @@ test = ["pytest", "hypothesis", "coverage[toml]", "tox>=4.0", "editables>=0.5"]
 
 #####################################################
 # PDM MONOREPO PACKAGES
+[tool.pdm.monorepo.packages.mappings]
+includes            = ["src/deluxe/mappings.py"]
+excludes            = ["tests"]
+project.name        = "deluxe-mappings"
+project.description = "Standard-deluxe mappings module."
+project.classifiers = ["Development Status :: 4 - Beta"]
+
 #####################################################
 
 #####################################################
