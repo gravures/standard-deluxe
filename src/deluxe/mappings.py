@@ -538,10 +538,13 @@ class FilteredView(Mapping[_KT, _VT], Generic[_MT, _KT, _VT]):
         self._filter: Filter[_KT, _VT] = _filter
 
     def copy(self) -> _MT:
-        """Returns this view as an instance of its source's type.
+        """Copy this view as an instance of its source's type.
 
         The resulting mapping should be seen as a filtered deep copy
         of the FilteredView's source.
+
+        Returns:
+            A Mapping of the same type as the FilteredView's source.
         """
         _t = type(self.__source__)()
         for k, v in self.items():
