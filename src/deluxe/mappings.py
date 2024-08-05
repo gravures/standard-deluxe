@@ -31,9 +31,6 @@ from collections.abc import (
 )
 from copy import deepcopy
 from pathlib import Path
-from test.support.import_helper import (
-    import_fresh_module,  # pyright:ignore[reportUnknownVariableType]
-)
 from types import ModuleType
 from typing import (
     IO,
@@ -45,6 +42,10 @@ from typing import (
     TypeVar,
     Union,
     cast,
+)
+
+from test.support.import_helper import (
+    import_fresh_module,  # pyright:ignore[reportUnknownVariableType]
 )
 
 
@@ -167,9 +168,6 @@ class Environment(MutableMapping[str, EnvValue]):  # noqa: PLR0904
             containing the values to update the EnvMapping with.
             clear (list[str], optional): A list of names to set as empty lists
             in the EnvMapping. Defaults to an empty list.
-
-        Raises:
-            ValueError: If the 'clear' parameter is not a list.
         """
         clear = clear or []
 
@@ -201,7 +199,7 @@ class Environment(MutableMapping[str, EnvValue]):  # noqa: PLR0904
 
         Raises:
             KeyError: If the name is not found.
-        """
+        """  # noqa: DOC502
         return self.__dict__.pop(name, default)
 
     def popitem(self) -> tuple[str, Any]:
@@ -212,7 +210,7 @@ class Environment(MutableMapping[str, EnvValue]):  # noqa: PLR0904
 
         Raises:
             KeyError: If the mapping is empty.
-        """
+        """  # noqa: DOC502
         return self.__dict__.popitem()
 
     def setdefault(self, name: str, default: Any = None) -> Any:
@@ -374,8 +372,8 @@ class _Link(Protocol[_KT]):
 # FIXME: OrderableDict.values() iters on undefined type (Any)
 
 
-class OrderableDict(_OrderedDict, dict[_KT, _VT]):
-    """RordeableDict is a more capable OrderedDict."""
+class OrderableDict(_OrderedDict, MutableMapping[_KT, _VT]):
+    """OrderableDict is a more capable OrderedDict."""
 
     def __init__(self, other: Any = (), /, **kwargs: _VT) -> None:
         super().__init__(other, **kwargs)
@@ -425,32 +423,66 @@ class OrderableDict(_OrderedDict, dict[_KT, _VT]):
             ref.next = link
             ref_next.prev = soft_link
 
-    def _insert_after(self, key: _KT, value: _VT, other: _KT) -> None:
-        """Insert a (key, value) after <after>."""
-        if self._insert(key=key, value=value, _from=other):
-            self._move_key(key=key, other=other)
+    def after(
+        self, key: _KT, other: _KT | None = None, value: _VT | None = None
+    ) -> None | tuple[_KT, _VT]:
+        """Inserts, moves or returns (key, value) after other.
 
-    def after(self, key: _KT, other: _KT | None = None, value: _VT | None = None) -> None:
-        """Inserts, moves or returns value after other key."""
+        if other is not provided, returns the (key, value) pair found after key,
+        or raises a KeyError if key doesn't exist.
+
+        If value is None, move the key after other (key) in the dict.
+
+        If value is provided, insert the (key, value) pair after other (key)
+        or if key already exists in the dict, value is updated but no move occurs.
+
+        Returns:
+            a tuple (key, value) pair if other is not provided, None otherwise.
+
+        Raises:
+            KeyError: if value is None and key or other doesn't exist.
+        """
         if other is None:
-            raise NotImplementedError
+            if key not in self:
+                msg = f"{key} not in OrderedableDict"
+                raise KeyError(msg)
+            _next: _KT = self.__map[key].next.key
+            return (_next, self[_next])
+
         if value is None:
             if key not in self or other not in self:
-                msg = f"{key} or {other} not in OrderedDict"
+                msg = f"{key} or {other} not in OrderedableDict"
                 raise KeyError(msg)
             self._move_key(key=key, other=other)
         elif self._insert(key=key, value=value, _from=other):
             self._move_key(key=key, other=other)
+        return None
 
-    def _insert_before(self, key: _KT, value: _VT, other: _KT) -> None:
-        """Insert a (key, value) after <after>."""
-        if self._insert(key=key, value=value, _from=other):
-            self._move_key(key=key, other=other, before=True)
+    def before(
+        self, key: _KT, other: _KT | None = None, value: _VT | None = None
+    ) -> None | tuple[_KT, _VT]:
+        """Inserts, moves or returns (key, value) before other.
 
-    def before(self, key: _KT, other: _KT | None = None, value: _VT | None = None) -> None:
-        """Inserts, moves or returns value before other key."""
+        if other is not provided, returns the (key, value) pair found before key,
+        or raises a KeyError if key doesn't exist.
+
+        If value is None, move the key before other (key) in the dict.
+
+        If value is provided, insert the (key, value) pair before other (key)
+        or if key already exists in the dict, value is updated but no move occurs.
+
+        Returns:
+            a tuple (key, value) pair if other is not provided, None otherwise.
+
+        Raises:
+            KeyError: if value is None and key or other doesn't exist.
+        """
         if other is None:
-            raise NotImplementedError
+            if key not in self:
+                msg = f"{key} not in OrderedableDict"
+                raise KeyError(msg)
+            _prev: _KT = self.__map[key].prev.key
+            return (_prev, self[_prev])
         if value is None:
             if key not in self or other not in self:
                 msg = f"{key} or {other} not in OrderedDict"
@@ -458,6 +490,7 @@ class OrderableDict(_OrderedDict, dict[_KT, _VT]):
             self._move_key(key=key, other=other, before=True)
         elif self._insert(key=key, value=value, _from=other):
             self._move_key(key=key, other=other, before=True)
+        return None
 
     def _debug(self) -> str:
         return "\n".join([
@@ -489,7 +522,7 @@ class Filter(Generic[_KT, _VT]):
         return True
 
 
-class FilteredView(Generic[_MT, _KT, _VT], Mapping[_KT, _VT]):
+class FilteredView(Mapping[_KT, _VT], Generic[_MT, _KT, _VT]):
     """Filtered Mapping View.
 
     Read-only proxy of a mapping. It provides a dynamically filtered view
