@@ -42,7 +42,7 @@ distribution = true
 [tool.pdm.build]
 package-dir      = "src"
 includes         = ["src/deluxe/"]
-editable-backend = "editables"
+editable-backend = "path"
 
 [tool.pdm.version]
 source         = "scm"
