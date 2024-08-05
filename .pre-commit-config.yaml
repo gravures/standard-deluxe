@@ -5,14 +5,14 @@ default_language_version:
 repos:
   # Conventional commit
   - repo: https://github.com/compilerla/conventional-pre-commit
-    rev: v3.2.0
+    rev: v3.4.0
     hooks:
       - id: conventional-pre-commit
         stages: [commit-msg]
         args: []
   # Words spelling
   - repo: https://github.com/crate-ci/typos
-    rev: v1.21.0
+    rev: v1.23.6
     hooks:
       - id: typos
         args: []
@@ -71,13 +71,13 @@ repos:
         files: requirements
         args: ["--short-report"]
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.4.1
+    rev: v0.5.6
     hooks:
       - id: ruff
-        args: ["--ignore=PLR0912,RUF100,T20,D,TD,FIX"]
+        args: ["--ignore=PLR0912,RUF100,T20,D,TD,FIX,DOC"]
       - id: ruff-format
   # PDM
   - repo: https://github.com/pdm-project/pdm
-    rev: 2.15.0
+    rev: 2.17.3
     hooks:
       - id: pdm-lock-check

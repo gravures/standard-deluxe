@@ -51,9 +51,9 @@ write_template = "__version__ = '{}'"
 
 [tool.pdm.dev-dependencies]
 dev = [
-  "ruff==0.4.1",
-  "basedpyright==1.10.3",
-  "pre-commit==3.7.0",
+  "ruff>=0.5",
+  "basedpyright>=1.15",
+  "pre-commit>=3.7.0",
   "tox-pdm>=0.7.2",
   "dead>=1.5.2",
   "pretty-errors>=1.2.25",
