@@ -18,9 +18,10 @@
 from __future__ import annotations
 
 import os
+import re
 import struct
 from os import PathLike
-from pathlib import Path, PureWindowsPath
+from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Any, Union
 
 
@@ -29,13 +30,43 @@ POSIX: bool = os.name == "posix"
 FilePath = Union[str, PathLike[Any]]
 
 
-def is_winpath(path: FilePath) -> bool:
-    """Tests if path is a windows path.
+def split_drive(path: FilePath) -> tuple[str, str]:
+    """Split a file path into its drive part and the rest of the path.
+
+    Args:
+        path (str|Path): The file path to split.
 
     Returns:
-        bool: True if path is a windows file system path, False otherwise.
+        tuple[str, str]: A tuple containing the drive and the rest of the path.
     """
-    return bool(Path(path).drive) or issubclass(path.__class__, PureWindowsPath)
+    path = str(path)
+    if match := re.search(r"^\w:[/\\]", path):
+        return (path[: match.end() - 1], path[match.end() - 1 :])
+    return ("", path)
+
+
+def is_winpath(path: FilePath) -> bool:
+    """Check if the given path is a Windows path.
+
+    Args:
+        path (FilePath): The path to check.
+
+    Returns:
+        bool: True if the path is an instance of PureWindowsPath or if
+        the path starts with a drive letter. Otherwise, on windows if
+        the path is not a PurePosixPath always return True.
+
+    Note:
+        As a consequence, on Posix system, paasing relative paths will always
+        return False, except if the path is an instance of a PureWindowsPath or one
+        of its subclasses.
+    """
+    #  'file:///home/user/etc' will not match
+    return (
+        isinstance(path, (PureWindowsPath))
+        or bool(split_drive(path)[0])
+        or (not POSIX and not isinstance(path, PurePosixPath))
+    )
 
 
 def is_binary(path: FilePath) -> bool:
