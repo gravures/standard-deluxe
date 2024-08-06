@@ -116,10 +116,10 @@ class Command:
 
         _args.append(self.command)
         _args.extend(args)
-        cp = subprocess.run(
+        cp = subprocess.run(  # noqa: S603
             _args,
             capture_output=capture,
-            shell=False,  # noqa: S603
+            shell=False,
             check=False,
             encoding="UTF-8",
             text=True,
@@ -127,7 +127,7 @@ class Command:
         )
         if cp.returncode:
             raise self._create_exception()(cp.stderr, cp.returncode, _args)
-        return cp.stdout or ""
+        return cp.stdout or ""  # noqa: DOC201
 
     def __call__(self, *args: str, capture: bool = True, **kwargs: Any) -> str:  # noqa: D102
         return self._run(*args, user=self._user, capture=capture, **kwargs)
