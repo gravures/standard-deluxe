@@ -75,7 +75,7 @@ def is_binary(path: FilePath) -> bool:
     Returns:
         bool: True if file is binary, False otherwise.
     """
-    # NOTES: https://gist.github.com/magnetikonline/7a21ec5f5bcdbf7adb92f9d617e6198f
+    # NOTE: https://gist.github.com/magnetikonline/7a21ec5f5bcdbf7adb92f9d617e6198f
     #        https://github.com/djmattyg007/python-isbinary
     _path = Path(path)
     if not _path.is_file():
