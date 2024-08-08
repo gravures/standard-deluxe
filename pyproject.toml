@@ -64,6 +64,13 @@ test = ["pytest", "hypothesis", "coverage[toml]", "tox>=4.0", "editables>=0.5"]
 #####################################################
 # PDM MONOREPO PACKAGES
 #####################################################
+[tool.pdm.monorepo.packages.console]
+includes            = ["src/deluxe/console"]
+excludes            = ["tests"]
+project.name        = "deluxe-console"
+project.description = "Standard-deluxe console package."
+project.classifiers = ["Development Status :: 3 - Beta"]
+
 [tool.pdm.monorepo.packages.factory]
 includes            = ["src/deluxe/factory"]
 excludes            = ["tests"]
