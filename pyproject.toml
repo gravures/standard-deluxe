@@ -68,7 +68,7 @@ test = ["pytest", "hypothesis", "coverage[toml]", "tox>=4.0", "editables>=0.5"]
 includes            = ["src/deluxe/factory"]
 excludes            = ["tests"]
 project.name        = "deluxe-factory"
-project.description = "Standard-deluxe factory module."
+project.description = "Standard-deluxe factory package."
 project.classifiers = ["Development Status :: 3 - Beta"]
 
 [tool.pdm.monorepo.packages.files]
