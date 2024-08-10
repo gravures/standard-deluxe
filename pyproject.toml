@@ -16,37 +16,38 @@ classifiers = [
   "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3 :: Only",
   "Typing :: Typed",
 ]
 
-urls.homepage      = "https://github.com/gravures/standard-deluxe"
-urls.repository    = "https://github.com/gravures/standard-deluxe"
+urls.homepage = "https://github.com/gravures/standard-deluxe"
+urls.repository = "https://github.com/gravures/standard-deluxe"
 urls.documentation = "https://github.com/gravures/standard-deluxe"
-urls.issue         = "https://github.com/gravures/standard-deluxe/issues"
+urls.issue = "https://github.com/gravures/standard-deluxe/issues"
 
-dynamic         = ["version"]
+dynamic = ["version"]
 requires-python = ">=3.9"
-dependencies    = []
+dependencies = []
 
 #####################################################
 # PDM
 #####################################################
 [build-system]
-requires      = ["pdm-backend"]
+requires = ["pdm-backend"]
 build-backend = "pdm.backend"
 
 [tool.pdm]
 distribution = true
 
 [tool.pdm.build]
-package-dir      = "src"
-includes         = ["src/deluxe/"]
+package-dir = "src"
+includes = ["src/deluxe/"]
 editable-backend = "path"
 
 [tool.pdm.version]
-source         = "scm"
-write_to       = "deluxe/_version.py"
+source = "scm"
+write_to = "deluxe/_version.py"
 write_template = "__version__ = '{}'"
 
 [tool.pdm.dev-dependencies]
@@ -69,19 +70,19 @@ test = ["pytest", "hypothesis", "coverage[toml]", "tox>=4.0", "editables>=0.5"]
 # PDM SCRIPTS
 #####################################################
 [tool.pdm.scripts]
-traceback   = "_traceback.py"
-xrequire    = "pdm export -f requirements -o requirements.txt"
-test        = "pytest -s -v -k {args}"
-test_all    = "coverage run -m pytest"
+traceback = "_traceback.py"
+xrequire = "pdm export -f requirements -o requirements.txt"
+test = "pytest -s -v -k {args}"
+test_all = "coverage run -m pytest"
 test_typing = "pdm run basedpyright --stats ./src/deluxe"
-test_cover  = "coverage report"
-tox_testme  = "tox --develop -r -e py"
-pc_init     = "pre-commit install --install-hooks"
-pc_update   = "pre-commit autoupdate"
-pc_check    = { env = { "SKIP" = "basedpyright" }, cmd = "pre-commit run --all-files" }
-dead        = "dead"
-pc_clean    = "pre-commit clean && pre-commit gc"
-deps        = "pdm list --fields name,groups,version,licenses,homepage --sort groups,name,licenses --exclude :sub"
+test_cover = "coverage report"
+tox_testme = "tox --develop -r -e py"
+pc_init = "pre-commit install --install-hooks"
+pc_update = "pre-commit autoupdate"
+pc_check = { env = { "SKIP" = "basedpyright" }, cmd = "pre-commit run --all-files" }
+dead = "dead"
+pc_clean = "pre-commit clean && pre-commit gc"
+deps = "pdm list --fields name,groups,version,licenses,homepage --sort groups,name,licenses --exclude :sub"
 
 [tool.pdm.scripts.pc_safety]
 composite = ["xrequire", "pre-commit run python-safety-dependencies-check"]
