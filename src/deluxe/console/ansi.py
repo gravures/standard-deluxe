@@ -290,18 +290,18 @@ def set_title(title: str) -> str:
     return _osc()  # noqa: DOC201
 
 
-__ALL__ = [
+__all__ = [
+    "BG",
+    "FG",
+    "ST",
     "bell",
+    "clear_fullscreen",
+    "clear_line",
+    "clear_line_after",
+    "clear_line_before",
     "clear_screen",
     "clear_screen_before",
-    "clear_fullscreen",
     "clear_scrollback",
-    "clear_line",
-    "clear_line_before",
-    "clear_line_after",
-    "set_style",
     "set_title",
-    "FG",
-    "BG",
-    "ST",
+    "style",
 ]
