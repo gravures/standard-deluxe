@@ -39,6 +39,7 @@ from __future__ import annotations
 
 import enum
 import importlib.util
+import re
 import sys
 from abc import abstractmethod
 from typing import (
@@ -290,6 +291,33 @@ def set_title(title: str) -> str:
     return _osc()  # noqa: DOC201
 
 
+def strip(string: str) -> str:
+    """Strips ANSI escape sequences.
+
+    Returns:
+        str: the given string with OSC/CSI escape sequences removed.
+    """
+    return re.sub(
+        r"""
+        \033[\[\]]  # escape
+        (.*;?)+    # params
+        [\aJKm]   # command
+        """,
+        "",
+        string,
+        flags=re.VERBOSE,
+    )
+
+
+def length(string: str) -> int:
+    """Length of an ansi escaped string.
+
+    Returns:
+        int: length of the string after stripping ANSI escape sequences.
+    """
+    return len(strip(string))
+
+
 __all__ = [
     "BG",
     "FG",
@@ -302,6 +330,8 @@ __all__ = [
     "clear_screen",
     "clear_screen_before",
     "clear_scrollback",
+    "length",
     "set_title",
+    "strip",
     "style",
 ]
