@@ -29,7 +29,9 @@ from deluxe.console.ansi import (
     clear_screen,
     clear_screen_before,
     clear_scrollback,
+    length,
     set_title,
+    strip,
     style,
 )
 from deluxe.console.argparser import PrettyHelpFormatter, PrettyParser
@@ -49,6 +51,8 @@ __all__ = [
     "clear_screen",
     "clear_screen_before",
     "clear_scrollback",
+    "length",
     "set_title",
+    "strip",
     "style",
 ]
