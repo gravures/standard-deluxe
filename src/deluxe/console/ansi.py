@@ -152,7 +152,7 @@ class EL(CSI[Literal["K"], Literal[0, 1, 2]]):
 
 
 @enum.unique
-class Style(enum.IntEnum):
+class Mode(enum.IntEnum):
     """Enum for SGR style parameters."""
 
     RESET_ALL = 0
@@ -217,10 +217,12 @@ class Background(enum.IntEnum):
 
 
 SGR_Params = Literal[
-    Style.BRIGHT,
-    Style.DIM,
-    Style.NORMAL,
-    Style.RESET_ALL,
+    Mode.BRIGHT,
+    Mode.DIM,
+    Mode.NORMAL,
+    Mode.ITALIC,
+    Mode.RESET_ALL,
+    Mode.UNDERLINE,
     Foreground.BLACK,
     Foreground.BLUE,
     Foreground.CYAN,
@@ -267,7 +269,7 @@ class SGR(CSI[Literal["m"], SGR_Params]):
 
 FG = Foreground
 BG = Background
-ST = Style
+MOD = Mode
 
 bell = BELL()
 clear_screen = ED(0)
@@ -321,7 +323,7 @@ def length(string: str) -> int:
 __all__ = [
     "BG",
     "FG",
-    "ST",
+    "MOD",
     "bell",
     "clear_fullscreen",
     "clear_line",

@@ -1,4 +1,4 @@
-# Copyright (c) 2024 - Gilles Coissac
+# Copyright (c) 2024 - Gilles Coissac  # noqa: D104
 # This file is part of standard-deluxe library.
 #
 # standard-deluxe is free software: you can redistribute it and/or modify
@@ -13,46 +13,3 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with standard-deluxe. If not, see <https://www.gnu.org/licenses/>
-"""Console package."""
-
-from __future__ import annotations
-
-from deluxe.console.ansi import (
-    BG,
-    FG,
-    ST,
-    bell,
-    clear_fullscreen,
-    clear_line,
-    clear_line_after,
-    clear_line_before,
-    clear_screen,
-    clear_screen_before,
-    clear_scrollback,
-    length,
-    set_title,
-    strip,
-    style,
-)
-from deluxe.console.argparser import PrettyHelpFormatter, PrettyParser
-
-
-__all__ = [
-    "BG",
-    "FG",
-    "ST",
-    "PrettyHelpFormatter",
-    "PrettyParser",
-    "bell",
-    "clear_fullscreen",
-    "clear_line",
-    "clear_line_after",
-    "clear_line_before",
-    "clear_screen",
-    "clear_screen_before",
-    "clear_scrollback",
-    "length",
-    "set_title",
-    "strip",
-    "style",
-]
