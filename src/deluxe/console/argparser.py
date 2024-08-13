@@ -19,9 +19,13 @@ from __future__ import annotations
 
 import argparse
 import importlib.util
+import re
 import sys
 import warnings
-from typing import IO, TYPE_CHECKING, Any, cast
+from typing import IO, TYPE_CHECKING, Any, ClassVar, cast
+
+from deluxe.console import ansi
+from deluxe.console.wrap import AnsiTextWrapper
 
 
 try:
@@ -44,6 +48,230 @@ if TYPE_CHECKING:
 SHELL_COMPLETION = {"bash", "zsh", "fish", "powershell"}
 
 
+class AnsiHelpFormatter(argparse.HelpFormatter):
+    @staticmethod
+    def _ansi_aware_pad(text: str, width: int, char: str = " ") -> str:
+        return text + char * (width - ansi.length(text))
+
+    def _fill_text(self, text: str, width: int, indent: str) -> str:
+        text = self._whitespace_matcher.sub(" ", text).strip()
+        return AnsiTextWrapper(
+            width=width,
+            initial_indent=indent,
+            subsequent_indent=indent,
+        ).fill(text)
+
+    def _split_lines(self, text: str, width: int) -> list[str]:
+        text = self._whitespace_matcher.sub(" ", text).strip()
+        return AnsiTextWrapper(width=width).wrap(text)
+
+    def _format_args(self, action: argparse.Action, default_metavar: str) -> str:
+        result = super()._format_args(action, default_metavar)
+        if action.nargs == argparse.ZERO_OR_MORE:
+            metavar = self._metavar_formatter(action, default_metavar)(1)
+            if len(metavar) == 2:
+                result = f"[{ansi.strip(metavar[0])} [{ansi.strip(metavar[1])} ...]]"
+            else:
+                result = f"[{ansi.strip(metavar[0])} ...]"
+        return result
+
+    def _format_action(self, action: argparse.Action) -> str:
+        # determine the required width and the entry label
+        help_position = min(self._action_max_length + 2, self._max_help_position)
+        help_width = max(self._width - help_position, 11)
+        action_width = help_position - self._current_indent - 2
+        action_header = self._format_action_invocation(action)
+        indent_first: int = -1
+
+        if not action.help:
+            # no help; start on same line and add a final newline
+            tup = self._current_indent, "", action_header
+            action_header = "%*s%s\n" % tup
+        elif ansi.length(action_header) <= action_width:
+            # short action name; start on the same line and pad two spaces
+            tup = self._current_indent, "", self._ansi_aware_pad(action_header, action_width)
+            action_header = "%*s%s  " % tup
+            indent_first = 0
+        else:
+            # long action name; start on the next line
+            tup = self._current_indent, "", action_header
+            action_header = "%*s%s\n" % tup
+            indent_first = help_position
+
+        # collect the pieces of the action help
+        parts = [action_header]
+
+        if action.help and action.help.strip():
+            # if there was help for the action, add lines of help text
+            if help_text := self._expand_help(action):
+                help_lines = self._split_lines(help_text, help_width)
+                parts.append("%*s%s\n" % (indent_first, "", help_lines[0]))
+                parts.extend("%*s%s\n" % (help_position, "", line) for line in help_lines[1:])
+        elif not action_header.endswith("\n"):
+            parts.append("\n")
+
+        # if there are any sub-actions, add their help as well
+        parts.extend(
+            self._format_action(subaction) for subaction in self._iter_indented_subactions(action)
+        )
+        # return a single string
+        return self._join_parts(parts)
+
+    def _format_usage(  # noqa: C901, PLR0912, PLR0915, PLR0914
+        self,
+        usage: str | None,
+        actions: Iterable[argparse.Action],
+        groups: Iterable[argparse._MutuallyExclusiveGroup],  # pyright:ignore[reportPrivateUsage]
+        prefix: str | None,
+    ) -> str:
+        if prefix is None:
+            prefix = _("usage: ")
+        prefix_len = ansi.length(prefix)
+
+        # if usage is specified, use that
+        if usage is not None:
+            usage %= {"prog": self._prog}
+        elif usage is None and not actions:
+            usage = f"{self._prog}"
+        elif usage is None:
+            prog = f"{self._prog}"
+            # split optionals from positionals
+            optionals: list[argparse.Action] = []
+            positionals: list[argparse.Action] = []
+            for action in actions:
+                if action.option_strings:
+                    optionals.append(action)
+                else:
+                    positionals.append(action)
+
+            # build full usage string
+            _format = self._format_actions_usage
+            action_usage = _format(optionals + positionals, groups)
+            usage = " ".join([s for s in [prog, action_usage] if s])
+
+            text_width = self._width - self._current_indent
+            if prefix_len + ansi.length(usage) > text_width:
+                # wrap the usage parts if it's too long
+                # break usage into wrappable parts
+                part_regexp = r"\(.*?\)+(?=\s|$)|\[.*?\]+(?=\s|$)|\S+"
+                opt_usage = _format(optionals, groups)
+                pos_usage = _format(positionals, groups)
+                opt_parts = re.findall(part_regexp, opt_usage)
+                pos_parts = re.findall(part_regexp, pos_usage)
+                if " ".join(opt_parts) != opt_usage or " ".join(pos_parts) != pos_usage:
+                    raise AssertionError
+
+                def get_lines(
+                    parts: list[str], indent: str, prefix: str | None = None
+                ) -> list[str]:
+                    """Helper for wrapping lines."""
+                    lines: list[str] = []
+                    line: list[str] = []
+                    indent_length = len(indent)
+                    line_len = prefix_len - 1 if prefix is not None else indent_length - 1
+                    for part in parts:
+                        part_len = ansi.length(part)
+                        if line_len + 1 + part_len > text_width and line:
+                            lines.append(indent + " ".join(line))
+                            line = []
+                            line_len = indent_length - 1
+                        line.append(part)
+                        line_len += part_len + 1
+                    if line:
+                        lines.append(indent + " ".join(line))
+                    if prefix is not None:
+                        lines[0] = lines[0][indent_length:]
+                    return lines  # noqa: DOC201
+
+                len_prog = ansi.length(prog)
+                if prefix_len + len_prog <= 0.75 * text_width:
+                    # if prog is short, follow it with optionals or positionals
+                    indent = " " * (prefix_len + len_prog + 1)
+                    if opt_parts:
+                        lines = get_lines([prog, *opt_parts], indent, prefix)
+                        lines.extend(get_lines(pos_parts, indent))
+                    elif pos_parts:
+                        lines = get_lines([prog, *pos_parts], indent, prefix)
+                    else:
+                        lines = [prog]
+                else:
+                    # if prog is long, put it on its own line
+                    indent = " " * prefix_len
+                    parts = opt_parts + pos_parts
+                    lines = get_lines(parts, indent)
+                    if len(lines) > 1:
+                        lines: list[str] = []
+                        lines.extend(get_lines(opt_parts, indent))
+                        lines.extend(get_lines(pos_parts, indent))
+                    lines = [prog, *lines]
+
+                # join lines into usage
+                usage = "\n".join(lines)
+
+        # prefix with 'usage:'
+        return f"{prefix}{usage}\n\n"
+
+    def add_argument(self, action: argparse.Action) -> None:
+        old_max = self._action_max_length
+        super().add_argument(action)
+        # the self._action_max_length updated above
+        # won't account for color codes,
+        # so we need to update it here as well
+        if action.help is not argparse.SUPPRESS:
+            self._action_max_length = old_max
+            get_invocation = self._format_action_invocation
+            invocations = [get_invocation(action)]
+            invocations.extend(
+                get_invocation(subaction) for subaction in self._iter_indented_subactions(action)
+            )
+            invocation_length = max(ansi.length(invocation) for invocation in invocations)
+            action_length = invocation_length + self._current_indent
+            self._action_max_length = max(self._action_max_length, action_length)
+
+
+class ColorsHelpFormatter(AnsiHelpFormatter):
+    styles: ClassVar[dict[str, str]] = {
+        "argparse.args": ansi.style(ansi.FG.CYAN),
+        "argparse.groups": ansi.style(ansi.FG.LIGHT_MAGENTA),
+        "argparse.help": ansi.style(ansi.MOD.RESET_ALL),
+        "argparse.metavar": ansi.style(ansi.FG.CYAN),
+        "argparse.syntax": ansi.style(ansi.MOD.BRIGHT),
+        "argparse.text": ansi.style(ansi.MOD.RESET_ALL),
+        "argparse.prog": ansi.style(ansi.FG.LIGHT_WHITE),
+        "argparse.default": ansi.style(ansi.MOD.ITALIC),
+    }
+
+    def _style(self, text: str, style: str) -> str:
+        return f"{self.styles[style]}{text}{ansi.style(ansi.MOD.RESET_ALL)}"
+
+    def format_action_invocation(self, action: argparse.Action) -> str:
+        if not action.option_strings:
+            return self._style(self._format_action_invocation(action), style="argparse.args")
+        parts: list[str] = []
+        if action.nargs == 0:
+            # if the Optional doesn't take a value, format is: -s, --long
+            parts.extend(self._style(o, "argparse.args") for o in action.option_strings)
+        else:
+            # if the Optional takes a value, format is: -s ARGS, --long ARGS
+            default = self._get_default_metavar_for_optional(action)
+            args = self._format_args(action, default)
+            parts.extend(
+                f"{self._style(o, 'argparse.args')} {args}" for o in action.option_strings
+            )
+        return ", ".join(parts)
+
+        # action_header = ", ".join(
+        #     self._style(o, "argparse.args") for o in action.option_strings
+        # )
+        # if action.nargs != 0:
+        #     default = self._get_default_metavar_for_optional(action)
+        #     action_header.append(" ")
+        #     for metavar_part, colorize in self._rich_metavar_parts(action, default):
+        #         style = "argparse.metavar" if colorize else None
+        #         action_header.append(metavar_part, style=style)
+        # return action_header
+
+
 class PrettyHelpFormatter(  # pyright:ignore[reportUnsafeMultipleInheritance]
     argparse.RawDescriptionHelpFormatter,
     argparse.ArgumentDefaultsHelpFormatter,
@@ -63,16 +291,6 @@ class PrettyHelpFormatter(  # pyright:ignore[reportUnsafeMultipleInheritance]
         super().__init__(prog, indent_increment, max_help_position, width)
         self.metavar_typed = metavar_typed
 
-    def _format_usage(
-        self,
-        usage: str | None,
-        actions: Iterable[argparse.Action],
-        groups: Iterable[argparse._MutuallyExclusiveGroup],  # pyright:ignore[reportPrivateUsage]
-        prefix: str | None,
-    ) -> str:
-        _usage: str = super()._format_usage(usage, actions, groups, None)
-        return f"{prefix}\n\n{_usage}"
-
     def _get_default_metavar_for_optional(self, action: argparse.Action) -> str:
         if self.metavar_typed and hasattr(action, "type") and action.type:
             return action.type.__name__  # pyright: ignore[reportAttributeAccessIssue, reportUnknownMemberType, reportUnknownVariableType]
@@ -82,6 +300,16 @@ class PrettyHelpFormatter(  # pyright:ignore[reportUnsafeMultipleInheritance]
         if self.metavar_typed and hasattr(action, "type") and action.type:
             return action.type.__name__  # pyright: ignore[reportAttributeAccessIssue, reportUnknownMemberType, reportUnknownVariableType]
         return super()._get_default_metavar_for_positional(action)
+
+    def _format_usage(
+        self,
+        usage: str | None,
+        actions: Iterable[argparse.Action],
+        groups: Iterable[argparse._MutuallyExclusiveGroup],  # pyright:ignore[reportPrivateUsage]
+        prefix: str | None,
+    ) -> str:
+        _usage: str = super()._format_usage(usage, actions, groups, None)
+        return f"{prefix}\n\n{_usage}"
 
 
 class _ShellCompletion(argparse.Action):
@@ -290,10 +518,40 @@ class PrettyParser(argparse.ArgumentParser):
         # determine help from format above
         return formatter.format_help()
 
+    # def format_help(self, command: Command = None):
+    #     formatter = self._get_formatter()
+    #     colorize = (Fore.YELLOW + "{}" + Fore.RESET).format
+
+    #     if self.usage:
+    #         formatter.add_usage(
+    #             usage=self.usage,
+    #             actions=self._actions,
+    #             groups=self._mutually_exclusive_groups,
+    #             prefix=colorize(self.prefixes["usage"]),
+    #         )
+
+    #     if command and not command.match and not command.group:
+    #         msg = "{}ERROR:{} command not found"
+    #         formatter.add_text(msg.format(Fore.RED, Fore.RESET))
+
+    #     if self.description:
+    #         formatter.add_text(colorize(self.prefixes["description"]) + self.description)
+    #     if self.url:
+    #         formatter.add_text(colorize(self.prefixes["url"]) + self.url)
+
+    #     for action_group in self._action_groups:
+    #         title = action_group.title or ""
+    #         formatter.start_section(colorize(title.upper()))
+    #         formatter.add_text(action_group.description)
+    #         formatter.add_arguments(action_group._group_actions)
+    #         formatter.end_section()
+    #     self._format_commands(formatter=formatter, command=command)
+    #     if self.epilog:
+    #         formatter.add_text(colorize(self.prefixes["epilog"]) + self.epilog)
+    #     return formatter.format_help()
+
     def exit(  # pyright:ignore[reportIncompatibleMethodOverride]  # noqa: PLR6301
-        self,
-        status: int = 0,
-        message: str | None = None,
+        self, status: int = 0, message: str | None = None
     ) -> None:
         """Either raise an ArgumentError or a SystemExit exception.
 
@@ -311,8 +569,7 @@ class PrettyParser(argparse.ArgumentParser):
         raise SystemExit(message)
 
     def error(  # pyright:ignore[reportIncompatibleMethodOverride] # dead: disable
-        self,
-        message: str,
+        self, message: str
     ) -> None:
         """Prints a usage message.
 
@@ -347,9 +604,7 @@ class PrettyParser(argparse.ArgumentParser):
         self._print_message(self.format_help(), file)
 
     def _print_message(  # noqa: PLR6301
-        self,
-        message: str,
-        file: IO[str] | None = None,
+        self, message: str, file: IO[str] | None = None
     ) -> None:
         if message:
             _file = sys.stderr if file is None else file
