@@ -275,6 +275,7 @@ class ColorsHelpFormatter(AnsiHelpFormatter):
 class PrettyHelpFormatter(  # pyright:ignore[reportUnsafeMultipleInheritance]
     argparse.RawDescriptionHelpFormatter,
     argparse.ArgumentDefaultsHelpFormatter,
+    ColorsHelpFormatter,
 ):
     """HelpFormatter."""
 
