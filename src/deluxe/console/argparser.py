@@ -244,9 +244,9 @@ class ColorsHelpFormatter(AnsiHelpFormatter):
     def _style(self, text: str, style: str) -> str:
         return f"{self.styles[style]}{text}{ansi.style(ansi.MOD.RESET_ALL)}"
 
-    def format_action_invocation(self, action: argparse.Action) -> str:
+    def _format_action_invocation(self, action: argparse.Action) -> str:
         if not action.option_strings:
-            return self._style(self._format_action_invocation(action), style="argparse.args")
+            return self._style(super()._format_action_invocation(action), style="argparse.args")
         parts: list[str] = []
         if action.nargs == 0:
             # if the Optional doesn't take a value, format is: -s, --long
