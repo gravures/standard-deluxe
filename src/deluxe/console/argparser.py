@@ -50,7 +50,7 @@ SHELL_COMPLETION = {"bash", "zsh", "fish", "powershell"}
 
 class ColorsHelpFormatter(argparse.HelpFormatter):
     styles: ClassVar[dict[str, str]] = {
-        "argparse.args": ansi.style(ansi.FG.CYAN),
+        "argparse.args": ansi.style(ansi.FG.LIGHT_CYAN),
         "argparse.groups": ansi.style(ansi.FG.LIGHT_MAGENTA),
         "argparse.help": ansi.style(ansi.MOD.RESET_ALL),
         "argparse.metavar": ansi.style(ansi.FG.CYAN),
@@ -71,19 +71,23 @@ class ColorsHelpFormatter(argparse.HelpFormatter):
         # yields (part, colorize) of the metavar
         if action.nargs is None:
             # '%s' % get_metavar(1)
-            yield (f"{get_metavar(1)}", True)
+            yield "{}".format(*get_metavar(1)), True
         elif action.nargs == argparse.OPTIONAL:
             # '[%s]' % get_metavar(1)
-            yield from (("[", False), (f"{get_metavar(1)}", True), ("]", False))
+            yield from (
+                ("[", False),
+                ("{}".format(*get_metavar(1)), True),
+                ("]", False),
+            )
         elif action.nargs == argparse.ZERO_OR_MORE:
             if sys.version_info < (3, 9) or len(get_metavar(1)) == 2:  # pragma: <3.9 cover
                 metavar = get_metavar(2)
                 # '[%s [%s ...]]' % metavar
                 yield from (
                     ("[", False),
-                    (f"{metavar[0]}", True),
+                    ("{}".format(*metavar[0]), True),
                     (" [", False),
-                    (f"{metavar[1]}", True),
+                    ("{}".format(*metavar[1]), True),
                     (" ", False),
                     ("...", True),
                     ("]]", False),
@@ -92,7 +96,7 @@ class ColorsHelpFormatter(argparse.HelpFormatter):
                 # '[%s ...]' % metavar
                 yield from (
                     ("[", False),
-                    (f"{get_metavar(1)}", True),
+                    ("{}".format(*get_metavar(1)), True),
                     (" ", False),
                     ("...", True),
                     ("]", False),
@@ -101,9 +105,9 @@ class ColorsHelpFormatter(argparse.HelpFormatter):
             # '%s [%s ...]' % get_metavar(2)
             metavar = get_metavar(2)
             yield from (
-                (f"{metavar[0]}", True),
+                ("{}".format(*metavar[0]), True),
                 (" [", False),
-                (f"{metavar[1]}", True),
+                ("{}".format(*metavar[1]), True),
                 (" ", False),
                 ("...", True),
                 ("]", False),
@@ -113,7 +117,11 @@ class ColorsHelpFormatter(argparse.HelpFormatter):
             yield "...", True
         elif action.nargs == argparse.PARSER:
             # '%s ...' % get_metavar(1)
-            yield from ((f"{get_metavar(1)}", True), (" ", False), ("...", True))
+            yield from (
+                ("{}".format(*get_metavar(1)), True),
+                (" ", False),
+                ("...", True),
+            )
         elif action.nargs == argparse.SUPPRESS:
             # ''
             yield "", False
