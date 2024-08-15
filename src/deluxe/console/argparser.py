@@ -49,6 +49,8 @@ SHELL_COMPLETION = {"bash", "zsh", "fish", "powershell"}
 
 
 class AnsiHelpFormatter(argparse.HelpFormatter):
+    """An argparse HelpFormatter class that renders ansi markup text."""
+
     styles: ClassVar[dict[str, str]] = {
         "argparse.args": ansi.style(ansi.FG.LIGHT_CYAN),
         "argparse.groups": ansi.style(ansi.FG.LIGHT_MAGENTA),
@@ -59,6 +61,19 @@ class AnsiHelpFormatter(argparse.HelpFormatter):
         "argparse.prog": ansi.style(ansi.FG.LIGHT_WHITE),
         "argparse.default": ansi.style(ansi.MOD.ITALIC),
     }
+    """A dict of ansi styles to control the formatter.
+
+    The following styles are used:
+
+    - ``argparse.args``: for positional-arguments and --options (e.g "--help")
+    - ``argparse.groups``: for group names (e.g. "positional arguments")
+    - ``argparse.help``: for argument's help text (e.g. "show this help message and exit")
+    - ``argparse.metavar``: for meta variables (e.g. "FILE" in "--file FILE")
+    - ``argparse.prog``: for %(prog)s in the usage (e.g. "foo" in "Usage: foo [options]")
+    - ``argparse.syntax``: for highlights of back-tick quoted text (e.g. "``` `some text` ```")
+    - ``argparse.text``: for the descriptions and epilog (e.g. "A foo program")
+    - ``argparse.default``: for %(default)s in the help (e.g. "Value" in "(default: Value)")
+    """
 
     def _ansi_style(self, text: str, style: str) -> str:
         return f"{self.styles[style]}{text}{ansi.style(ansi.MOD.RESET_ALL)}"
@@ -165,44 +180,43 @@ class AnsiHelpFormatter(argparse.HelpFormatter):
     #     return result
 
     def _format_action(self, action: argparse.Action) -> str:
+        # sourcery skip: for-append-to-extend
         # determine the required width and the entry label
         help_position = min(self._action_max_length + 2, self._max_help_position)
         help_width = max(self._width - help_position, 11)
         action_width = help_position - self._current_indent - 2
         action_header = self._format_action_invocation(action)
-        indent_first: int = -1
+        indent_first = 0
 
         if not action.help:
             # no help; start on same line and add a final newline
-            tup = self._current_indent, "", action_header
-            action_header = "%*s%s\n" % tup
+            action_header = f"{' ' * self._current_indent}{action_header}\n"
         elif ansi.length(action_header) <= action_width:
             # short action name; start on the same line and pad two spaces
-            tup = self._current_indent, "", self._ansi_aware_pad(action_header, action_width)
-            action_header = "%*s%s  " % tup
+            _h = self._ansi_aware_pad(action_header, action_width)
+            action_header = f"{' ' * self._current_indent}{_h}  "
             indent_first = 0
         else:
             # long action name; start on the next line
-            tup = self._current_indent, "", action_header
-            action_header = "%*s%s\n" % tup
+            action_header = f"{' ' * self._current_indent}{action_header}\n"
             indent_first = help_position
 
         # collect the pieces of the action help
         parts = [action_header]
 
         if action.help and action.help.strip():
-            # if there was help for the action, add lines of help text
             if help_text := self._expand_help(action):
                 help_lines = self._split_lines(help_text, help_width)
                 parts.append("%*s%s\n" % (indent_first, "", help_lines[0]))
-                parts.extend("%*s%s\n" % (help_position, "", line) for line in help_lines[1:])
+                for line in help_lines[1:]:
+                    parts.append("%*s%s\n" % (help_position, "", line))  # noqa: PERF401
         elif not action_header.endswith("\n"):
             parts.append("\n")
 
         # if there are any sub-actions, add their help as well
-        parts.extend(
-            self._format_action(subaction) for subaction in self._iter_indented_subactions(action)
-        )
+        for subaction in self._iter_indented_subactions(action):
+            parts.append(self._format_action(subaction))  # noqa: PERF401
+
         # return a single string
         return self._join_parts(parts)
 
@@ -316,10 +330,10 @@ class AnsiHelpFormatter(argparse.HelpFormatter):
         # so we need to update it here as well
         if action.help is not argparse.SUPPRESS:
             self._action_max_length = old_max
-            get_invocation = self._format_action_invocation
-            invocations = [get_invocation(action)]
+            invocations = [self._format_action_invocation(action)]
             invocations.extend(
-                get_invocation(subaction) for subaction in self._iter_indented_subactions(action)
+                self._format_action_invocation(subaction)
+                for subaction in self._iter_indented_subactions(action)
             )
             invocation_length = max(ansi.length(invocation) for invocation in invocations)
             action_length = invocation_length + self._current_indent
@@ -353,6 +367,12 @@ class SuperAnsiHelpFormatter(  # pyright:ignore[reportUnsafeMultipleInheritance]
     argparse.RawDescriptionHelpFormatter,
     argparse.ArgumentDefaultsHelpFormatter,
 ):
+    """SuperAnsiHelpFormatter.
+
+    Subclasses AnsiHelpFormatter, RawDescriptionHelpFormatter, ArgumentDefaultsHelpFormatter
+    and implements on demand an MetavarTypeHelpFormatter.
+    """
+
     def __init__(
         self,
         prog: str,
@@ -375,7 +395,7 @@ class SuperAnsiHelpFormatter(  # pyright:ignore[reportUnsafeMultipleInheritance]
         return super()._get_default_metavar_for_positional(action)
 
 
-class PrettyHelpFormatter(AnsiHelpFormatter):
+class PrettyHelpFormatter(SuperAnsiHelpFormatter):
     """HelpFormatter."""
 
     # NOTE:  https://github.com/hamdanal/rich-argparse
