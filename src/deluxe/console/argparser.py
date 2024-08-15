@@ -41,14 +41,141 @@ except ImportError:
 
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Sequence
+    from collections.abc import Iterable, Iterator, Sequence
     from types import ModuleType
 
 
 SHELL_COMPLETION = {"bash", "zsh", "fish", "powershell"}
 
 
-class AnsiHelpFormatter(argparse.HelpFormatter):
+class ColorsHelpFormatter(argparse.HelpFormatter):
+    styles: ClassVar[dict[str, str]] = {
+        "argparse.args": ansi.style(ansi.FG.CYAN),
+        "argparse.groups": ansi.style(ansi.FG.LIGHT_MAGENTA),
+        "argparse.help": ansi.style(ansi.MOD.RESET_ALL),
+        "argparse.metavar": ansi.style(ansi.FG.CYAN),
+        "argparse.syntax": ansi.style(ansi.MOD.BRIGHT),
+        "argparse.text": ansi.style(ansi.MOD.RESET_ALL),
+        "argparse.prog": ansi.style(ansi.FG.LIGHT_WHITE),
+        "argparse.default": ansi.style(ansi.MOD.ITALIC),
+    }
+
+    def _style(self, text: str, style: str) -> str:
+        return f"{self.styles[style]}{text}{ansi.style(ansi.MOD.RESET_ALL)}"
+
+    def _ansi_metavar_parts(  # noqa: PLR0912
+        self, action: argparse.Action, default_metavar: str
+    ) -> Iterator[tuple[str, bool]]:
+        get_metavar = self._metavar_formatter(action, default_metavar)
+        # similar to self._format_args but
+        # yields (part, colorize) of the metavar
+        if action.nargs is None:
+            # '%s' % get_metavar(1)
+            yield (f"{get_metavar(1)}", True)
+        elif action.nargs == argparse.OPTIONAL:
+            # '[%s]' % get_metavar(1)
+            yield from (("[", False), (f"{get_metavar(1)}", True), ("]", False))
+        elif action.nargs == argparse.ZERO_OR_MORE:
+            if sys.version_info < (3, 9) or len(get_metavar(1)) == 2:  # pragma: <3.9 cover
+                metavar = get_metavar(2)
+                # '[%s [%s ...]]' % metavar
+                yield from (
+                    ("[", False),
+                    (f"{metavar[0]}", True),
+                    (" [", False),
+                    (f"{metavar[1]}", True),
+                    (" ", False),
+                    ("...", True),
+                    ("]]", False),
+                )
+            else:  # pragma: >=3.9 cover
+                # '[%s ...]' % metavar
+                yield from (
+                    ("[", False),
+                    (f"{get_metavar(1)}", True),
+                    (" ", False),
+                    ("...", True),
+                    ("]", False),
+                )
+        elif action.nargs == argparse.ONE_OR_MORE:
+            # '%s [%s ...]' % get_metavar(2)
+            metavar = get_metavar(2)
+            yield from (
+                (f"{metavar[0]}", True),
+                (" [", False),
+                (f"{metavar[1]}", True),
+                (" ", False),
+                ("...", True),
+                ("]", False),
+            )
+        elif action.nargs == argparse.REMAINDER:
+            # '...'
+            yield "...", True
+        elif action.nargs == argparse.PARSER:
+            # '%s ...' % get_metavar(1)
+            yield from ((f"{get_metavar(1)}", True), (" ", False), ("...", True))
+        elif action.nargs == argparse.SUPPRESS:
+            # ''
+            yield "", False
+        else:
+            metavar = get_metavar(action.nargs)  # pyright: ignore[reportArgumentType]
+            first = True
+            for met in metavar:
+                if first:
+                    first = False
+                else:
+                    yield " ", False
+                yield (f"{met}", True)
+
+    def _format_action_invocation(self, action: argparse.Action) -> str:
+        if not action.option_strings:
+            return self._style(super()._format_action_invocation(action), style="argparse.args")
+
+        parts: list[str] = []
+        if action.nargs == 0:
+            # if the Optional doesn't take a value, format is: -s, --long
+            parts.extend(self._style(o, "argparse.args") for o in action.option_strings)
+        else:
+            # if the Optional takes a value, format is: -s ARGS, --long ARGS
+            default = self._get_default_metavar_for_optional(action)
+            args = " ".join(
+                self._style(part, "argparse.metavar") if colorize else part
+                for part, colorize in self._ansi_metavar_parts(action, default)
+            )
+            parts.extend(
+                f"{self._style(o, 'argparse.args')} {args}" for o in action.option_strings
+            )
+        return ", ".join(parts)
+
+
+class SuperColorHelpFormatter(  # pyright:ignore[reportUnsafeMultipleInheritance]
+    ColorsHelpFormatter,
+    argparse.RawDescriptionHelpFormatter,
+    argparse.ArgumentDefaultsHelpFormatter,
+):
+    def __init__(
+        self,
+        prog: str,
+        metavar_typed: bool = False,
+        indent_increment: int = 2,
+        max_help_position: int = 24,
+        width: int | None = None,
+    ) -> None:
+        super().__init__(prog, indent_increment, max_help_position, width)
+        self.metavar_typed = metavar_typed
+
+    def _get_default_metavar_for_optional(self, action: argparse.Action) -> str:
+        if self.metavar_typed and hasattr(action, "type") and action.type:
+            return action.type.__name__  # pyright: ignore[reportAttributeAccessIssue, reportUnknownMemberType, reportUnknownVariableType]
+        return super()._get_default_metavar_for_optional(action)
+
+    def _get_default_metavar_for_positional(self, action: argparse.Action) -> str:
+        if self.metavar_typed and hasattr(action, "type") and action.type:
+            return action.type.__name__  # pyright: ignore[reportAttributeAccessIssue, reportUnknownMemberType, reportUnknownVariableType]
+        return super()._get_default_metavar_for_positional(action)
+
+
+class AnsiHelpFormatter(SuperColorHelpFormatter):
     @staticmethod
     def _ansi_aware_pad(text: str, width: int, char: str = " ") -> str:
         return text + char * (width - ansi.length(text))
@@ -229,78 +356,10 @@ class AnsiHelpFormatter(argparse.HelpFormatter):
             self._action_max_length = max(self._action_max_length, action_length)
 
 
-class ColorsHelpFormatter(AnsiHelpFormatter):
-    styles: ClassVar[dict[str, str]] = {
-        "argparse.args": ansi.style(ansi.FG.CYAN),
-        "argparse.groups": ansi.style(ansi.FG.LIGHT_MAGENTA),
-        "argparse.help": ansi.style(ansi.MOD.RESET_ALL),
-        "argparse.metavar": ansi.style(ansi.FG.CYAN),
-        "argparse.syntax": ansi.style(ansi.MOD.BRIGHT),
-        "argparse.text": ansi.style(ansi.MOD.RESET_ALL),
-        "argparse.prog": ansi.style(ansi.FG.LIGHT_WHITE),
-        "argparse.default": ansi.style(ansi.MOD.ITALIC),
-    }
-
-    def _style(self, text: str, style: str) -> str:
-        return f"{self.styles[style]}{text}{ansi.style(ansi.MOD.RESET_ALL)}"
-
-    def _format_action_invocation(self, action: argparse.Action) -> str:
-        if not action.option_strings:
-            return self._style(super()._format_action_invocation(action), style="argparse.args")
-        parts: list[str] = []
-        if action.nargs == 0:
-            # if the Optional doesn't take a value, format is: -s, --long
-            parts.extend(self._style(o, "argparse.args") for o in action.option_strings)
-        else:
-            # if the Optional takes a value, format is: -s ARGS, --long ARGS
-            default = self._get_default_metavar_for_optional(action)
-            args = self._format_args(action, default)
-            parts.extend(
-                f"{self._style(o, 'argparse.args')} {args}" for o in action.option_strings
-            )
-        return ", ".join(parts)
-
-        # action_header = ", ".join(
-        #     self._style(o, "argparse.args") for o in action.option_strings
-        # )
-        # if action.nargs != 0:
-        #     default = self._get_default_metavar_for_optional(action)
-        #     action_header.append(" ")
-        #     for metavar_part, colorize in self._rich_metavar_parts(action, default):
-        #         style = "argparse.metavar" if colorize else None
-        #         action_header.append(metavar_part, style=style)
-        # return action_header
-
-
-class PrettyHelpFormatter(  # pyright:ignore[reportUnsafeMultipleInheritance]
-    argparse.RawDescriptionHelpFormatter,
-    argparse.ArgumentDefaultsHelpFormatter,
-    ColorsHelpFormatter,
-):
+class PrettyHelpFormatter(AnsiHelpFormatter):
     """HelpFormatter."""
 
     # NOTE:  https://github.com/hamdanal/rich-argparse
-
-    def __init__(
-        self,
-        prog: str,
-        metavar_typed: bool = False,
-        indent_increment: int = 2,
-        max_help_position: int = 24,
-        width: int | None = None,
-    ) -> None:
-        super().__init__(prog, indent_increment, max_help_position, width)
-        self.metavar_typed = metavar_typed
-
-    def _get_default_metavar_for_optional(self, action: argparse.Action) -> str:
-        if self.metavar_typed and hasattr(action, "type") and action.type:
-            return action.type.__name__  # pyright: ignore[reportAttributeAccessIssue, reportUnknownMemberType, reportUnknownVariableType]
-        return super()._get_default_metavar_for_optional(action)
-
-    def _get_default_metavar_for_positional(self, action: argparse.Action) -> str:
-        if self.metavar_typed and hasattr(action, "type") and action.type:
-            return action.type.__name__  # pyright: ignore[reportAttributeAccessIssue, reportUnknownMemberType, reportUnknownVariableType]
-        return super()._get_default_metavar_for_positional(action)
 
     def _format_usage(
         self,
