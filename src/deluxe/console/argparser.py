@@ -48,27 +48,34 @@ if TYPE_CHECKING:
 SHELL_COMPLETION = {"bash", "zsh", "fish", "powershell"}
 
 
-class ColorsHelpFormatter(argparse.HelpFormatter):
+class AnsiHelpFormatter(argparse.HelpFormatter):
     styles: ClassVar[dict[str, str]] = {
         "argparse.args": ansi.style(ansi.FG.LIGHT_CYAN),
         "argparse.groups": ansi.style(ansi.FG.LIGHT_MAGENTA),
         "argparse.help": ansi.style(ansi.MOD.RESET_ALL),
-        "argparse.metavar": ansi.style(ansi.FG.CYAN),
+        "argparse.metavar": ansi.style(ansi.FG.YELLOW),
         "argparse.syntax": ansi.style(ansi.MOD.BRIGHT),
         "argparse.text": ansi.style(ansi.MOD.RESET_ALL),
         "argparse.prog": ansi.style(ansi.FG.LIGHT_WHITE),
         "argparse.default": ansi.style(ansi.MOD.ITALIC),
     }
 
-    def _style(self, text: str, style: str) -> str:
+    def _ansi_style(self, text: str, style: str) -> str:
         return f"{self.styles[style]}{text}{ansi.style(ansi.MOD.RESET_ALL)}"
+
+    @staticmethod
+    def _ansi_aware_pad(text: str, width: int, char: str = " ") -> str:
+        return text + char * (width - ansi.length(text))
 
     def _ansi_metavar_parts(  # noqa: PLR0912
         self, action: argparse.Action, default_metavar: str
     ) -> Iterator[tuple[str, bool]]:
+        """A ansi aware substitute for self._format_args).
+
+        Yields:
+            (str, bool): as (part, colorize) of the metavar.
+        """
         get_metavar = self._metavar_formatter(action, default_metavar)
-        # similar to self._format_args but
-        # yields (part, colorize) of the metavar
         if action.nargs is None:
             # '%s' % get_metavar(1)
             yield "{}".format(*get_metavar(1)), True
@@ -135,59 +142,6 @@ class ColorsHelpFormatter(argparse.HelpFormatter):
                     yield " ", False
                 yield (f"{met}", True)
 
-    def _format_action_invocation(self, action: argparse.Action) -> str:
-        if not action.option_strings:
-            return self._style(super()._format_action_invocation(action), style="argparse.args")
-
-        parts: list[str] = []
-        if action.nargs == 0:
-            # if the Optional doesn't take a value, format is: -s, --long
-            parts.extend(self._style(o, "argparse.args") for o in action.option_strings)
-        else:
-            # if the Optional takes a value, format is: -s ARGS, --long ARGS
-            default = self._get_default_metavar_for_optional(action)
-            args = " ".join(
-                self._style(part, "argparse.metavar") if colorize else part
-                for part, colorize in self._ansi_metavar_parts(action, default)
-            )
-            parts.extend(
-                f"{self._style(o, 'argparse.args')} {args}" for o in action.option_strings
-            )
-        return ", ".join(parts)
-
-
-class SuperColorHelpFormatter(  # pyright:ignore[reportUnsafeMultipleInheritance]
-    ColorsHelpFormatter,
-    argparse.RawDescriptionHelpFormatter,
-    argparse.ArgumentDefaultsHelpFormatter,
-):
-    def __init__(
-        self,
-        prog: str,
-        metavar_typed: bool = False,
-        indent_increment: int = 2,
-        max_help_position: int = 24,
-        width: int | None = None,
-    ) -> None:
-        super().__init__(prog, indent_increment, max_help_position, width)
-        self.metavar_typed = metavar_typed
-
-    def _get_default_metavar_for_optional(self, action: argparse.Action) -> str:
-        if self.metavar_typed and hasattr(action, "type") and action.type:
-            return action.type.__name__  # pyright: ignore[reportAttributeAccessIssue, reportUnknownMemberType, reportUnknownVariableType]
-        return super()._get_default_metavar_for_optional(action)
-
-    def _get_default_metavar_for_positional(self, action: argparse.Action) -> str:
-        if self.metavar_typed and hasattr(action, "type") and action.type:
-            return action.type.__name__  # pyright: ignore[reportAttributeAccessIssue, reportUnknownMemberType, reportUnknownVariableType]
-        return super()._get_default_metavar_for_positional(action)
-
-
-class AnsiHelpFormatter(SuperColorHelpFormatter):
-    @staticmethod
-    def _ansi_aware_pad(text: str, width: int, char: str = " ") -> str:
-        return text + char * (width - ansi.length(text))
-
     def _fill_text(self, text: str, width: int, indent: str) -> str:
         text = self._whitespace_matcher.sub(" ", text).strip()
         return AnsiTextWrapper(
@@ -200,15 +154,15 @@ class AnsiHelpFormatter(SuperColorHelpFormatter):
         text = self._whitespace_matcher.sub(" ", text).strip()
         return AnsiTextWrapper(width=width).wrap(text)
 
-    def _format_args(self, action: argparse.Action, default_metavar: str) -> str:
-        result = super()._format_args(action, default_metavar)
-        if action.nargs == argparse.ZERO_OR_MORE:
-            metavar = self._metavar_formatter(action, default_metavar)(1)
-            if len(metavar) == 2:
-                result = f"[{ansi.strip(metavar[0])} [{ansi.strip(metavar[1])} ...]]"
-            else:
-                result = f"[{ansi.strip(metavar[0])} ...]"
-        return result
+    # def _format_args(self, action: argparse.Action, default_metavar: str) -> str:
+    #     result = super()._format_args(action, default_metavar)
+    #     if action.nargs == argparse.ZERO_OR_MORE:
+    #         metavar = self._metavar_formatter(action, default_metavar)(1)
+    #         if len(metavar) == 2:
+    #             result = f"[{ansi.strip(metavar[0])} [{ansi.strip(metavar[1])} ...]]"
+    #         else:
+    #             result = f"[{ansi.strip(metavar[0])} ...]"
+    #     return result
 
     def _format_action(self, action: argparse.Action) -> str:
         # determine the required width and the entry label
@@ -347,6 +301,14 @@ class AnsiHelpFormatter(SuperColorHelpFormatter):
         return f"{prefix}{usage}\n\n"
 
     def add_argument(self, action: argparse.Action) -> None:
+        """Updates the action maximum length.
+
+        Updates action and invocation length based on the provided action,
+        taking into account ansi escape codes.
+
+        Args:
+            action: The action to be added.
+        """
         old_max = self._action_max_length
         super().add_argument(action)
         # the self._action_max_length updated above
@@ -362,6 +324,55 @@ class AnsiHelpFormatter(SuperColorHelpFormatter):
             invocation_length = max(ansi.length(invocation) for invocation in invocations)
             action_length = invocation_length + self._current_indent
             self._action_max_length = max(self._action_max_length, action_length)
+
+    def _format_action_invocation(self, action: argparse.Action) -> str:
+        if not action.option_strings:
+            return self._ansi_style(
+                super()._format_action_invocation(action), style="argparse.args"
+            )
+
+        parts: list[str] = []
+        if action.nargs == 0:
+            # if the Optional doesn't take a value, format is: -s, --long
+            parts.extend(self._ansi_style(o, "argparse.args") for o in action.option_strings)
+        else:
+            # if the Optional takes a value, format is: -s ARGS, --long ARGS
+            default = self._get_default_metavar_for_optional(action)
+            args = " ".join(
+                self._ansi_style(part, "argparse.metavar") if colorize else part
+                for part, colorize in self._ansi_metavar_parts(action, default)
+            )
+            parts.extend(
+                f"{self._ansi_style(o, 'argparse.args')} {args}" for o in action.option_strings
+            )
+        return ", ".join(parts)
+
+
+class SuperAnsiHelpFormatter(  # pyright:ignore[reportUnsafeMultipleInheritance]
+    AnsiHelpFormatter,
+    argparse.RawDescriptionHelpFormatter,
+    argparse.ArgumentDefaultsHelpFormatter,
+):
+    def __init__(
+        self,
+        prog: str,
+        metavar_typed: bool = False,
+        indent_increment: int = 2,
+        max_help_position: int = 24,
+        width: int | None = None,
+    ) -> None:
+        super().__init__(prog, indent_increment, max_help_position, width)
+        self.metavar_typed = metavar_typed
+
+    def _get_default_metavar_for_optional(self, action: argparse.Action) -> str:
+        if self.metavar_typed and hasattr(action, "type") and action.type:
+            return action.type.__name__  # pyright: ignore[reportAttributeAccessIssue, reportUnknownMemberType, reportUnknownVariableType]
+        return super()._get_default_metavar_for_optional(action)
+
+    def _get_default_metavar_for_positional(self, action: argparse.Action) -> str:
+        if self.metavar_typed and hasattr(action, "type") and action.type:
+            return action.type.__name__  # pyright: ignore[reportAttributeAccessIssue, reportUnknownMemberType, reportUnknownVariableType]
+        return super()._get_default_metavar_for_positional(action)
 
 
 class PrettyHelpFormatter(AnsiHelpFormatter):
