@@ -75,7 +75,7 @@ class BELL(C0):
 
     def __call__(self) -> str:
         """Returns the bell characters sequence."""
-        return "\a"  # noqa: DOC201
+        return "\a"
 
 
 class C1(C0, Protocol):
@@ -105,7 +105,7 @@ class CSI(C1, Protocol[CSI_CMD, CSI_PARAM]):
 
     def __call__(self) -> str:
         """Returns a compiled CSI characters sequence: ESC [ <param> ; <param> ... <command>."""
-        return f"{CSI.prefix}{';'.join(map(str, self.params))}{self}"  # noqa: DOC201
+        return f"{CSI.prefix}{';'.join(map(str, self.params))}{self}"
 
     def __str__(self) -> str:
         return self.cmd
@@ -127,7 +127,7 @@ class OSC(C1, Protocol[OSC_CMD, OSC_PARAM]):
 
     def __call__(self) -> str:
         """Returns a compiled OSC characters sequence: ESC ] <param> ; <param> ... <command>."""
-        return f"{OSC.prefix}{';'.join(map(str, self.params))}{self}"  # noqa: DOC201
+        return f"{OSC.prefix}{';'.join(map(str, self.params))}{self}"
 
     def __str__(self) -> str:
         return str(self.cmd)
@@ -284,16 +284,16 @@ clear_line_after = EL(0)
 def style(*args: SGR_Params) -> str:
     """Return an ANSI styling characters sequence."""
     _sgr = SGR(*args)
-    return _sgr()  # noqa: DOC201
+    return _sgr()
 
 
 def set_title(title: str) -> str:
     """Return an ANSI characters sequence."""
     _osc = TITLE(2, title)
-    return _osc()  # noqa: DOC201
+    return _osc()
 
 
-def strip(string: str) -> str:
+def strip_esc(string: str) -> str:
     """Strips ANSI escape sequences.
 
     Returns:
@@ -317,7 +317,7 @@ def length(string: str) -> int:
     Returns:
         int: length of the string after stripping ANSI escape sequences.
     """
-    return len(strip(string))
+    return len(strip_esc(string))
 
 
 __all__ = [
@@ -334,6 +334,6 @@ __all__ = [
     "clear_scrollback",
     "length",
     "set_title",
-    "strip",
+    "strip_esc",
     "style",
 ]

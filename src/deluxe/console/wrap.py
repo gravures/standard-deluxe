@@ -13,17 +13,20 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with standard-deluxe. If not, see <https://www.gnu.org/licenses/>
-"""ANSI text_wrapper module."""
+"""Wrap module."""
 
 from __future__ import annotations
 
 from textwrap import TextWrapper
 
-from deluxe.console.ansi import strip
+from deluxe.console.ansi import strip_esc
 
 
 class AnsiTextWrapper(TextWrapper):
+    """TextWrapper SubClass aware of ansi escape codes."""
+
     def _wrap_chunks(self, chunks: list[str]) -> list[str]:  # noqa: C901, PLR0912
+        # sourcery skip: low-code-quality
         """Wrap a sequence of text chunks.
 
         Wrap a sequence of text chunks and return a list of lines of
@@ -35,6 +38,15 @@ class AnsiTextWrapper(TextWrapper):
         whitespace; ie. a chunk is either all whitespace or a "word".
         Whitespace chunks will be removed from the beginning and end of
         lines, but apart from that whitespace is preserved.
+
+        Args:
+            chunks: A list of text chunks to be wrapped.
+
+        Returns:
+            A list of wrapped lines.
+
+        Raises:
+            ValueError: If the width is invalid.
         """
         lines: list[str] = []
         if self.width <= 0:
@@ -65,26 +77,27 @@ class AnsiTextWrapper(TextWrapper):
 
             # First chunk on line is whitespace -- drop it, unless this
             # is the very beginning of the text (ie. no lines started yet).
-            if not self.drop_whitespace and strip(chunks[-1]).strip() and lines:
+            if self.drop_whitespace and not strip_esc(chunks[-1]).strip() and lines:
                 del chunks[-1]
 
             while chunks:
                 # modified upstream code, not going to refactor for ambiguous variable name.
-                _len = len(strip(chunks[-1]))
+                _len = len(strip_esc(chunks[-1]))
                 if cur_len + _len > width:
+                    # Nope, this line is full
                     break
                 cur_line.append(chunks.pop())
                 cur_len += _len
 
             # The current line is full, and the next chunk is too big to
             # fit on *any* line (not just this one).
-            if chunks and len(strip(chunks[-1])) > width:
+            if chunks and len(strip_esc(chunks[-1])) > width:
                 self._handle_long_word(chunks, cur_line, cur_len, width)
                 cur_len = sum(map(len, cur_line))
 
             # If the last chunk on this line is all whitespace, drop it.
-            if self.drop_whitespace and cur_line and not strip(cur_line[-1]).strip():
-                cur_len -= len(strip(cur_line[-1]))
+            if self.drop_whitespace and cur_line and not strip_esc(cur_line[-1]).strip():
+                cur_len -= len(strip_esc(cur_line[-1]))
                 del cur_line[-1]
 
             if cur_line:
@@ -107,18 +120,18 @@ class AnsiTextWrapper(TextWrapper):
                 else:
                     while cur_line:
                         if (
-                            strip(cur_line[-1]).strip()
+                            strip_esc(cur_line[-1]).strip()
                             and cur_len + len(self.placeholder) <= width
                         ):
                             cur_line.append(self.placeholder)
                             lines.append(indent + "".join(cur_line))
                             break
-                        cur_len -= len(strip(cur_line[-1]))
+                        cur_len -= len(strip_esc(cur_line[-1]))
                         del cur_line[-1]
                     else:
                         if lines:
                             prev_line = lines[-1].rstrip()
-                            if len(strip(prev_line)) + len(self.placeholder) <= self.width:
+                            if len(strip_esc(prev_line)) + len(self.placeholder) <= self.width:
                                 lines[-1] = prev_line + self.placeholder
                                 break
                         lines.append(indent + self.placeholder.lstrip())
