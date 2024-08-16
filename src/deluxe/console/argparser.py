@@ -69,13 +69,22 @@ class AnsiHelpFormatter(argparse.HelpFormatter):
 
     - ``argparse.args``: for positional-arguments and --options (e.g "--help")
     - ``argparse.groups``: for group names (e.g. "positional arguments")
-    - ``argparse.help``: for argument's help text (e.g. "show this help message and exit")
     - ``argparse.metavar``: for meta variables (e.g. "FILE" in "--file FILE")
     - ``argparse.prog``: for %(prog)s in the usage (e.g. "foo" in "Usage: foo [options]")
     - ``argparse.syntax``: for highlights of back-tick quoted text (e.g. "``` `some text` ```")
     - ``argparse.text``: for the descriptions and epilog (e.g. "A foo program")
     - ``argparse.default``: for %(default)s in the help (e.g. "Value" in "(default: Value)")
     """
+
+    # highlights: ClassVar[list[str]] = [
+    #     r"`(?P<syntax>[^`]*)`",  # highlight `text in backquotes` as syntax
+    # ]
+    # """A list of regex patterns to highlight in the help text.
+
+    # It is used in the description, epilog, groups descriptions, and arguments' help.
+    # By default, it highlights ``` `text in backquotes` ``` with the `argparse.syntax` style.
+    # To disable highlighting, clear this list (``AnsiHelpFormatter.highlights.clear()``).
+    # """
 
     @staticmethod
     def _ansi_style(text: str, style: str) -> str:
@@ -171,16 +180,6 @@ class AnsiHelpFormatter(argparse.HelpFormatter):
     def _split_lines(self, text: str, width: int) -> list[str]:
         text = self._whitespace_matcher.sub(" ", text).strip()
         return AnsiTextWrapper(width=width).wrap(text)
-
-    # def _format_args(self, action: argparse.Action, default_metavar: str) -> str:
-    #     result = super()._format_args(action, default_metavar)
-    #     if action.nargs == argparse.ZERO_OR_MORE:
-    #         metavar = self._metavar_formatter(action, default_metavar)(1)
-    #         if len(metavar) == 2:
-    #             result = f"[{ansi.strip(metavar[0])} [{ansi.strip(metavar[1])} ...]]"
-    #         else:
-    #             result = f"[{ansi.strip(metavar[0])} ...]"
-    #     return result
 
     def _format_action(self, action: argparse.Action) -> str:
         # determine the required width and the entry label
@@ -398,6 +397,22 @@ class AnsiHelpFormatter(argparse.HelpFormatter):
             # join the section-initial newline, the heading and the help
             return join(["\n", heading, item_help, "\n"])
 
+    def _get_default_metavar_for_optional(self, action: argparse.Action) -> str:
+        return self._ansi_style(action.dest.upper(), "argparse.default")
+
+    def _get_default_metavar_for_positional(self, action: argparse.Action) -> str:
+        return self._ansi_style(action.dest, "argparse.default")
+
+    # def _format_args(self, action: argparse.Action, default_metavar: str) -> str:
+    #     result = super()._format_args(action, default_metavar)
+    #     if action.nargs == argparse.ZERO_OR_MORE:
+    #         metavar = self._metavar_formatter(action, default_metavar)(1)
+    #         if len(metavar) == 2:
+    #             result = f"[{ansi.strip(metavar[0])} [{ansi.strip(metavar[1])} ...]]"
+    #         else:
+    #             result = f"[{ansi.strip(metavar[0])} ...]"
+    #     return result
+
 
 class RawAnsiHelpFormatter(  # pyright:ignore[reportUnsafeMultipleInheritance]
     argparse.RawTextHelpFormatter, AnsiHelpFormatter
@@ -440,12 +455,12 @@ class PrettyHelpFormatter(  # pyright:ignore[reportUnsafeMultipleInheritance, re
 
     def _get_default_metavar_for_optional(self, action: argparse.Action) -> str:
         if self.metavar_typed and hasattr(action, "type") and action.type:
-            return action.type.__name__  # pyright: ignore[reportAttributeAccessIssue, reportUnknownMemberType, reportUnknownVariableType]
+            return self._ansi_style(cast(str, action.type.__name__), "argparse.default")  # pyright: ignore[reportAttributeAccessIssue]
         return super()._get_default_metavar_for_optional(action)
 
     def _get_default_metavar_for_positional(self, action: argparse.Action) -> str:
         if self.metavar_typed and hasattr(action, "type") and action.type:
-            return action.type.__name__  # pyright: ignore[reportAttributeAccessIssue, reportUnknownMemberType, reportUnknownVariableType]
+            return self._ansi_style(cast(str, action.type.__name__), "argparse.default")  # pyright: ignore[reportAttributeAccessIssue]
         return super()._get_default_metavar_for_positional(action)
 
     def _format_usage(
