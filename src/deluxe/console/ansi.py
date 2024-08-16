@@ -43,6 +43,7 @@ import re
 import sys
 from abc import abstractmethod
 from typing import (
+    Any,
     ClassVar,
     Literal,
     Protocol,
@@ -293,22 +294,29 @@ def set_title(title: str) -> str:
     return _osc()
 
 
+_STRIP_ESC = re.compile(
+    r"""
+    (?:\x1b[\[\]])      # escape code
+    (?:\d+;)?           # |
+    (\.*)               # params
+    (?:;)?              # |
+    (?:(\d+[JKm])|(\a)) # command
+    """,
+    flags=re.VERBOSE,
+)
+
+
 def strip_esc(string: str) -> str:
     """Strips ANSI escape sequences.
 
     Returns:
         str: the given string with OSC/CSI escape sequences removed.
     """
-    return re.sub(
-        r"""
-        \033[\[\]]  # escape
-        (.*;?)+    # params
-        [\aJKm]   # command
-        """,
-        "",
-        string,
-        flags=re.VERBOSE,
-    )
+
+    def text(match: Any) -> str:
+        return match.groups()[0] if match else string
+
+    return re.sub(_STRIP_ESC, text, string)
 
 
 def length(string: str) -> int:
