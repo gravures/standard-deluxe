@@ -22,7 +22,7 @@ import importlib.util
 import re
 import sys
 import warnings
-from typing import IO, TYPE_CHECKING, Any, ClassVar, cast
+from typing import IO, TYPE_CHECKING, Any, ClassVar, TypeVar, cast
 
 from deluxe.console import ansi
 from deluxe.console.wrap import AnsiTextWrapper
@@ -41,15 +41,17 @@ except ImportError:
 
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Iterator, Sequence
+    from collections.abc import Callable, Iterable, Iterator, Sequence
     from types import ModuleType
 
 
 SHELL_COMPLETION = {"bash", "zsh", "fish", "powershell"}
 
+_S = TypeVar("_S", bound="AnsiHelpFormatter._Section")
+
 
 class AnsiHelpFormatter(argparse.HelpFormatter):
-    """An argparse HelpFormatter class that renders ansi markup text."""
+    """An argparse.HelpFormatter with ansi markup text support."""
 
     styles: ClassVar[dict[str, str]] = {
         "argparse.args": ansi.style(ansi.FG.LIGHT_CYAN),
@@ -75,8 +77,9 @@ class AnsiHelpFormatter(argparse.HelpFormatter):
     - ``argparse.default``: for %(default)s in the help (e.g. "Value" in "(default: Value)")
     """
 
-    def _ansi_style(self, text: str, style: str) -> str:
-        return f"{self.styles[style]}{text}{ansi.style(ansi.MOD.RESET_ALL)}"
+    @staticmethod
+    def _ansi_style(text: str, style: str) -> str:
+        return f"{AnsiHelpFormatter.styles[style]}{text}{ansi.style(ansi.MOD.RESET_ALL)}"
 
     @staticmethod
     def _ansi_aware_pad(text: str, width: int, char: str = " ") -> str:
@@ -180,7 +183,6 @@ class AnsiHelpFormatter(argparse.HelpFormatter):
     #     return result
 
     def _format_action(self, action: argparse.Action) -> str:
-        # sourcery skip: for-append-to-extend
         # determine the required width and the entry label
         help_position = min(self._action_max_length + 2, self._max_help_position)
         help_width = max(self._width - help_position, 11)
@@ -208,15 +210,14 @@ class AnsiHelpFormatter(argparse.HelpFormatter):
             if help_text := self._expand_help(action):
                 help_lines = self._split_lines(help_text, help_width)
                 parts.append("%*s%s\n" % (indent_first, "", help_lines[0]))
-                for line in help_lines[1:]:
-                    parts.append("%*s%s\n" % (help_position, "", line))  # noqa: PERF401
+                parts.extend("%*s%s\n" % (help_position, "", line) for line in help_lines[1:])
         elif not action_header.endswith("\n"):
             parts.append("\n")
 
         # if there are any sub-actions, add their help as well
-        for subaction in self._iter_indented_subactions(action):
-            parts.append(self._format_action(subaction))  # noqa: PERF401
-
+        parts.extend(
+            self._format_action(subaction) for subaction in self._iter_indented_subactions(action)
+        )
         # return a single string
         return self._join_parts(parts)
 
@@ -361,28 +362,81 @@ class AnsiHelpFormatter(argparse.HelpFormatter):
             )
         return ", ".join(parts)
 
+    class _Section:  # pyright:ignore[reportIncompatibleVariableOverride]
+        def __init__(
+            self: _S,
+            formatter: argparse.HelpFormatter,
+            parent: _S | None,
+            heading: str | None = None,
+        ) -> None:
+            self.formatter = formatter
+            self.parent = parent
+            self.heading = heading
+            self.items: list[tuple[Callable[..., str], Iterable[Any]]] = []
 
-class SuperAnsiHelpFormatter(  # pyright:ignore[reportUnsafeMultipleInheritance]
-    AnsiHelpFormatter,
+        def format_help(self):
+            # format the indented section
+            if self.parent is not None:
+                self.formatter._indent()
+            join = self.formatter._join_parts
+            item_help = join([func(*args) for func, args in self.items])
+            if self.parent is not None:
+                self.formatter._dedent()
+
+            # return nothing if the section was empty
+            if not item_help:
+                return ""
+
+            # add the heading if the section was non-empty
+            if self.heading is not argparse.SUPPRESS and self.heading is not None:
+                current_indent = self.formatter._current_indent
+                heading = AnsiHelpFormatter._ansi_style(self.heading, "argparse.groups")
+                heading = "%*s%s:\n" % (current_indent, "", heading)
+            else:
+                heading = ""
+
+            # join the section-initial newline, the heading and the help
+            return join(["\n", heading, item_help, "\n"])
+
+
+class RawAnsiHelpFormatter(  # pyright:ignore[reportUnsafeMultipleInheritance]
+    argparse.RawTextHelpFormatter, AnsiHelpFormatter
+):
+    """An argparse.RawHelpFormatter with ansi markup text support."""
+
+
+class RawDescriptionAnsiHelpFormatter(  # pyright:ignore[reportUnsafeMultipleInheritance]
+    argparse.RawDescriptionHelpFormatter, AnsiHelpFormatter
+):
+    """An argparse.RawDescriptionHelpFormatter with ansi markup text support."""
+
+
+class ArgumentDefaultsAnsiHelpFormatter(  # pyright:ignore[reportUnsafeMultipleInheritance]
+    argparse.ArgumentDefaultsHelpFormatter, AnsiHelpFormatter
+):
+    """An argparse.ArgumentDefaultsHelpFormatter with ansi markup text support."""
+
+
+class PrettyHelpFormatter(  # pyright:ignore[reportUnsafeMultipleInheritance, reportIncompatibleVariableOverride]
     argparse.RawDescriptionHelpFormatter,
     argparse.ArgumentDefaultsHelpFormatter,
+    AnsiHelpFormatter,
 ):
-    """SuperAnsiHelpFormatter.
+    """PrettyHelpFormatter.
 
-    Subclasses AnsiHelpFormatter, RawDescriptionHelpFormatter, ArgumentDefaultsHelpFormatter
-    and implements on demand an MetavarTypeHelpFormatter.
+    An AnsiHelpFormatter with RawDescriptionHelpFormatter and ArgumentDefaultsHelpFormatter
+    behaviours. Also implements the MetavarTypeHelpFormatter on demand.
     """
 
     def __init__(
         self,
         prog: str,
-        metavar_typed: bool = False,
         indent_increment: int = 2,
         max_help_position: int = 24,
         width: int | None = None,
     ) -> None:
         super().__init__(prog, indent_increment, max_help_position, width)
-        self.metavar_typed = metavar_typed
+        self.metavar_typed: bool = "MetavarTypeHelpFormatter" in globals()
 
     def _get_default_metavar_for_optional(self, action: argparse.Action) -> str:
         if self.metavar_typed and hasattr(action, "type") and action.type:
@@ -393,12 +447,6 @@ class SuperAnsiHelpFormatter(  # pyright:ignore[reportUnsafeMultipleInheritance]
         if self.metavar_typed and hasattr(action, "type") and action.type:
             return action.type.__name__  # pyright: ignore[reportAttributeAccessIssue, reportUnknownMemberType, reportUnknownVariableType]
         return super()._get_default_metavar_for_positional(action)
-
-
-class PrettyHelpFormatter(SuperAnsiHelpFormatter):
-    """HelpFormatter."""
-
-    # NOTE:  https://github.com/hamdanal/rich-argparse
 
     def _format_usage(
         self,
@@ -471,7 +519,7 @@ class PrettyParser(argparse.ArgumentParser):
         prefix: str | None = None,
         epilog: str | None = None,
         parents: Sequence[argparse.ArgumentParser] | None = None,
-        formatter_class: argparse._FormatterClass = PrettyHelpFormatter,  # pyright:ignore[reportPrivateUsage]
+        formatter_class: type[argparse.HelpFormatter] = PrettyHelpFormatter,
         prefix_chars: str = "-",
         fromfile_prefix_chars: str | None = None,
         argument_default: Any = None,
@@ -616,38 +664,6 @@ class PrettyParser(argparse.ArgumentParser):
 
         # determine help from format above
         return formatter.format_help()
-
-    # def format_help(self, command: Command = None):
-    #     formatter = self._get_formatter()
-    #     colorize = (Fore.YELLOW + "{}" + Fore.RESET).format
-
-    #     if self.usage:
-    #         formatter.add_usage(
-    #             usage=self.usage,
-    #             actions=self._actions,
-    #             groups=self._mutually_exclusive_groups,
-    #             prefix=colorize(self.prefixes["usage"]),
-    #         )
-
-    #     if command and not command.match and not command.group:
-    #         msg = "{}ERROR:{} command not found"
-    #         formatter.add_text(msg.format(Fore.RED, Fore.RESET))
-
-    #     if self.description:
-    #         formatter.add_text(colorize(self.prefixes["description"]) + self.description)
-    #     if self.url:
-    #         formatter.add_text(colorize(self.prefixes["url"]) + self.url)
-
-    #     for action_group in self._action_groups:
-    #         title = action_group.title or ""
-    #         formatter.start_section(colorize(title.upper()))
-    #         formatter.add_text(action_group.description)
-    #         formatter.add_arguments(action_group._group_actions)
-    #         formatter.end_section()
-    #     self._format_commands(formatter=formatter, command=command)
-    #     if self.epilog:
-    #         formatter.add_text(colorize(self.prefixes["epilog"]) + self.epilog)
-    #     return formatter.format_help()
 
     def exit(  # pyright:ignore[reportIncompatibleMethodOverride]  # noqa: PLR6301
         self, status: int = 0, message: str | None = None
