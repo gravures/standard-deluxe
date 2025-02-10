@@ -82,6 +82,13 @@ project.name        = "deluxe-factory"
 project.description = "Standard-deluxe factory package."
 project.classifiers = ["Development Status :: 3 - Beta"]
 
+[tool.pdm.monorepo.packages.availability]
+includes            = ["src/deluxe/availability.py"]
+excludes            = ["tests"]
+project.name        = "deluxe-availability."
+project.description = "Standard-deluxe availability module."
+project.classifiers = ["Development Status :: 3 - Alpha"]
+
 [tool.pdm.monorepo.packages.files]
 includes            = ["src/deluxe/files.py"]
 excludes            = ["tests"]
