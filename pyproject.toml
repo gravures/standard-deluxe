@@ -1,3 +1,5 @@
+#:schema https://gist.githubusercontent.com/zevisert/086638d2145d937a33bf570ace8cba4a/raw/cd2d511369239f54dc7728e641b10e54f009135c/pyproject.json
+
 #####################################################
 # Project Metadatas
 #####################################################
@@ -17,6 +19,7 @@ classifiers = [
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3 :: Only",
   "Typing :: Typed",
 ]
@@ -27,7 +30,7 @@ urls.documentation = "https://github.com/gravures/standard-deluxe"
 urls.issue = "https://github.com/gravures/standard-deluxe/issues"
 
 dynamic = ["version"]
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dependencies = []
 
 #####################################################

@@ -1,5 +1,5 @@
 {
-    "pythonVersion": "3.9",
+    "pythonVersion": "3.10",
     "stubPath": "./typings",
     "ignore": [ "./typings" ],
     "pythonPlatform": "All",
@@ -10,6 +10,7 @@
     "reportImplicitStringConcatenation": false,
     "reportImplicitOverride": false,
     "reportMissingSuperCall": false,
+    "reportUnannotadedClassAttribute": false,
     "executionEnvironments": [
         {
             "root": "./src"
