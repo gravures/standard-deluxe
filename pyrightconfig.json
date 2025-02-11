@@ -1,16 +1,18 @@
 {
     "pythonVersion": "3.10",
+    "pythonPlatform": "All",
     "stubPath": "./typings",
     "ignore": [ "./typings" ],
-    "pythonPlatform": "All",
     "typeCheckingMode": "all",
     "reportAny": false,
+    "reportExplicitAny": "hint",
     "reportUnusedVariable": false,
     "reportUnusedCallResult": false,
+    "reportUnusedImport": false,
     "reportImplicitStringConcatenation": false,
     "reportImplicitOverride": false,
     "reportMissingSuperCall": false,
-    "reportUnannotadedClassAttribute": false,
+    "reportUnannotadedClassAttribute": "hint",
     "executionEnvironments": [
         {
             "root": "./src"
