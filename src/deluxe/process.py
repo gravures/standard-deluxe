@@ -163,10 +163,10 @@ class Command:
     def __call__(
         self,
         *args: str,
-        input: bytes | None = None,
+        input: bytes | None = None,  # noqa: A002
         capture: bool = True,
         text: Literal[False],
-        encoding: None,
+        encoding: str | None = "UTF-8",
         cwd: StrOrBytesPath | None = None,
         env: Mapping[str, str] | None = None,
     ) -> bytes: ...
@@ -175,10 +175,10 @@ class Command:
     def __call__(
         self,
         *args: str,
-        input: str | None = None,
+        input: str | None = None,  # noqa: A002
         capture: bool = True,
-        text: Literal[True],
-        encoding: str = "UTF-8",
+        text: Literal[True] = True,
+        encoding: str | None = "UTF-8",
         cwd: StrOrBytesPath | None = None,
         env: Mapping[str, str] | None = None,
     ) -> str: ...
@@ -209,7 +209,7 @@ class Command:
 
         Raises:
             Command.Error: If the command returns with a non-zero exit status.
-        """  # noqa: DOC502
+        """
         args_ = self._compose(*args)
         cp = subprocess.run(  # noqa: S603
             args_,
