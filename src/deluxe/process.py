@@ -21,15 +21,32 @@ This module provides the Command class for working with system processes.
 from __future__ import annotations
 
 import asyncio
+import atexit
 import locale
+import multiprocessing as mp
 import os
 import pwd
 import re
 import shutil
+import signal
 import subprocess
+import sys
+import time
+from abc import ABC, ABCMeta, abstractmethod
 from asyncio import Future, Task
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal, TypeAlias, overload
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    ClassVar,
+    Literal,
+    TypeAlias,
+    TypeVar,
+    cast,
+    final,
+    overload,
+)
+from warnings import warn
 
 from deluxe.availability import availability, supported
 
@@ -72,6 +89,7 @@ def get_real_users() -> set[str]:
     }
 
 
+PathLike: TypeAlias = str | os.PathLike[str]
 StrOrBytesPath: TypeAlias = str | bytes | os.PathLike[str] | os.PathLike[bytes]
 
 
@@ -277,3 +295,271 @@ class Command:
             _wait_co(proc, input, future),
             name=self.name,
         )
+
+
+##
+# Disabling those Ruff rules:
+#   <'open()' should be replaced by 'path.open()'>,
+#   is more convenient for standard files
+#
+#   <use context handler for opening file>,
+#   standard file should not be closed
+#
+# ruff: noqa: PTH123, SIM115
+
+
+class _RealDaemon:
+    """RealDaemon class."""
+
+    __workpath__: ClassVar[Path]
+    __pidfile__: ClassVar[Path]
+
+    def __init__(self, *args: Any, **kwds: Any) -> None:
+        self.running: bool = False
+
+        self.daemonize()
+        super().__init__(*args, **kwds)
+        self.daemonized: Daemon = cast("Daemon", super())
+        self.daemonized.run()
+
+    def daemonize(self) -> None:
+        """Daemonize the process using an Unix double fork mechanism."""
+        pid_tmp: int
+
+        try:  # decouple from parent environment
+            os.chdir("/")
+        except OSError as err:
+            sys.stderr.write(f"chdir to <{self.__workpath__}> failed:\n{err}\n")
+            sys.exit(1)
+        else:
+            os.setsid()
+            os.umask(0)
+
+        try:  # do the second fork
+            pid_tmp = os.fork()
+            if pid_tmp > 0:
+                sys.exit(0)  # exit from second parent
+        except OSError as err:
+            sys.stderr.write(f"fork #2 failed: {err}\n")
+            sys.exit(1)
+
+        ##
+        # Daemon code only here
+        pid_tmp = os.getpid()
+
+        # redirect standard file descriptors to devnull
+        sys.stdout.flush()
+        sys.stderr.flush()
+
+        si = open(os.devnull, encoding=None)
+        so = open(os.devnull, "a+", encoding=None)
+        se = open(os.devnull, "a+", encoding=None)
+
+        os.dup2(si.fileno(), sys.stdin.fileno())
+        os.dup2(so.fileno(), sys.stdout.fileno())
+        os.dup2(se.fileno(), sys.stderr.fileno())
+
+        # write pidfile
+        atexit.register(self.atexit)
+        with self.__pidfile__.open("w+") as file:
+            file.write(f"{pid_tmp}\n")
+
+    def atexit(self) -> None:
+        self.daemonized.atexit()
+        self.__pidfile__.unlink()
+
+
+T = TypeVar("T")
+
+
+class _DaemonMeta(ABCMeta):
+    """Daemon metaclass."""
+
+    WORKPATH_VAR: str = "__workpath__"
+    PIDFILE_VAR: str = "__pidfile__"
+
+    def __new__(
+        cls: type[type[T]],
+        name: str,
+        bases: tuple[type, ...],
+        namespace: dict[str, Any],
+        **kwds: Any,
+    ) -> type[T]:
+        workpath = kwds.pop("workpath", "/")
+        if not (workpath := Path(workpath)).is_dir():
+            msg = f"<{workpath}> should be an existing directory."
+            raise AttributeError(msg)
+
+        if name == "Daemonized":
+            pidfile = (Path.home() / f"._{bases[-1].__name__}").with_suffix(".pid")
+        else:
+            pidfile = (Path.home() / f"._{name}").with_suffix(".pid")
+
+        namespace[_DaemonMeta.PIDFILE_VAR] = pidfile
+        namespace[_DaemonMeta.WORKPATH_VAR] = workpath
+        return super().__new__(cls, name, bases, namespace, **kwds)
+
+    @staticmethod
+    def fork(cls_: type, *args: Any, **kwds: Any) -> None:
+        ctx = mp.get_context("fork")
+        ps = ctx.Process(target=cls_, args=args, kwargs=kwds)
+        ps.start()
+        ps.join()
+
+    @staticmethod
+    def subclass(daemon: type[T]) -> type:
+        return type("Daemonized", (_RealDaemon, daemon), {})
+
+    def __call__(cls: type[T], *args: Any, **kwds: Any) -> T:
+        """Called when instancing the type."""
+        if cls.__name__ == "Daemonized":
+            # return a instance of the Daemon if not already running
+            pidfile: Path = getattr(cls, _DaemonMeta.PIDFILE_VAR)
+            if pidfile.exists():
+                sys.exit()
+            return super().__call__(*args, **kwds)
+
+        # return a Daemon controller kind instance
+        _DaemonMeta.fork(_DaemonMeta.subclass(daemon=cls), *args, **kwds)
+        return super().__call__(*args, **kwds)
+
+
+# @availability(only=("posix",), but=("wasi",))
+class Daemon(ABC, metaclass=_DaemonMeta):
+    """A generic Unix daemon abstract base class.
+
+    Make instance of this class execute in a daemonized process
+    using an Unix double fork mechanism.
+
+    Availability:
+        - Unix, not WASI
+
+    Usage Details
+    -------------
+
+    Subclass of the abstract Daemon class should implement the run()
+    method. It's were the working logic of the daemon begin. User
+    defined Daemon instances should not call this method directly.
+
+    The daemon will write a lock file on the system at its start process.
+    This will prevent multiple instances to be created at the same time.
+    As soon as the instance is daemonized its run method is called with
+    no parameter.
+
+    The daemon executes in its own detached session with no tty attached,
+    so it will not inherit the standard files from the python interpreter
+    where it was instancied.
+
+    Code instancing the daemon, as any could expect will received
+    a functional instance of the class they defined. But it should
+    be used as a daemon controller with the help of its stop(), start()
+    and restart() methods.
+
+    Interprocess Communication
+    --------------------------
+
+    Daemon subclass will ends up with two instances, the 'controller'
+    living in the calling process and the 'worker' in its detached
+    session. This class make no prevention in regard of a specific
+    protocol for interprocess communication, it's up to the class
+    implementation.
+
+    About The Unix Double Fork Mechanism
+    ------------------------------------
+
+    In Unix every process belongs to a group which in turn belongs
+    to a session (session (SID) -> process Group (PGID) -> process (PID)).
+    The first process in the session becomes the session leader.
+    Every session can have one TTY associated with it and only a session
+    leader can take control of a TTY.
+
+    Normally, when launching a daemon, setsid is called (from the child
+    process after calling fork) to dissociate the daemon from its controlling
+    terminal. However, calling setsid also means that the calling process
+    will be the session leader of the new session, which leaves open
+    the possibility that the daemon could reacquire a controlling terminal
+    in the future.
+
+    The double-fork technique ensures that the daemon process is no longer
+    a session leader, making the init process responsible for its cleanup.
+    Forking a second child and exiting immediately prevents zombies
+    and causes the second child process to be orphaned, preventing it from
+    ever acquiring inadvertently a controlling terminal.
+    """
+
+    __workpath__: ClassVar[Path]
+    __pidfile__: ClassVar[Path]
+
+    @final
+    @property
+    def pid(self) -> int:
+        """The pid of this Daemon.
+
+        Returns:
+            int: pid of the daemon if running, 0 otherwise.
+        """
+        try:
+            with self.__pidfile__.open("r") as file:
+                return int(file.read().strip())
+        except (OSError, ValueError):
+            return 0
+
+    @final
+    def stop(self) -> None:
+        """Stop the daemon."""
+        if not (pid := self.pid):
+            msg: str = "Daemon is not running.\n"
+            warn(msg, stacklevel=1)
+        else:  # Try killing the daemon process
+            try:
+                while 1:
+                    os.kill(pid, signal.SIGTERM)
+                    time.sleep(0.1)
+            except OSError as err:
+                if str(err.args).find("No such process") > 0:
+                    if self.__pidfile__.exists():
+                        self.__pidfile__.unlink()
+                else:
+                    raise OSError(err) from err
+
+    @final
+    def start(self) -> int:
+        """Starts the daemon.
+
+        If the daemon is not already running daemonize it.
+
+        Returns:
+            int: the pid of the daemon.
+        """
+        if not (pid := self.pid):
+            # FIXME: should cache *args and **kwds to passed it to the new daemon
+            self.__class__.__new__(self.__class__)
+        else:
+            msg: str = f"Daemon is already running with pid <{pid}>...\n"
+            warn(msg, stacklevel=1)
+        return pid
+
+    @final
+    def restart(self) -> None:
+        """Restart the daemon."""
+        self.stop()
+        self.start()
+
+    def atexit(self) -> None:  # noqa: PLR6301
+        """Call when the daemon terminate.
+
+        You could overwrite this method to include your cleanup code.
+        This method will be executed upon normal interpreter termination.
+
+        see: https://docs.python.org/3/library/atexit
+        """
+        return
+
+    @abstractmethod
+    def run(self) -> None:
+        """Daemon Worker method.
+
+        You should override this method when you subclass Daemon.
+        It will be called after the process has been daemonized
+        by start() or restart().
+        """
