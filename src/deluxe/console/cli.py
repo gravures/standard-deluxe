@@ -53,7 +53,7 @@ class CliError(Exception):
         self.quiet: bool = quiet
         super().__init__()
         if isinstance(self.__cause__, OSError):
-            self.code = getattr(self.__cause__, "winerror", self.__cause__.errno)
+            self.code: int | None = getattr(self.__cause__, "winerror", self.__cause__.errno)
         else:
             self.code = self.get_code(type(self.__cause__))
 
@@ -83,7 +83,7 @@ class Cli(ABC):
     ) -> None:
         self._name: str = name or sys.argv[0]
         self._prefix: str | None = f"{name} {version}" if prefix else None
-        self._parser = PrettyParser(
+        self._parser: PrettyParser = PrettyParser(
             prog=self._name,
             version=version,
             prefix=self._prefix,
@@ -137,7 +137,7 @@ class Cli(ABC):
         except CliError as e:
             if e.msg:
                 self._message(value=e.msg, quiet=e.quiet)
-            return e.code
+            return e.code or 1
         else:
             return 0
         finally:

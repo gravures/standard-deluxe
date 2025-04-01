@@ -13,6 +13,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with standard-deluxe. If not, see <https://www.gnu.org/licenses/>
+# ruff: noqa: PYI019, PYI066, UP031
 """Argument parser module."""
 
 from __future__ import annotations
@@ -30,13 +31,13 @@ from deluxe.console.wrap import AnsiTextWrapper
 
 try:
     from gettext import gettext as _
-    from gettext import ngettext  # pyright:ignore[reportUnusedImport, reportAssignmentType]
+    from gettext import ngettext  # pyright:ignore[reportAssignmentType]
 except ImportError:
 
     def _(message: str) -> str:
         return message
 
-    def ngettext(singular: Any, plural: Any, n: int) -> Any:  # noqa: D103
+    def ngettext(singular: object, plural: object, n: int) -> object:  # noqa: D103
         return singular if n == 1 else plural
 
 
@@ -47,7 +48,7 @@ if TYPE_CHECKING:
 
 SHELL_COMPLETION = {"bash", "zsh", "fish", "powershell"}
 
-_S = TypeVar("_S", bound="AnsiHelpFormatter._Section")
+_S = TypeVar("_S", bound="AnsiHelpFormatter._Section")  # pyright:ignore[reportPrivateUsage]
 
 
 class AnsiHelpFormatter(argparse.HelpFormatter):
@@ -194,8 +195,8 @@ class AnsiHelpFormatter(argparse.HelpFormatter):
             action_header = f"{' ' * self._current_indent}{action_header}\n"
         elif ansi.length(action_header) <= action_width:
             # short action name; start on the same line and pad two spaces
-            _h = self._ansi_aware_pad(action_header, action_width)
-            action_header = f"{' ' * self._current_indent}{_h}  "
+            h_ = self._ansi_aware_pad(action_header, action_width)
+            action_header = f"{' ' * self._current_indent}{h_}  "
             indent_first = 0
         else:
             # long action name; start on the next line
@@ -248,8 +249,8 @@ class AnsiHelpFormatter(argparse.HelpFormatter):
                     positionals.append(action)
 
             # build full usage string
-            _format = self._format_actions_usage
-            action_usage = _format(optionals + positionals, groups)
+            format_ = self._format_actions_usage
+            action_usage = format_(optionals + positionals, groups)
             usage = " ".join([s for s in [prog, action_usage] if s])
 
             text_width = self._width - self._current_indent
@@ -257,8 +258,8 @@ class AnsiHelpFormatter(argparse.HelpFormatter):
                 # wrap the usage parts if it's too long
                 # break usage into wrappable parts
                 part_regexp = r"\(.*?\)+(?=\s|$)|\[.*?\]+(?=\s|$)|\S+"
-                opt_usage = _format(optionals, groups)
-                pos_usage = _format(positionals, groups)
+                opt_usage = format_(optionals, groups)
+                pos_usage = format_(positionals, groups)
                 opt_parts = re.findall(part_regexp, opt_usage)
                 pos_parts = re.findall(part_regexp, pos_usage)
                 if " ".join(opt_parts) != opt_usage or " ".join(pos_parts) != pos_usage:
@@ -267,7 +268,7 @@ class AnsiHelpFormatter(argparse.HelpFormatter):
                 def get_lines(
                     parts: list[str], indent: str, prefix: str | None = None
                 ) -> list[str]:
-                    """Helper for wrapping lines."""
+                    """Helper for wrapping lines."""  # noqa: DOC201
                     lines: list[str] = []
                     line: list[str] = []
                     indent_length = len(indent)
@@ -284,7 +285,7 @@ class AnsiHelpFormatter(argparse.HelpFormatter):
                         lines.append(indent + " ".join(line))
                     if prefix is not None:
                         lines[0] = lines[0][indent_length:]
-                    return lines  # noqa: DOC201
+                    return lines
 
                 len_prog = ansi.length(prog)
                 if prefix_len + len_prog <= 0.75 * text_width:
@@ -329,7 +330,7 @@ class AnsiHelpFormatter(argparse.HelpFormatter):
         # won't account for color codes,
         # so we need to update it here as well
         if action.help is not argparse.SUPPRESS:
-            self._action_max_length = old_max
+            self._action_max_length: int = old_max
             invocations = [self._format_action_invocation(action)]
             invocations.extend(
                 self._format_action_invocation(subaction)
@@ -368,10 +369,10 @@ class AnsiHelpFormatter(argparse.HelpFormatter):
             parent: _S | None,
             heading: str | None = None,
         ) -> None:
-            self.formatter = formatter
-            self.parent = parent
-            self.heading = heading
-            self.items: list[tuple[Callable[..., str], Iterable[Any]]] = []
+            self.formatter: argparse.HelpFormatter = formatter
+            self.parent: object | None = parent
+            self.heading: str | None = heading
+            self.items: list[tuple[Callable[..., str], Iterable[object]]] = []
 
         def format_help(self):
             # format the indented section
@@ -403,36 +404,37 @@ class AnsiHelpFormatter(argparse.HelpFormatter):
     def _get_default_metavar_for_positional(self, action: argparse.Action) -> str:
         return self._ansi_style(action.dest, "argparse.default")
 
-    # def _format_args(self, action: argparse.Action, default_metavar: str) -> str:
-    #     result = super()._format_args(action, default_metavar)
-    #     if action.nargs == argparse.ZERO_OR_MORE:
-    #         metavar = self._metavar_formatter(action, default_metavar)(1)
-    #         if len(metavar) == 2:
-    #             result = f"[{ansi.strip(metavar[0])} [{ansi.strip(metavar[1])} ...]]"
-    #         else:
-    #             result = f"[{ansi.strip(metavar[0])} ...]"
-    #     return result
+    def _expand_help(self, action: argparse.Action) -> str:
+        params = dict(vars(action), prog=self._prog)
+        for name in list(params):
+            if params[name] is argparse.SUPPRESS:
+                del params[name]
+            elif hasattr(params[name], "__name__"):
+                params[name] = params[name].__name__
+        if params.get("choices") is not None:
+            params["choices"] = ", ".join([str(c) for c in params["choices"]])
+
+        if not (help_string := self._get_help_string(action)):
+            raise ValueError
+
+        help_string % params  # pyright: ignore[reportUnusedExpression]
+
+        return help_string
 
 
-class RawAnsiHelpFormatter(  # pyright:ignore[reportUnsafeMultipleInheritance]
-    argparse.RawTextHelpFormatter, AnsiHelpFormatter
-):
+class RawAnsiHelpFormatter(argparse.RawTextHelpFormatter, AnsiHelpFormatter):
     """An argparse.RawHelpFormatter with ansi markup text support."""
 
 
-class RawDescriptionAnsiHelpFormatter(  # pyright:ignore[reportUnsafeMultipleInheritance]
-    argparse.RawDescriptionHelpFormatter, AnsiHelpFormatter
-):
+class RawDescriptionAnsiHelpFormatter(argparse.RawDescriptionHelpFormatter, AnsiHelpFormatter):
     """An argparse.RawDescriptionHelpFormatter with ansi markup text support."""
 
 
-class ArgumentDefaultsAnsiHelpFormatter(  # pyright:ignore[reportUnsafeMultipleInheritance]
-    argparse.ArgumentDefaultsHelpFormatter, AnsiHelpFormatter
-):
+class ArgumentDefaultsAnsiHelpFormatter(argparse.ArgumentDefaultsHelpFormatter, AnsiHelpFormatter):
     """An argparse.ArgumentDefaultsHelpFormatter with ansi markup text support."""
 
 
-class PrettyHelpFormatter(  # pyright:ignore[reportUnsafeMultipleInheritance, reportIncompatibleVariableOverride]
+class PrettyHelpFormatter(  # pyright:ignore[reportIncompatibleVariableOverride]
     argparse.RawDescriptionHelpFormatter,
     argparse.ArgumentDefaultsHelpFormatter,
     AnsiHelpFormatter,
@@ -443,6 +445,8 @@ class PrettyHelpFormatter(  # pyright:ignore[reportUnsafeMultipleInheritance, re
     behaviours. Also implements the MetavarTypeHelpFormatter on demand.
     """
 
+    metavar_typed: ClassVar[bool] = False
+
     def __init__(
         self,
         prog: str,
@@ -451,16 +455,15 @@ class PrettyHelpFormatter(  # pyright:ignore[reportUnsafeMultipleInheritance, re
         width: int | None = None,
     ) -> None:
         super().__init__(prog, indent_increment, max_help_position, width)
-        self.metavar_typed: bool = "MetavarTypeHelpFormatter" in globals()
 
     def _get_default_metavar_for_optional(self, action: argparse.Action) -> str:
         if self.metavar_typed and hasattr(action, "type") and action.type:
-            return self._ansi_style(cast(str, action.type.__name__), "argparse.default")  # pyright: ignore[reportAttributeAccessIssue]
+            return self._ansi_style(cast("str", action.type.__name__), "argparse.default")  # pyright: ignore[reportAttributeAccessIssue]
         return super()._get_default_metavar_for_optional(action)
 
     def _get_default_metavar_for_positional(self, action: argparse.Action) -> str:
         if self.metavar_typed and hasattr(action, "type") and action.type:
-            return self._ansi_style(cast(str, action.type.__name__), "argparse.default")  # pyright: ignore[reportAttributeAccessIssue]
+            return self._ansi_style(cast("str", action.type.__name__), "argparse.default")  # pyright: ignore[reportAttributeAccessIssue]
         return super()._get_default_metavar_for_positional(action)
 
     def _format_usage(
@@ -470,8 +473,8 @@ class PrettyHelpFormatter(  # pyright:ignore[reportUnsafeMultipleInheritance, re
         groups: Iterable[argparse._MutuallyExclusiveGroup],  # pyright:ignore[reportPrivateUsage]
         prefix: str | None,
     ) -> str:
-        _usage: str = super()._format_usage(usage, actions, groups, None)
-        return f"{prefix}\n\n{_usage}"
+        usage_: str = super()._format_usage(usage, actions, groups, None)
+        return f"{prefix}\n\n{usage_}"
 
 
 class _ShellCompletion(argparse.Action):
@@ -504,7 +507,7 @@ class _ShellCompletion(argparse.Action):
         if values not in SHELL_COMPLETION:
             parser.error("option should specify a valid shell name")
         hook: str = cast(
-            str,
+            "str",
             parser.argcomplete.shell_integration.shellcode(
                 executables=[parser.prog],
                 use_defaults=False,  # bash only
@@ -537,7 +540,7 @@ class PrettyParser(argparse.ArgumentParser):
         formatter_class: type[argparse.HelpFormatter] = PrettyHelpFormatter,
         prefix_chars: str = "-",
         fromfile_prefix_chars: str | None = None,
-        argument_default: Any = None,
+        argument_default: object = None,
         conflict_handler: str = "error",
         add_help: bool = True,
         allow_abbrev: bool = True,
@@ -565,7 +568,7 @@ class PrettyParser(argparse.ArgumentParser):
         self.exit_on_error: bool = exit_on_error
         self.prefix: str = prefix or ""
         self.version: str = version or ""
-        self.shell_completion = shell_completion
+        self.shell_completion: bool = shell_completion
 
         if self.version:
             self.add_argument(
@@ -588,7 +591,7 @@ class PrettyParser(argparse.ArgumentParser):
                     stacklevel=1,
                 )
             else:
-                self.argcomplete = argcomplete
+                self.argcomplete: ModuleType = argcomplete
                 self.add_argument(
                     "--completion",
                     dest="shell_compl",
@@ -737,5 +740,5 @@ class PrettyParser(argparse.ArgumentParser):
         self, message: str, file: IO[str] | None = None
     ) -> None:
         if message:
-            _file = sys.stderr if file is None else file
-            _file.write(message)
+            file_ = sys.stderr if file is None else file
+            file_.write(message)
