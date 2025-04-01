@@ -39,12 +39,11 @@ from __future__ import annotations
 
 import json
 import logging
-from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any, cast
 
 
 if TYPE_CHECKING:
-    from collections.abc import MutableMapping
+    from collections.abc import Mapping, MutableMapping
     from pathlib import Path
 
     from pdm.backend.hooks import Context
@@ -69,7 +68,7 @@ def get_monorepos_targets(context: Context) -> list[str]:
 
 
 def get_monorepo_build_target(context: Context) -> str | None:
-    """Return the name of a monorepo target passed to pdm build if exists."""
+    """Return the name of a monorepo target passed to pdm build if exists."""  # noqa: DOC501
     cf = context.config_settings
     targets = get_monorepos_targets(context)
 
@@ -89,13 +88,13 @@ def deep_merge(
     target: MutableMapping[Any, Any],
     source: Mapping[Any, Any],
 ) -> MutableMapping[Any, Any]:
-    """Merge the values of source in target."""
+    """Merge the values of source in target."""  # noqa: DOC201
     for key, value in source.items():
         if key in target and isinstance(value, list):
             target[key].extend(value)
         elif key in target and isinstance(value, dict):
-            _val = cast(Mapping[Any, Any], value)
-            deep_merge(target=target[key], source=_val)
+            val_ = cast("Mapping[Any, Any]", value)
+            deep_merge(target=target[key], source=val_)
         else:
             target[key] = value
     return target
@@ -131,7 +130,8 @@ def update_config_for_monorepo(context: Context, package: str) -> None:
     # don't reference unavailable targets
     config.data["tool"]["pdm"].pop("monorepo")
 
-    config.validate(data=config.data, root=config.root)
+    # config.validate(data=config.data, root=config.root)
+    config.validate()
     logger.warning("MONOREPO metadata")
     logger.warning(json.dumps(dict(config.metadata), indent=2))
 
