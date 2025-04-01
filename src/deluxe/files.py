@@ -13,21 +13,33 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with standard-deluxe. If not, see <https://www.gnu.org/licenses/>
-"""File module."""
+# ruff: noqa: UP031
+"""File operations and utilities module.
+
+This module provides a collection of functions for working with files and paths
+across different operating systems. It includes utilities for path manipulation,
+file type detection, and system-specific operations.
+
+Key features:
+- Path splitting and drive detection
+- Windows and POSIX path differentiation
+- Binary and executable file detection
+- Windows PE file version extraction
+- Filesystem mount point identification
+"""
 
 from __future__ import annotations
 
 import os
 import re
 import struct
-from os import PathLike
 from pathlib import Path, PurePosixPath, PureWindowsPath
-from typing import Any, Union
+from typing import TypeAlias
 
 
-POSIX: bool = os.name == "posix"
+_POSIX: bool = os.name == "posix"
 
-FilePath = Union[str, PathLike[Any]]
+FilePath: TypeAlias = str | os.PathLike[str]
 
 
 def split_drive(path: FilePath) -> tuple[str, str]:
@@ -52,21 +64,28 @@ def is_winpath(path: FilePath) -> bool:
         path (FilePath): The path to check.
 
     Returns:
-        bool: True if the path is an instance of PureWindowsPath or if
-        the path starts with a drive letter. Otherwise, on windows if
-        the path is not a PurePosixPath always return True.
-
-    Note:
-        As a consequence, on Posix system, paasing relative paths will always
-        return False, except if the path is an instance of a PureWindowsPath or one
-        of its subclasses.
+        bool: on windows if the path is not a PurePosixPath always return True.
+        On POSIX return True if the path is an instance of PureWindowsPath.
+        Otherwise test the presence of a drive letter, UNC path double back slash
+        and forward slash as a guessing.
     """
-    #  'file:///home/user/etc' will not match
-    return (
-        isinstance(path, (PureWindowsPath))
-        or bool(split_drive(path)[0])
-        or (not POSIX and not isinstance(path, PurePosixPath))
-    )
+    if not _POSIX:
+        return not isinstance(path, PurePosixPath)
+
+    if isinstance(path, PureWindowsPath):
+        return True
+
+    drv, pth = split_drive(path)
+    if bool(drv) and drv != "file":
+        return True
+
+    if pth.startswith("\\\\"):
+        return True
+
+    if "/" in pth:
+        return False
+
+    return False
 
 
 def is_binary(path: FilePath) -> bool:
@@ -77,8 +96,8 @@ def is_binary(path: FilePath) -> bool:
     """
     # NOTE: https://gist.github.com/magnetikonline/7a21ec5f5bcdbf7adb92f9d617e6198f
     #        https://github.com/djmattyg007/python-isbinary
-    _path = Path(path)
-    if not _path.is_file():
+    path_ = Path(path)
+    if not path_.is_file():
         return False
 
     read_bytes = 512
@@ -86,7 +105,7 @@ def is_binary(path: FilePath) -> bool:
     text_characters = dict.fromkeys(
         list(range(32, 127)) + [ord(c) for c in ["\x08", "\x0c", "\n", "\r", "\t"]]
     )
-    with _path.open("r", encoding="ISO-8859-1") as fh:
+    with path_.open("r", encoding="ISO-8859-1") as fh:
         file_data = fh.read(read_bytes)
 
     # store chunk length read
@@ -215,21 +234,19 @@ def get_pe_version(file: FilePath) -> str | None:
     return version
 
 
-def mount_point(path: FilePath) -> Path:
+def mount_point(path: FilePath) -> Path | PureWindowsPath:
     r"""Finds the mount point (root) of the filesystem containing the given path.
 
     Takes a file path and traverses up the directory tree until it finds
-    the mount point (root) of the filesystem containing the path.
+    its root. On POSIX it will be the mount point containing the path.
+    On Windows or if path is a PureWindowsPaththe, returns the root
+    of the filesystem (aka the anchor).
 
     Args:
         path: The file path for which to find the mount point.
 
     Returns:
-        Path: The mount point (root) of the filesystem containing the given path.
-
-    Raises:
-        NotImplementedError: If called from Winodws platform or If the input
-        path is a Windows filesystem path (for Windows-specific paths).
+        Path: The mount point or anchor containing the given path.
 
     Examples:
         >>> mount_point("/home/user/documents/file.txt")
@@ -240,11 +257,17 @@ def mount_point(path: FilePath) -> Path:
 
         >>> mount_point("C:\\projects\\code\\script.py")
         WindowsPath('C:/')
+
+        >>> mount_point(PureWindowsPath('//host/share/usr'))
+        WindowsPath('//host/share/')
     """
-    path = Path(path).expanduser().absolute()
-    if not POSIX or is_winpath(path):
-        msg = "path should not be a Windows filesystem path"
-        raise NotImplementedError(msg)
+    if not _POSIX:
+        return Path(path).expanduser().parents[-1]
+
+    if is_winpath(path):
+        return PureWindowsPath(path).parents[-1]
+
+    path = Path(path).expanduser()
     while not path.is_mount():
         path = path.parent
     return path

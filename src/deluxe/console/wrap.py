@@ -100,11 +100,11 @@ class AnsiTextWrapper(TextWrapper):
                 del chunks[-1]
 
             while chunks:
-                _len = length(chunks[-1])
-                if cur_len + _len > width:
+                len_ = length(chunks[-1])
+                if cur_len + len_ > width:
                     break
                 cur_line.append(chunks.pop())
-                cur_len += _len
+                cur_len += len_
 
             # The current line is full, and the next chunk is too big to
             # fit on *any* line (not just this one).

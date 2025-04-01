@@ -13,6 +13,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with standard-deluxe. If not, see <https://www.gnu.org/licenses/>
+# ruff: noqa: PYI019
 """Creators module.
 
 Collections of basse classes implementing some creational design patterns.
@@ -21,27 +22,27 @@ Collections of basse classes implementing some creational design patterns.
 from __future__ import annotations
 
 import weakref
-from abc import ABCMeta, abstractmethod
-from typing import Any, ClassVar, TypeVar
+from abc import ABC, ABCMeta, abstractmethod
+from typing import Any, ClassVar, TypeVar, final
 
 
 TSingleton = TypeVar("TSingleton", bound="Singleton")
 
 
+@final
 class _SingletonMeta(type):
     """Singleton metaclass."""
 
     INSTANCE_REF_NAME = "__instance__"
 
     def __new__(
-        cls, name: str, bases: tuple[type, ...], namespace: dict[str, Any], **kwargs: Any
+        cls, name: str, bases: tuple[type, ...], namespace: dict[str, object], **kwargs: object
     ) -> _SingletonMeta:
         """Type creation."""
         namespace[_SingletonMeta.INSTANCE_REF_NAME] = None
         return type.__new__(cls, name, bases, namespace, **kwargs)
 
-    def __call__(cls: type[TSingleton], *args: Any, **kwargs: Any) -> TSingleton:
-        """Called when instancing a type."""
+    def __call__(cls: type[TSingleton], *args: Any, **kwargs: Any) -> TSingleton:  # pyright: ignore[reportGeneralTypeIssues]
         if (instance := getattr(cls, _SingletonMeta.INSTANCE_REF_NAME)) is None:
             instance = super().__call__(*args, **kwargs)
             setattr(cls, _SingletonMeta.INSTANCE_REF_NAME, instance)
@@ -71,9 +72,10 @@ class Singleton(metaclass=_SingletonMeta):
     A simple python module could be a better candidate to manage a global state.
     """
 
-    __slots__ = ()
+    __slots__: tuple[str, ...] = ()
 
 
+@final
 class _MultitonMeta(ABCMeta):
     """Multiton metaclass."""
 
@@ -90,28 +92,27 @@ class _MultitonMeta(ABCMeta):
 
         return type.__new__(cls, name, bases, namespace, **kwargs)
 
-    def __call__(cls: type[TMultiton], *args: Any, **kwargs: Any) -> TMultiton:
-        """Called when instancing a type."""
-        _id = getattr(cls, _MultitonMeta.ID_METH_NAME)(*args, **kwargs)
-        _is = getattr(cls, _MultitonMeta.INSTANCES_MAP_NAME)
-        _wr = getattr(cls, _MultitonMeta.WEAKREF_FLAG_NAME)
+    def __call__(cls: type[TMultiton], *args: Any, **kwargs: Any) -> TMultiton:  # pyright: ignore[reportGeneralTypeIssues]
+        id_ = getattr(cls, _MultitonMeta.ID_METH_NAME)(*args, **kwargs)
+        is_ = getattr(cls, _MultitonMeta.INSTANCES_MAP_NAME)
+        wr_ = getattr(cls, _MultitonMeta.WEAKREF_FLAG_NAME)
 
         def finalize(ocls: type, uid: int) -> None:
             del getattr(ocls, _MultitonMeta.INSTANCES_MAP_NAME)[uid]
 
-        if not (instance := _is.get(_id)):
+        if not (instance := is_.get(id_)):
             instance = super().__call__(*args, **kwargs)
-            _is[_id] = weakref.ref(instance) if _wr else instance
-            if _wr:
-                weakref.finalize(instance, finalize, cls, _id)
+            is_[id_] = weakref.ref(instance) if wr_ else instance
+            if wr_:
+                weakref.finalize(instance, finalize, cls, id_)
             return instance
-        return instance() if _wr else instance
+        return instance() if wr_ else instance
 
 
 TMultiton = TypeVar("TMultiton", bound="Multiton")
 
 
-class Multiton(metaclass=_MultitonMeta):
+class Multiton(ABC, metaclass=_MultitonMeta):
     """Multiton abstract base class.
 
     The Multiton is an extension of the singleton. It ensures that
@@ -149,7 +150,7 @@ class Multiton(metaclass=_MultitonMeta):
 
     __instances__: ClassVar[dict[int, Multiton]]
 
-    __slots__ = ("__weakref__",)
+    __slots__: tuple[str, ...] = ("__weakref__",)  # pyright: ignore[reportUnannotatedClassAttribute]
 
     @classmethod
     @abstractmethod
@@ -176,5 +177,5 @@ class Multiton(metaclass=_MultitonMeta):
         by a public get() method with a more useful signature than requiring
         the internal and usually opaque id value.
         """
-        _i = getattr(cls, _MultitonMeta.INSTANCES_MAP_NAME).get(value)
-        return _i() or default
+        instance = getattr(cls, _MultitonMeta.INSTANCES_MAP_NAME).get(value)
+        return instance() or default

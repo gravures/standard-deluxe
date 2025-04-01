@@ -18,7 +18,7 @@
 This module generates ANSI character codes for printing
 colors to terminals or modify its buffer and move the cursor.
 The set of generated escape sequences is deliberately kept tight.
-This way those sequences are hightly portable and could be
+This way those sequences are highly portable and could be
 translated for Windows terminal by the colorama module.
 
 On Windows platform the presence of coloroma is checked
@@ -48,7 +48,6 @@ from typing import (
     Literal,
     Protocol,
     TypeVar,
-    Union,
     final,
 )
 
@@ -134,22 +133,22 @@ class OSC(C1, Protocol[OSC_CMD, OSC_PARAM]):
         return str(self.cmd)
 
 
-class TITLE(OSC[str, Union[Literal[0, 2], str]]):
+class TITLE(OSC[str, Literal[0, 2] | str]):
     """Title OSC command."""
 
-    cmd = BELL()()
+    cmd: str = BELL()()
 
 
 class ED(CSI[Literal["J"], Literal[0, 1, 2, 3]]):
     """Erase in display."""
 
-    cmd = "J"
+    cmd: Literal["J"] = "J"
 
 
 class EL(CSI[Literal["K"], Literal[0, 1, 2]]):
     """Erase in line."""
 
-    cmd = "K"
+    cmd: Literal["K"] = "K"
 
 
 @enum.unique
@@ -284,14 +283,14 @@ clear_line_after = EL(0)
 
 def style(*args: SGR_Params) -> str:
     """Return an ANSI styling characters sequence."""
-    _sgr = SGR(*args)
-    return _sgr()
+    sgr_ = SGR(*args)
+    return sgr_()
 
 
 def set_title(title: str) -> str:
     """Return an ANSI characters sequence."""
-    _osc = TITLE(2, title)
-    return _osc()
+    osc_ = TITLE(2, title)
+    return osc_()
 
 
 _STRIP_ESC = re.compile(

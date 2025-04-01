@@ -1,4 +1,3 @@
-# noqa: INP001
 # Copyright (c) 2024 - Gilles Coissac
 # This file is part of standard-deluxe library.
 #
@@ -33,8 +32,8 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 _NULL: type[None] = type(None)  # an undefined value that is not None
-Patchable = Any
-Patch = Callable[..., Any]
+Patchable = object
+Patch = Callable[..., object]
 
 
 def loads_module(name: str, where: Path) -> ModuleType | None:
@@ -47,13 +46,15 @@ def loads_module(name: str, where: Path) -> ModuleType | None:
 class Module:
     """Utility class for dynamic loading of python module."""
 
-    __slots__ = ("_is_pkg", "_is_root", "_name", "_pkg", "_spec")
+    __slots__: tuple[str, ...] = ("_is_pkg", "_is_root", "_name", "_pkg", "_spec")
 
     def __init__(self, name: str, *, package: str = "", where: Path | None = None) -> None:
         abs_name = importlib.util.resolve_name(name, package)
 
         self._spec: importlib.machinery.ModuleSpec = self._find_spec(abs_name, where)
         self._is_pkg: bool = self._spec.submodule_search_locations is not None
+        self._pkg: str
+        self._name: str
         self._pkg, _, self._name = abs_name.rpartition(".")
         self._is_root: bool = self._is_pkg and not self._pkg
 
