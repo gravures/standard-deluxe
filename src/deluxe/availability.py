@@ -62,7 +62,11 @@ from __future__ import annotations
 import functools
 import re
 import sys
-from typing import Callable, ParamSpec, TypeVar
+from typing import TYPE_CHECKING, ParamSpec, TypeVar
+
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 def hints() -> tuple[str, ...]:  # noqa: PLR0911
