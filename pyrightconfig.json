@@ -12,7 +12,6 @@
     "reportImplicitStringConcatenation": false,
     "reportImplicitOverride": false,
     "reportMissingSuperCall": false,
-    "reportUnannotadedClassAttribute": "hint",
     "executionEnvironments": [
         {
             "root": "./src"
