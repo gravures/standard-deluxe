@@ -5,14 +5,14 @@
 #####################################################
 [project]
 name = "standard-deluxe"
-description = "A handfull collection of python utilities."
+description = "A handfull collection of python modules."
 authors = [{ name = "Gilles Coissac", email = "gilles@ideographe.fr" }]
 license = { text = "GPL-3.0" }
 readme = "README.md"
 keywords = []
 classifiers = [
-  "Intended Audience :: Developers",
   "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+  "Intended Audience :: Developers",
   "Operating System :: OS Independent",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.10",
@@ -23,96 +23,116 @@ classifiers = [
   "Typing :: Typed",
 ]
 
-urls.homepage      = "https://github.com/gravures/standard-deluxe"
-urls.repository    = "https://github.com/gravures/standard-deluxe"
+urls.homepage = "https://github.com/gravures/standard-deluxe"
+urls.repository = "https://github.com/gravures/standard-deluxe"
 urls.documentation = "https://github.com/gravures/standard-deluxe"
-urls.issue         = "https://github.com/gravures/standard-deluxe/issues"
+urls.issue = "https://github.com/gravures/standard-deluxe/issues"
 
-dynamic         = ["version"]
+dynamic = ["version"]
 requires-python = ">=3.10"
-dependencies    = []
+dependencies = []
 
 #####################################################
 # PDM
 #####################################################
 [build-system]
-requires      = ["pdm-backend"]
+requires = ["pdm-backend"]
 build-backend = "pdm.backend"
 
 [tool.pdm]
 distribution = true
 
 [tool.pdm.build]
-package-dir      = "src"
-includes         = ["src/deluxe/"]
+package-dir = "src"
+source-includes = ["licenses"]
+includes = ["src/deluxe/"]
 editable-backend = "path"
 
 [tool.pdm.version]
-source         = "scm"
-write_to       = "deluxe/_version.py"
+source = "scm"
+write_to = "deluxe/_version.py"
 write_template = "__version__ = '{}'"
 
 [tool.pdm.dev-dependencies]
 dev = [
-  "ruff>=0.5",
-  "basedpyright>=1.15",
-  "pre-commit>=3.7.0",
-  "tox-pdm>=0.7.2",
-  "dead>=1.5.2",
+  "ruff>=0.9",
+  "basedpyright>=1.28",
+  "pre-commit>=4.1",
+  "dead>=2.1",
   "pretty-errors>=1.2.25",
 ]
-monorepo = ["pdm>=2.16.1", "pdm-backend>=2.3.1"]
-test = ["pytest", "hypothesis", "coverage[toml]", "tox>=4.0", "editables>=0.5"]
+monorepo = ["pdm>=2.22.4", "pdm-backend>=2.4.3"]
+test = [
+  "pytest>=8.3",
+  "hypothesis",
+  "coverage[toml]>=7.6",
+  "tox>=4.24",
+  "tox-pdm>=0.7.2",
+]
 
 #####################################################
 # PDM MONOREPO PACKAGES
 #####################################################
 [tool.pdm.monorepo.packages.console]
-includes            = ["src/deluxe/console"]
-excludes            = ["tests"]
-project.name        = "deluxe-console"
+includes = ["src/deluxe/console"]
+source-excludes = ["licenses"]
+excludes = ["tests"]
+project.name = "deluxe-console"
 project.description = "Standard-deluxe console package."
 project.classifiers = ["Development Status :: 3 - Beta"]
 
 [tool.pdm.monorepo.packages.factory]
-includes            = ["src/deluxe/factory"]
-excludes            = ["tests"]
-project.name        = "deluxe-factory"
+includes = ["src/deluxe/factory"]
+source-excludes = ["licenses"]
+excludes = ["tests"]
+project.name = "deluxe-factory"
 project.description = "Standard-deluxe factory package."
 project.classifiers = ["Development Status :: 3 - Beta"]
 
 [tool.pdm.monorepo.packages.availability]
-includes            = ["src/deluxe/availability.py"]
-excludes            = ["tests"]
-project.name        = "deluxe-availability."
+includes = ["src/deluxe/availability.py"]
+source-excludes = ["licenses"]
+excludes = ["tests"]
+project.name = "deluxe-availability."
 project.description = "Standard-deluxe availability module."
 project.classifiers = ["Development Status :: 3 - Alpha"]
 
 [tool.pdm.monorepo.packages.files]
-includes            = ["src/deluxe/files.py"]
-excludes            = ["tests"]
-project.name        = "deluxe-files"
+includes = ["src/deluxe/files.py"]
+source-excludes = ["licenses"]
+excludes = ["tests"]
+project.name = "deluxe-files"
 project.description = "Standard-deluxe files module."
 project.classifiers = ["Development Status :: 3 - Alpha"]
 
 [tool.pdm.monorepo.packages.importers]
-includes            = ["src/deluxe/importers.py"]
-excludes            = ["tests"]
-project.name        = "deluxe-importers"
+includes = ["src/deluxe/importers.py"]
+source-excludes = ["licenses"]
+excludes = ["tests"]
+project.name = "deluxe-importers"
 project.description = "Standard-deluxe importers module."
 project.classifiers = ["Development Status :: 3 - Alpha"]
 
 [tool.pdm.monorepo.packages.mappings]
-includes            = ["src/deluxe/mappings.py"]
-excludes            = ["tests"]
-project.name        = "deluxe-mappings"
+includes = ["src/deluxe/mappings.py"]
+source-excludes = ["licenses"]
+excludes = ["tests"]
+project.name = "deluxe-mappings"
 project.description = "Standard-deluxe mappings module."
 project.classifiers = ["Development Status :: 4 - Beta"]
 
+[tool.pdm.monorepo.packages.mureq]
+includes = ["src/deluxe/mureq.py"]
+excludes = ["tests"]
+project.name = "deluxe-mureq"
+project.description = "Standard-deluxe mureq module."
+project.classifiers = ["Development Status :: 3 - Alpha"]
+
 [tool.pdm.monorepo.packages.process]
-includes            = ["src/deluxe/process.py", "src/deluxe/availability.py"]
-excludes            = ["tests"]
-project.name        = "deluxe-process"
+includes = ["src/deluxe/process.py", "src/deluxe/availability.py"]
+source-excludes = ["licenses"]
+excludes = ["tests"]
+project.name = "deluxe-process"
 project.description = "Standard-deluxe process module."
 project.classifiers = ["Development Status :: 4 - Beta"]
 
@@ -120,35 +140,29 @@ project.classifiers = ["Development Status :: 4 - Beta"]
 # PDM SCRIPTS
 #####################################################
 [tool.pdm.scripts]
-traceback   = "_traceback.py"
-xrequire    = "pdm export -f requirements -o requirements.txt"
-test        = "pytest -s -v -k {args}"
-test_all    = "coverage run -m pytest"
-test_typing = "pdm run basedpyright --stats ./src/deluxe"
-test_cover  = "coverage report"
-tox_testme  = "tox --develop -r -e py"
-pc_init     = "pre-commit install --install-hooks"
-pc_update   = "pre-commit autoupdate"
-pc_check    = { env = { "SKIP" = "basedpyright" }, cmd = "pre-commit run --all-files" }
-dead        = "dead"
-pc_clean    = "pre-commit clean && pre-commit gc"
-deps        = "pdm list --fields name,groups,version,licenses,homepage --sort groups,name,licenses --exclude :sub"
-
-[tool.pdm.scripts.pc_safety]
-composite = ["xrequire", "pre-commit run python-safety-dependencies-check"]
-
-[tool.pdm.scripts.suite]
-composite = [
-  "echo '\f'",
+test = "pytest -s -v -k {args}"
+test-all = "coverage run -m pytest"
+test-types = "pdm run basedpyright --stats ./src/**"
+test-cover = "coverage report"
+test-tox = "tox --develop -r -e py"
+test-dead = "dead"
+install-traceback = "_traceback.py"
+list-group = "pdm list --fields name,groups,version,licenses,homepage --sort groups,name,licenses --exclude :sub"
+export-require = "pdm export -f requirements -o requirements.txt"
+pc-init = { composite = ["pre-commit install --install-hooks", "pc-update"] }
+pc-update = "pre-commit autoupdate"
+pc-check = { env = { "SKIP" = "basedpyright" }, cmd = "pre-commit run --all-files" }
+pc-clean = "pre-commit clean && pre-commit gc"
+pc-safety = { composite = [
+  "export-require",
+  "pre-commit run python-safety-dependencies-check",
+] }
+checkup = { composite = [
   "pdm show",
-  "echo '\nDEPS'",
-  "deps",
-  "echo '\nPRE-COMMIT'",
-  "pc_check",
-  "echo '\nTYPING'",
-  "test_typing",
-  "echo '\nDEAD CODE'",
+  "list-group",
+  "tokei",
+  "pc-check",
+  "test-types",
   "dead",
-  "echo '\nCOVERAGE'",
-  "test_cover",
-]
+  "test-cover",
+], keep_going = true }
