@@ -21,6 +21,7 @@ import copy
 import sys
 from collections import OrderedDict
 from collections.abc import (
+    Callable,
     ItemsView,
     Iterable,
     Iterator,
@@ -31,22 +32,23 @@ from collections.abc import (
 )
 from copy import deepcopy
 from pathlib import Path
-from types import ModuleType
 from typing import (
     IO,
+    TYPE_CHECKING,
     Any,
     ClassVar,
     Generic,
     Literal,
     Protocol,
     TypeVar,
-    Union,
     cast,
+    final,
+    overload,
 )
 
-from test.support.import_helper import (
-    import_fresh_module,  # pyright:ignore[reportUnknownVariableType]
-)
+
+if TYPE_CHECKING:
+    from types import ModuleType
 
 
 def ulist(iterable: Iterable[object], lifo: bool = False) -> list[object]:
@@ -65,15 +67,15 @@ def ulist(iterable: Iterable[object], lifo: bool = False) -> list[object]:
     Returns:
         list: A new list containing only unique elements.
     """
-    _unique: list[object] = []
-    _lst = list(iterable)[::-1] if lifo else list(iterable)
-    for v in _lst:
-        if v not in _unique:
-            _unique.append(v)
-    return _unique[::-1] if lifo else _unique
+    unique_: list[object] = []
+    lst_ = list(iterable)[::-1] if lifo else list(iterable)
+    for v in lst_:
+        if v not in unique_:
+            unique_.append(v)
+    return unique_[::-1] if lifo else unique_
 
 
-EnvValue = Union[None, str, bool, int, list[Union[str, Path]]]
+EnvValue = str | bool | int | list[str | Path] | None
 Separator = Literal[";", ":", ",", " "]
 
 
@@ -83,11 +85,12 @@ class Environment(MutableMapping[str, EnvValue]):  # noqa: PLR0904
     This class provides a way to manage and manipulate environment variables.
     """
 
-    __slots__ = ("__dict__", "_kwargs", "_lock", "_protected")
+    __slots__: ClassVar[tuple[str, ...]] = ("__dict__", "_kwargs", "_lock", "_protected")
     __list_separator: ClassVar[dict[str, Separator]] = {}
+    __hash__: ClassVar[None]
 
-    def __init__(self, **kwargs: Any) -> None:
-        self._kwargs = kwargs
+    def __init__(self, **kwargs: EnvValue) -> None:
+        self._kwargs: Mapping[str, EnvValue] = kwargs
         self._protected: set[str] = set()
         self._lock: bool = True
 
@@ -101,9 +104,7 @@ class Environment(MutableMapping[str, EnvValue]):  # noqa: PLR0904
         """
         Environment.__list_separator[attribute] = separator
 
-    def get(  # pyright: ignore[reportIncompatibleMethodOverride]
-        self, name: str, default: EnvValue = ""
-    ) -> EnvValue:
+    def get(self, name: str, default: EnvValue = "") -> EnvValue:
         """Retrieve the value associated with a name.
 
         Retrieve the value associated with the given name.
@@ -183,7 +184,7 @@ class Environment(MutableMapping[str, EnvValue]):  # noqa: PLR0904
         """Clears all attributes."""
         self.__dict__.clear()
 
-    def pop(self, name: str, default: Any | None = None) -> Any:
+    def pop(self, name: str, default: object | None = None) -> EnvValue:
         """Removes and returns the value associated with a name.
 
         If name is in the mapping, remove it and return its value,
@@ -202,7 +203,7 @@ class Environment(MutableMapping[str, EnvValue]):  # noqa: PLR0904
         """  # noqa: DOC502
         return self.__dict__.pop(name, default)
 
-    def popitem(self) -> tuple[str, Any]:
+    def popitem(self) -> tuple[str, EnvValue]:
         """Removes and returns a name-value pair from the mapping.
 
         Returns:
@@ -213,7 +214,7 @@ class Environment(MutableMapping[str, EnvValue]):  # noqa: PLR0904
         """  # noqa: DOC502
         return self.__dict__.popitem()
 
-    def setdefault(self, name: str, default: Any = None) -> Any:
+    def setdefault(self, name: str, default: EnvValue = None) -> EnvValue:
         """Sets the value associated with a name.
 
         If name is defined in the mapping, return its value.
@@ -232,7 +233,7 @@ class Environment(MutableMapping[str, EnvValue]):  # noqa: PLR0904
         setattr(self, name, default)
         return default
 
-    def __setattr__(self, name: str, value: Any) -> None:
+    def __setattr__(self, name: str, value: object) -> None:
         # __slots__ case
         for _cls in self.__class__.__mro__:
             if _cls is not object and name in _cls.__slots__:  # pyright: ignore[reportUnknownMemberType]
@@ -244,12 +245,12 @@ class Environment(MutableMapping[str, EnvValue]):  # noqa: PLR0904
             raise AttributeError(msg)
         # normal attributes
         if isinstance(value, list):
-            value = cast(list[Any], value)
+            value = cast("list[object]", value)
             self._append_list(name, value)
         else:
             self.__dict__[name] = value
 
-    def _append_list(self, key: str, values_list: list[Any]) -> None:
+    def _append_list(self, key: str, values_list: list[object]) -> None:
         if key in self.__dict__:
             self.__dict__[key] = ulist(self.__dict__[key] + values_list)
         else:
@@ -278,18 +279,18 @@ class Environment(MutableMapping[str, EnvValue]):  # noqa: PLR0904
             dict[str, str]: A dictionary containing the environment
             variables.
         """
-        _env: dict[str, str] = {}
+        env_: dict[str, str] = {}
         for k, v in self.env_hook(dict(self.__dict__)).items():
             if isinstance(v, list):
                 separator = Environment.__list_separator.get(k, ":")
-                _env[k] = separator.join([str(p) for p in v])
+                env_[k] = separator.join([str(p) for p in v])
             elif isinstance(v, bool):
-                _env[k] = str(int(v))
+                env_[k] = str(int(v))
             elif not str(v) or v is None:
                 continue
             else:
-                _env[k] = str(v)
-        return _env
+                env_[k] = str(v)
+        return env_
 
     def dump(self, file: IO[str] = sys.stdout) -> None:
         """Dump the environment variables to a file.
@@ -304,10 +305,10 @@ class Environment(MutableMapping[str, EnvValue]):  # noqa: PLR0904
     def __len__(self) -> int:
         return len(self.__dict__)
 
-    def __getitem__(self, key: str) -> Any:
+    def __getitem__(self, key: str) -> EnvValue:
         return self.__dict__[key]
 
-    def __setitem__(self, key: str, value: Any) -> None:
+    def __setitem__(self, key: str, value: EnvValue) -> None:
         self.__setattr__(key, value)
 
     def __delitem__(self, key: str) -> None:
@@ -317,9 +318,7 @@ class Environment(MutableMapping[str, EnvValue]):  # noqa: PLR0904
     def __iter__(self) -> Iterator[str]:
         return iter(self.__dict__)
 
-    def __contains__(  # pyright: ignore[reportIncompatibleMethodOverride]
-        self, key: str
-    ) -> bool:
+    def __contains__(self, key: object) -> bool:
         return key in self.__dict__
 
     def __bool__(self) -> bool:
@@ -328,12 +327,12 @@ class Environment(MutableMapping[str, EnvValue]):  # noqa: PLR0904
     def __str__(self) -> str:
         return str(self.__dict__)
 
-    def __or__(self, other: Environment | dict[str, Any]) -> Environment:
+    def __or__(self, other: Environment | dict[str, EnvValue]) -> Environment:
         res = self.copy()
         res.update(other)
         return res
 
-    def __ior__(self, other: Environment | dict[str, Any]) -> None:  # noqa: PYI034
+    def __ior__(self, other: Environment | dict[str, EnvValue]) -> None:  # noqa: PYI034
         self.update(other)
 
     def __eq__(self, other: object) -> bool:
@@ -344,24 +343,14 @@ class Environment(MutableMapping[str, EnvValue]):  # noqa: PLR0904
         other = other.__dict__ if isinstance(other, Environment) else other
         return self.__dict__ != other
 
-    def __hash__(self) -> int:
-        # HACK:
-        return id(self)
 
-
-# TODO: make a c implementation of OrderableDict
-# TODO: expands docs of after and before method
-# TODO: make a generic function for loading a python module instead of its c version
-
-
-_VT = TypeVar("_VT")
 _KT = TypeVar("_KT")
-_collections = cast(ModuleType, import_fresh_module("collections", blocked=["_collections"]))
-_OrderedDict = cast(type[OrderedDict[Any, Any]], _collections.OrderedDict)
+_VT = TypeVar("_VT")
 
 
+@final
 class _Link(Protocol[_KT]):
-    __slots__ = "__weakref__", "key", "next", "prev"
+    __slots__: tuple[str, ...] = ("__weakref__", "key", "next", "prev")
 
     def __init__(self) -> None:
         self.key: _KT
@@ -369,13 +358,31 @@ class _Link(Protocol[_KT]):
         self.prev: _Link[_KT]
 
 
-# FIXME: OrderableDict.values() iters on undefined type (Any)
+class _OrderableDictMeta(type):
+    def __new__(
+        cls: type[_OrderableDictMeta],
+        name: str,
+        bases: tuple[type, ...],
+        namespace: dict[str, object],
+        **kwds: object,
+    ) -> _OrderableDictMeta:
+        from test.support.import_helper import (  # noqa: PLC0415
+            import_fresh_module,  # pyright:ignore[reportUnknownVariableType]
+        )
+
+        collections_ = cast(
+            "ModuleType",
+            import_fresh_module("collections", blocked=["_collections"]),
+        )
+        bases = (collections_.OrderedDict,)
+        return super().__new__(cls, name, bases, namespace, **kwds)
 
 
-class OrderableDict(_OrderedDict, MutableMapping[_KT, _VT]):
+@final
+class OrderableDict(OrderedDict[_KT, _VT], metaclass=_OrderableDictMeta):
     """OrderableDict is a more capable OrderedDict."""
 
-    def __init__(self, other: Any = (), /, **kwargs: _VT) -> None:
+    def __init__(self, other: Any = (), /, **kwargs: Mapping[str, _VT]) -> None:
         super().__init__(other, **kwargs)
         self.__map: dict[_KT, _Link[_KT]] = getattr(self, "_OrderedDict__map")  # noqa: B009
         self.__root: _Link[_KT] = getattr(self, "_OrderedDict__root")  # noqa: B009
@@ -425,7 +432,7 @@ class OrderableDict(_OrderedDict, MutableMapping[_KT, _VT]):
 
     def after(
         self, key: _KT, other: _KT | None = None, value: _VT | None = None
-    ) -> None | tuple[_KT, _VT]:
+    ) -> tuple[_KT, _VT] | None:
         """Inserts, moves or returns (key, value) after other.
 
         if other is not provided, returns the (key, value) pair found after key,
@@ -446,8 +453,8 @@ class OrderableDict(_OrderedDict, MutableMapping[_KT, _VT]):
             if key not in self:
                 msg = f"{key} not in OrderedableDict"
                 raise KeyError(msg)
-            _next: _KT = self.__map[key].next.key
-            return (_next, self[_next])
+            next_: _KT = self.__map[key].next.key
+            return (next_, self[next_])
 
         if value is None:
             if key not in self or other not in self:
@@ -460,7 +467,7 @@ class OrderableDict(_OrderedDict, MutableMapping[_KT, _VT]):
 
     def before(
         self, key: _KT, other: _KT | None = None, value: _VT | None = None
-    ) -> None | tuple[_KT, _VT]:
+    ) -> tuple[_KT, _VT] | None:
         """Inserts, moves or returns (key, value) before other.
 
         if other is not provided, returns the (key, value) pair found before key,
@@ -481,8 +488,8 @@ class OrderableDict(_OrderedDict, MutableMapping[_KT, _VT]):
             if key not in self:
                 msg = f"{key} not in OrderedableDict"
                 raise KeyError(msg)
-            _prev: _KT = self.__map[key].prev.key
-            return (_prev, self[_prev])
+            prev_: _KT = self.__map[key].prev.key
+            return (prev_, self[prev_])
         if value is None:
             if key not in self or other not in self:
                 msg = f"{key} or {other} not in OrderedDict"
@@ -492,52 +499,227 @@ class OrderableDict(_OrderedDict, MutableMapping[_KT, _VT]):
             self._move_key(key=key, other=other, before=True)
         return None
 
-    def _debug(self) -> str:
-        return "\n".join([
-            (
-                f"key:{v.key}, prev:{getattr(v.prev, 'key', 'root')}"
-                f", next:{getattr(v.next, 'key', 'root')}"
-            )
-            for v in self.__map.values()
-        ])
+
+@final
+class _FrozenDecoratorMeta(type, Generic[_KT, _VT]):
+    __required_keys__: frozenset[str] = frozenset()
+    __optional_keys__: frozenset[str] = frozenset()
+    __total__: bool = True
+
+    def __new__(
+        cls: type[_FrozenDecoratorMeta[_KT, _VT]],
+        name: str,
+        bases: tuple[type, ...],
+        namespace: dict[str, object],
+        **kwds: object,
+    ) -> _FrozenDecoratorMeta[_KT, _VT]:
+        if not any(issubclass(Mapping, base) for base in bases):
+            raise TypeError
+        return super().__new__(cls, name, bases, namespace, **kwds)
+
+    def __call__(self, *args: object, **kwds: object) -> FrozenMap[_KT, _VT]:  # noqa: N804
+        mapping = cast(
+            "Mapping[_KT, _VT]",
+            cast("object", super().__call__(*args, **kwds)),
+        )
+        return FrozenMap(mapping)
 
 
-_MT = TypeVar("_MT", bound=MutableMapping[Any, Any])
+class FrozenMap(Generic[_KT, _VT]):  # noqa: PLW1641
+    """A read-only mapping that is immutable.
 
+    An immutable mapping that cannot be modified after its creation.
+    Items should be provided at object instantiation. FrozenMap does
+    not enforce immutability of values assigned to keys. For such
+    a behaviour fill it with immutable container.
 
-class Filter(Generic[_KT, _VT]):
-    """Base class for filtering mapping views.
-
-    The filter is a callable that takes a key and a value
-    and returns a boolean. The filter is applied to a mapping,
-    and the entries that return True are included in the view.
-
-    This default implementation filter out all the mapping's items.
+    Args:
+        other (Mapping): The mapping to be frozen.
     """
 
-    def __init__(self, mapping: MutableMapping[_KT, _VT]) -> None:
-        pass
+    __slots__: ClassVar[tuple[str, ...]] = ("_items", "_keys", "_source", "_values")
 
-    def __call__(self, key: _KT, value: _VT) -> bool:  # noqa: D102, ARG002
-        return True
+    @overload
+    def __init__(self, other: None = None, /, **kwds: _VT) -> None: ...
+
+    @overload
+    def __init__(self, other: Mapping[_KT, _VT], /, **kwds: _VT) -> None: ...
+
+    def __init__(self, other: Mapping[_KT, _VT] | None = None, /, **kwds: _VT) -> None:
+        self._source: Mapping[_KT, _VT] = other or kwds  # pyright: ignore[reportAttributeAccessIssue]
+
+        self_ = cast("Mapping[_KT, _VT]", cast("object", self))
+        self._keys: KeysView[_KT] = KeysView[_KT](self_)
+        self._values: ValuesView[_VT] = ValuesView(self_)
+        self._items: ItemsView[_KT, _VT] = ItemsView(self_)
+
+    def keys(self) -> KeysView[_KT]:
+        """Returns a view of the keys in the mapping.
+
+        This method returns a view object that displays
+        a list of all the keys in the mapping.
+
+        Returns:
+            KeysView: A view of the keys in the mapping.
+        """
+        return self._keys
+
+    def values(self) -> ValuesView[_VT]:
+        """Returns a view of the values in the mapping.
+
+        This method returns a view object that displays
+        a list of all the values in the mapping.
+
+        Returns:
+            ValuesView: A view of the values in the mapping.
+        """
+        return self._values
+
+    def items(self) -> ItemsView[_KT, _VT]:
+        """Returns a view of the (key, value) pairs in the mapping.
+
+        This method returns a view object that displays a list
+        of all the (key, value) pairs in the mapping.
+
+        Returns:
+            ItemsView: A view of the (key, value) pairs in the mapping.
+        """
+        return self._items
+
+    def get(self, key: _KT, default: _VT | None = None) -> _VT | None:
+        """Return the value associated with the specified key.
+
+        If the key is not found in the mapping, the default value is returned.
+
+        Args:
+            key: The key to look up in the mapping.
+            default (Any | None): The value to return if the key is not found.
+            Defaults to None.
+
+        Returns:
+            Any | None: The value associated with the key if found,
+            otherwise the default value.
+        """
+        return self._source.get(key, default)
+
+    def __contains__(self, key: _KT) -> bool:
+        return key in self._source
+
+    def __eq__(self, other: object, /) -> bool:
+        if isinstance(other, Mapping):
+            return self.items() == other.items()
+        return NotImplemented
+
+    def __ne__(self, other: object, /) -> bool:
+        return not self.__eq__(other)
+
+    def __getitem__(self, key: _KT) -> _VT:
+        return self._source[key]
+
+    def __len__(self) -> int:
+        return len(self._source)
+
+    def __iter__(self) -> Iterator[_KT]:
+        for item in self._source.items():
+            yield item[0]
+
+    def __repr__(self) -> str:
+        repr_ = ", ".join(f"{i[0]!r}: {i[1]!r}" for i in iter(self.items()))
+        return f"{self.__class__.__name__}({'{'}{repr_}{'}'})"
 
 
-class FilteredView(Mapping[_KT, _VT], Generic[_MT, _KT, _VT]):
+Mapping.register(FrozenMap)  # pyright: ignore[reportUnknownMemberType, reportAttributeAccessIssue]
+
+f = FrozenMap[str, int]({"a": 12, "b": 3, "c": 5})
+f = FrozenMap[int, int](a=12, b=3, c=5)
+f = FrozenMap[str, int](a=12, b=3, c=5)
+
+# def frozenmap(class_: type[Mapping[_KT, _VT]]):
+#     # bases = class_.__dict__.get("__orig_bases__", ())
+
+#     def decorator(**anno: Any) -> FrozenMap[_KT, _VT]:
+# # pyright: _ignore[reportUnknownParameterType]
+#         print("_DEBUG:", anno)
+#         if is_typeddict(class_):
+#             an = class_.__dict__.get("__annotations__", {})
+#             rk = class_.__dict__.get("__required_keys__", frozenset())
+#             ok = class_.__dict__.get("__optional_keys__", set())
+#             to = class_.__dict__.get("__total__", True)
+#             ns = {
+#                 "__annotations__": an,
+#                 "__required_keys__": rk,
+#                 "__optional_keys__": ok,
+#                 "__total__": to,
+#                 "__module__": class_.__dict__.get("__module__"),
+#             }
+#         else:
+#             an = get_type_hints(class_)
+#             ns = dict(class_.__dict__)
+#         _@functools.wraps(class_)
+#         def implemented(*args, **kwds) -> FrozenMap[_KT, _VT]:
+# # _pyright: ignore[reportMissingParameterType, reportUnknownParameterType]
+#             return type.__new__(_FrozenDecoratorMeta, class_.__name__, class_.__bases__, ns)(
+#                 *args, **kwds
+#             )  # _pyright: ignore[reportUnknownVariableType]
+#         # own_annotation: dict[str, Any] = {}
+#         # own_annotation |= anno
+#         # decorator.__annotations__ = anno
+#         return implemented(**anno)  # _pyright: ignore[reportUnknownVariableType]
+#     return decorator
+
+
+# @frozenmap
+# class TD(dict[str, int]): ...
+# td = TD(name=2, age="18")
+# td["truc"] = 19
+
+# def test_frozen() -> None:
+#     d: OrderableDict[int, str] = OrderableDict({1: "1", 2: "2"})
+#     _f = FrozenMap(d)
+#     _k = _f.keys()
+#     _i = _f.items()
+
+
+view_filter = Callable[[Any, Any], bool]
+
+
+class FilteredView(FrozenMap[_KT, _VT]):
     """Filtered Mapping View.
 
-    Read-only proxy of a mapping. It provides a dynamically filtered view
-    on the mapping's entries, which means that when the mapping changes,
-    this view reflects those changes. Implements the collections.abc.Mapping
-    protocol.
+    Read-only proxy view on a Mapping. It provides a dynamically filtered view
+    on the Mapping's entries, which means that when the Mapping changes,
+    this view reflects those changes.
+
+    Implements the collections.abc.Mapping protocol.
+
+    >>> d = {'a': 1, 'b': 2, 'c': 3}
+        FilteredView(d, lambda k, v: v > 1)
+        "FilteredView({'b': 2, 'c': 3})"
+
+    Args:
+        Mapping[Any, Any]: The source Mapping for this FilteredView.
+
+        Callable[[Any, Any], bool]: The filter is a Callable taking
+            a key, value pair as arguments and should returns True
+            for an item to be included in this View. If set to None,
+            this View will not be filtered at all.
     """
 
-    __slots__ = ("__source__", "_filter")
+    __slots__: ClassVar[tuple[str, ...]] = ("_filter",)
 
-    def __init__(self, source: _MT, _filter: Filter[_KT, _VT]) -> None:
-        self.__source__: _MT = source
-        self._filter: Filter[_KT, _VT] = _filter
+    def __init__(self, source: Mapping[_KT, _VT], filter_: view_filter) -> None:
+        super().__init__(source)
+        self._filter: view_filter = filter_
 
-    def copy(self) -> _MT:
+    def get(self, key: _KT, default: _VT | None = None) -> _VT | None:  # noqa: D102
+        if key in self._source and self._filter(key, val := self._source[key]):
+            return val
+        return default
+
+    def __contains__(self, key: _KT) -> bool:
+        return key in self._source and self._filter(key, self._source[key])
+
+    def copy(self):  # -> Mapping[_KT, _VT] | FrozenMap[_KT, _VT]:
         """Copy this view as an instance of its source's type.
 
         The resulting mapping should be seen as a filtered deep copy
@@ -546,24 +728,41 @@ class FilteredView(Mapping[_KT, _VT], Generic[_MT, _KT, _VT]):
         Returns:
             A Mapping of the same type as the FilteredView's source.
         """
-        _t = type(self.__source__)()
-        for k, v in self.items():
-            _t[k] = deepcopy(v)
-        return _t
+        type_ = type(self._source)
+        if issubclass(MutableMapping, type_):
+            mut = type_()
+            for k, v in self.items():
+                mut[k] = deepcopy(v)  # pyright: ignore[reportIndexIssue]
+            return mut
+
+        tmp: dict[_KT, _VT] = {k: deepcopy(v) for k, v in self.items()}
+        try:
+            imu = type_(tmp)  # pyright: ignore[reportCallIssue]
+        except Exception:  # noqa: BLE001
+            imu = FrozenMap(tmp)
+        return imu
 
     def __getitem__(self, key: _KT) -> _VT:
-        val: _VT = self.__source__[key]
-        if self._filter(key, val):
+        if self._filter(key, val := self._source[key]):
             return val
         raise KeyError(key)
 
     def __len__(self) -> int:
-        return len(list(self.keys()))
+        return len(self._source) - sum(not (self._filter(*i)) for i in self._source.items())
 
     def __iter__(self) -> Iterator[_KT]:
-        for key, val in self.__source__.items():
-            if self._filter(key, val):
-                yield key
+        for item in self._source.items():
+            if self._filter(*item):
+                yield item[0]
 
-    def __repr__(self) -> str:
-        return f"{self.__class__.__name__}({list(self.items())})"
+
+Mapping.register(FilteredView)  # pyright: ignore[reportUnknownMemberType, reportAttributeAccessIssue]
+
+
+# def test_fv() -> None:
+#     # d = {1: "1", 2: "2"}
+#     d: OrderableDict[int, str] = OrderableDict({1: "1", 2: "2"})
+#     v = FilteredView(d, lambda x, y: True)
+#     k = v.keys()
+#     s = v._source
+#     c = v.copy()
