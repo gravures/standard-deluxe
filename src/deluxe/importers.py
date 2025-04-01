@@ -21,7 +21,8 @@ import importlib.machinery
 import importlib.util
 import logging
 import sys
-from typing import TYPE_CHECKING, Any, Callable, ClassVar, final
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any, ClassVar, final
 
 
 if TYPE_CHECKING:
@@ -37,7 +38,11 @@ Patch = Callable[..., object]
 
 
 def loads_module(name: str, where: Path) -> ModuleType | None:
-    """Loads a python module or package from the Path where."""
+    """Loads a python module or package from the `Path` where parameter.
+
+    Returns:
+        ModuleType | None: the loaded module if found, None otherwise.
+    """
     mod = Module(name=name, where=where)
     mod.load()
     return mod.module
@@ -79,8 +84,9 @@ class Module:
     def load(self) -> None:
         """Loads this module if not already loaded.
 
-        Raises ModuleNotFoundError: if module.name cannot be found.
-        Raises ImportError: if loading goes wrong.
+        Raises:
+            ModuleNotFoundError: if module.name cannot be found.
+            ImportError: if loading goes wrong.
         """
         if self.module:
             return
@@ -171,8 +177,7 @@ class monkey:  # noqa: N801
         self._origin: Patchable = _NULL
         monkey._patches[str(self)] = self
 
-    def __call__(self, patch: Patch) -> Patch:
-        """Decorator method."""
+    def __call__(self, patch: Patch) -> Patch:  # noqa: D102
         self._patch = patch
         self._mark_modules()
         return patch
@@ -198,7 +203,12 @@ class monkey:  # noqa: N801
 
     @classmethod
     def target(cls, name: str) -> Patchable:
-        """Returns the original unpatched target of a registered patch."""
+        """Returns the original unpatched target of a registered patch.
+
+        Raises:
+            RuntimeError: if called before any patche was apply.
+            KeyError: if name is not a defined patch.
+        """
         try:
             patch = monkey._patches[name]
         except KeyError as e:
@@ -212,7 +222,12 @@ class monkey:  # noqa: N801
 
     @classmethod
     def marks_modules(cls, *modules: str) -> None:
-        """Marks modules name needing an explicit reload."""
+        """Marks modules name needing an explicit reload.
+
+        Raises:
+            ValueError: if module is protected ("sys", "builtins", "importlib",
+                        "importlib.util" or "__main__").
+        """
         for mod in modules:
             if mod in monkey._protected:
                 msg = f"{mod} belongs to protected module list, can't mark it"
@@ -235,7 +250,11 @@ class monkey:  # noqa: N801
 
     @classmethod
     def _reload_modules(cls) -> None:
-        """Reload all marked modules."""
+        """Reload all marked modules.
+
+        Raises:
+            RuntimeError: if the process attempt to reload a protected module.
+        """
         while monkey._to_reload:
             module = monkey._to_reload.pop()
             if module in monkey._protected:
