@@ -51,30 +51,6 @@ if TYPE_CHECKING:
     from types import ModuleType
 
 
-def ulist(iterable: Iterable[object], lifo: bool = False) -> list[object]:
-    """Returns a list of unique items from seq.
-
-    Generate a list of unique elements from the iterable argument.
-    By default first element will be kept at their index removing
-    further duplicate occurrences. Setting lifo to True will inverse
-    this behavior.
-
-    Args:
-        iterable (Iterable[object]): The input Sequence.
-        lifo (bool, optional): If True, return the unique elements
-        in Last-In-First-Out order. Defaults to False.
-
-    Returns:
-        list: A new list containing only unique elements.
-    """
-    unique_: list[object] = []
-    lst_ = list(iterable)[::-1] if lifo else list(iterable)
-    for v in lst_:
-        if v not in unique_:
-            unique_.append(v)
-    return unique_[::-1] if lifo else unique_
-
-
 EnvValue = str | bool | int | list[str | Path] | None
 Separator = Literal[";", ":", ",", " "]
 
@@ -252,9 +228,33 @@ class Environment(MutableMapping[str, EnvValue]):  # noqa: PLR0904
 
     def _append_list(self, key: str, values_list: list[object]) -> None:
         if key in self.__dict__:
-            self.__dict__[key] = ulist(self.__dict__[key] + values_list)
+            self.__dict__[key] = self.ulist(self.__dict__[key] + values_list)
         else:
-            self.__dict__[key] = ulist(values_list)
+            self.__dict__[key] = self.ulist(values_list)
+
+    @staticmethod
+    def ulist(iterable: Iterable[object], lifo: bool = False) -> list[object]:
+        """Returns a list of unique items from seq.
+
+        Generate a list of unique elements from the iterable argument.
+        By default first element will be kept at their index removing
+        further duplicate occurrences. Setting lifo to True will inverse
+        this behavior.
+
+        Args:
+            iterable (Iterable[object]): The input Sequence.
+            lifo (bool, optional): If True, return the unique elements
+            in Last-In-First-Out order. Defaults to False.
+
+        Returns:
+            list: A new list containing only unique elements.
+        """
+        unique_: list[object] = []
+        lst_ = list(iterable)[::-1] if lifo else list(iterable)
+        for v in lst_:
+            if v not in unique_:
+                unique_.append(v)
+        return unique_[::-1] if lifo else unique_
 
     @staticmethod
     def env_hook(env: dict[str, EnvValue]) -> dict[str, EnvValue]:
