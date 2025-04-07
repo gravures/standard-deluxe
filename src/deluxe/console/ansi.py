@@ -264,6 +264,21 @@ SGR_Params = Literal[
 class SGR(CSI[Literal["m"], SGR_Params]):
     """Select Graphic Rendition parameters."""
 
+    def __init__(self, *params: SGR_Params) -> None:
+        modes: dict[SGR_Params, SGR_Params] = {}
+        fg: tuple[SGR_Params, ...] = ()
+        bg: tuple[SGR_Params, ...] = ()
+        for param in params:
+            match param:
+                case Mode():
+                    modes.pop(param, None)
+                    modes[param] = param
+                case Foreground():
+                    fg = (param,)
+                case Background():
+                    bg = (param,)
+        super().__init__(*modes.values(), *bg, *fg)
+
     cmd = "m"
 
 
