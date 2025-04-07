@@ -1,4 +1,4 @@
-# Copyright (c) 2023 - Gilles Coissac
+# Copyright (c) 2025 - Gilles Coissac
 #
 # pdm_build is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published
@@ -17,12 +17,20 @@
 # written by Grey Elaina and publish under the MIT license, see
 # <https://github.com/GreyElaina/Mina>.
 #
-"""Pdm BuildHook module.
+# ruff: noqa: INP001
+"""A Pdm BuildHook to export sub-packages as independent distributions.
 
-Implements pdm.backend.hooks.base.Base interface.
+Namespace pakckage build
+------------------------
 
-Monorepo Build
-    usage: pdm build -C monorepo=<name>
+    usage: pdm build -C namespace=<name>
+
+The `-C` flag can be set multiple times.
+
+Implementation detail
+---------------------
+
+Implements the pdm.backend.hooks.base.Base interface.
 
 NOTE: The Context object attributes
     build_dir: The build directory for storing built files
@@ -39,112 +47,163 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, cast
 
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping, MutableMapping
     from pathlib import Path
 
     from pdm.backend.hooks import Context
 
 
-logger = logging.getLogger("monorepo")
+logger = logging.getLogger("namespace-pkg")
 
 
-def get_monorepo(context: Context) -> dict[str, Any]:
-    """Return the monorepo table."""
+def get_namespace_packages(context: Context) -> dict[str, dict[str, object]]:
+    """Returns the namespace table.
+
+    Raises:
+        TypeError: if user does not defined packages as a dictionary.
+    """
     try:
-        monorepo: dict[str, Any] = context.config.data["tool"]["pdm"]["monorepo"]
+        namespace = context.config.data["tool"]["pdm"]["namespace"]
     except KeyError:
         return {}
-    else:
-        return monorepo
+
+    if not isinstance(namespace, dict):
+        msg = "tool.pdm.namespace.packages should be a table."
+        raise TypeError(msg)
+
+    return cast("dict[str, dict[str, object]]", namespace)
 
 
-def get_monorepos_targets(context: Context) -> list[str]:
-    """Return the list of monorepo packages defined."""
-    return list(get_monorepo(context).get("packages", {}).keys())
+def get_namespace_targets(context: Context) -> list[str]:
+    """Returns a list of defined namespace-packages name."""
+    packages = get_namespace_packages(context).get("packages", {})
+    return list(packages.keys())
 
 
-def get_monorepo_build_target(context: Context) -> str | None:
-    """Return the name of a monorepo target passed to pdm build if exists."""  # noqa: DOC501
+def get_namespace_build_target(context: Context) -> str | None:
+    """Returns the name of a namespace target passed to pdm build if exists.
+
+    Raises:
+        ValueError: if a defined namespace package could not be found.
+    """
     cf = context.config_settings
-    targets = get_monorepos_targets(context)
+    targets = get_namespace_targets(context)
 
-    logger.warning("MONOREPO %s", cf)
-    logger.warning("MONOREPO Targets: %s", targets)
+    logger.warning("NAMESPACE %s", cf)
+    logger.warning("NAMESPACE Targets: %s", targets)
 
-    if name := cf.get("monorepo"):
+    if name := cf.get("namespace"):
         if name in targets:
             return name
-        msg = f"No monorepo package named '{name}' was found."
+        msg = f"No namespace package named '{name}' was found."
         raise ValueError(msg)
     return None
 
 
 def deep_merge(
     *,
-    target: MutableMapping[Any, Any],
-    source: Mapping[Any, Any],
-) -> MutableMapping[Any, Any]:
-    """Merge the values of source in target."""  # noqa: DOC201
+    target: dict[str, object | list[object]],
+    source: dict[str, object | list[object]],
+) -> dict[str, object | list[object]]:
+    """Merge deeply the values of source in target.
+
+    Returns:
+        Mapping: the updated target.
+
+    Raises:
+        TypeError:
+    """
     for key, value in source.items():
-        if key in target and isinstance(value, list):
-            target[key].extend(value)
-        elif key in target and isinstance(value, dict):
-            val_ = cast("Mapping[Any, Any]", value)
-            deep_merge(target=target[key], source=val_)
-        else:
-            target[key] = value
-    return target
+        if key in target:
+            if isinstance(value, list):
+                common = target[key]
+                if isinstance(common, list):
+                    common = cast("list[object]", common)
+                    common += cast("list[object]", value)
+                    continue
+                break
+            if isinstance(value, dict):
+                common = target[key]
+                if isinstance(common, dict):
+                    common = cast("dict[str, object]", common)
+                    val_ = cast("dict[str, object]", value)
+                    deep_merge(target=common, source=val_)
+                    continue
+                break
+        target[key] = value
+    else:
+        return target
+
+    msg = f"discrepancy in key `{key}` type between root metadata and namespace metadata."
+    raise TypeError(msg)
 
 
-def update_config_for_monorepo(context: Context, package: str) -> None:
-    """Update the config to meet settings of the selected monorepo package."""
-    monorepo = get_monorepo(context)
-    monorepo_conf: dict[str, Any] = monorepo["packages"][package]
-    monorepo_metadata = monorepo_conf.pop("project", {})
-    using_override = bool(monorepo.get("override", False))
+def update_config_for_namespace_package(context: Context, package: str) -> None:
+    """Update the config to meet settings of the selected namespace package.
+
+    Raises:
+        TypeError: if user defined properties with wrong type
+    """
+    namespace = get_namespace_packages(context)
+
+    package_config = namespace["packages"][package]
+    if not isinstance(package_config, dict):
+        msg = "tool.pdm.namespace.packages.<name> should be a table of metadata."
+        raise TypeError(msg)
+    package_config = cast("dict[str, object]", package_config)
+
+    package_metadata = package_config.pop("project", {})
+    if not isinstance(package_metadata, dict):
+        msg = "tool.pdm.namespace.packages.<name>.project should be a table of metadata."
+        raise TypeError(msg)
+    package_metadata = cast("dict[str, object]", package_metadata)
+
+    use_override = bool(namespace.get("override", False))
     config = context.config
     build_config = context.config.build_config
 
     # Override build config
-    build_config.update(monorepo_conf)
-    logger.warning("MONOREPO build config")
+    build_config.update(package_config)
+    logger.warning("NAMESPACE build config")
     logger.warning(json.dumps(dict(build_config), indent=2))
-    build_config["monorepo_build"] = True
+
+    # safe-guard property
+    build_config["namespace_build"] = True
 
     # Override or merge metadata
-    if using_override:
-        config.data["project"] = monorepo_metadata
+    if use_override:
+        config.data["project"] |= package_metadata
     else:
-        deep_merge(target=context.config.metadata, source=monorepo_metadata)
+        deep_merge(target=context.config.metadata, source=package_metadata)
         # dependencies are already merged, restore them
-        config.metadata["dependencies"] = monorepo_metadata.get("dependencies", [])
-        config.metadata["optional-dependencies"] = monorepo_metadata.get(
+        config.metadata["dependencies"] = package_metadata.get("dependencies", [])
+        config.metadata["optional-dependencies"] = package_metadata.get(
             "optional-dependencies", {}
         )
 
-    # removes monorepo table so sdist pyproject.toml
+    # removes namespace table so sdist pyproject.toml
     # don't reference unavailable targets
-    config.data["tool"]["pdm"].pop("monorepo")
+    config.data["tool"]["pdm"].pop("namespace")
 
     # config.validate(data=config.data, root=config.root)
     config.validate()
-    logger.warning("MONOREPO metadata")
+
+    logger.warning("NAMESPACE metadata")
     logger.warning(json.dumps(dict(config.metadata), indent=2))
 
 
 # ###################
 # BuildHook interface
-def pdm_build_hook_enabled(context: Context) -> bool:  # noqa: ARG001
+def pdm_build_hook_enabled(_context: Context) -> bool:
     """Return True if the hook is enabled for the current build and context."""
-    # return bool(get_monorepo(context).get("enabled"))
+    # return bool(get_namespace(context).get("enabled"))
     return True
 
 
-def pdm_build_clean(context: Context) -> None:  # noqa: ARG001
+def pdm_build_clean(_context: Context) -> None:
     """An optional clean step which will be called before the build starts."""
     return
 
@@ -155,17 +214,17 @@ def pdm_build_initialize(context: Context) -> None:
     any updates to the context object will be seen by the following
     processes. It is recommended to modify the metadata in this hook.
     """
-    if bool(context.config.build_config.get("monorepo_build", False)):
+    if bool(context.config.build_config.get("namespace_build", False)):
         # avoids recursive eecution
         return
 
-    if not (target := get_monorepo_build_target(context)):
+    if not (target := get_namespace_build_target(context)):
         return
 
-    update_config_for_monorepo(context, target)
+    update_config_for_namespace_package(context, target)
 
 
-def pdm_build_update_setup_kwargs(context: Context, kwargs: dict[str, Any]) -> None:  # noqa: ARG001
+def pdm_build_update_setup_kwargs(_context: Context, _kwargs: dict[str, object]) -> None:
     """Passed in the setup kwargs for hooks to update.
 
     Note:
@@ -175,11 +234,11 @@ def pdm_build_update_setup_kwargs(context: Context, kwargs: dict[str, Any]) -> N
     return
 
 
-def pdm_build_update_files(context: Context, files: dict[str, Path]) -> None:  # noqa: ARG001
+def pdm_build_update_files(_context: Context, _files: dict[str, Path]) -> None:
     """Passed in the current file mapping of {relpath: path} for hooks to update."""
     return
 
 
-def pdm_build_finalize(context: Context, artifact: Path) -> None:  # noqa: ARG001
+def pdm_build_finalize(_context: Context, _artifact: Path) -> None:
     """Called after the build is done, the artifact is the path to the built artifact."""
     return
