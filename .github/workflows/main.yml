@@ -1,9 +1,13 @@
-name: tests
+name: Test
 on:
-  workflow_dispatch:
   pull_request:
   push:
     branches: [main]
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - '*.lock'
+  workflow_dispatch:
 
 jobs:
   testing:
@@ -14,34 +18,45 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-      - uses: actions/checkout@v4
-      - name: Setup pdm to Python ${{ matrix.python-version }}
+      - name: checkout repo
+        uses: actions/checkout@v4
+
+      - name: install uv 0.6.12
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.6.4"
+          enable-cache: true
+          cache-dependency-glob: "pdm.lock"
+
+      - name: setup pdm to Python ${{ matrix.python-version }}
         uses: pdm-project/setup-pdm@v4
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install dependencies
+      - name: install testing dependencies
         run: |
-          pdm sync --dev -G test -G dev
+          pdm sync -G test
 
-      - name: Tests with tox
+      - name: execute tests with tox
         env:
           COVERAGE_FILE: ".coverage.${{ matrix.python-version }}.${{ matrix.os }}"
         run: |
           pdm run tox --version
           pdm run tox --develop -r -e py
 
-      - name: Store coverage file
+      - name: store coverage file
         if: ${{ matrix.os }} == 'ubuntu-latest'
         uses: actions/upload-artifact@v4
         with:
           name: coverage-${{ matrix.python-version }}-${{ matrix.os }}
           path: .coverage.${{ matrix.python-version }}.${{ matrix.os }}
 
+      - name: minimize uv cache
+        run: uv cache prune --ci
+
   coverage:
-    name: Coverage
+    needs: [testing]
     runs-on: ubuntu-latest
-    needs: testing
     permissions:
       # Gives the action the necessary permissions
       # for publishing new comments in pull requests.
@@ -51,15 +66,17 @@ jobs:
       # comments (to avoid publishing multiple comments in the same PR)
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - name: checkout repo
+        uses: actions/checkout@v4
 
-      - uses: actions/download-artifact@v4
+      - name: gets coverage db
+        uses: actions/download-artifact@v4
         id: download
         with:
           pattern: coverage-*-*
           merge-multiple: true
 
-      - name: Coverage comment
+      - name: create coverage comment
         id: coverage_comment
         uses: py-cov-action/python-coverage-comment-action@v3
         with:
@@ -69,7 +86,7 @@ jobs:
           COMMENT_FILENAME: python-coverage.txt
           MERGE_COVERAGE_FILES: true
 
-      - name: Store Pull Request comment to be posted
+      - name: store pull request comment to be posted
         uses: actions/upload-artifact@v4
         if: steps.coverage_comment.outputs.COMMENT_FILE_WRITTEN == 'true'
         with:

@@ -1,0 +1,82 @@
+# This workflow will only run jobs after
+# the Test workflow completes with success on the main branch.
+name: Publish release
+on:
+  workflow_run:
+    workflows: [Test]
+    types: [completed]
+    branches: [main]
+
+jobs:
+  deploy:
+    name: Deploy wheel to pypi
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    outputs:
+      changelog: ${{ steps.deploy.outputs.changelog }}
+    steps:
+    - name: checkout repo
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: install uv
+      uses: astral-sh/setup-uv@v5
+      with:
+        version: "0.6.12"
+        enable-cache: true
+        cache-dependency-glob: "pdm.lock"
+
+    - name: setup pdm to python 3.11
+      uses: pdm-project/setup-pdm@v4
+      with:
+        python-version: "3.11"
+
+    - name: setup cocogitto, do tag and make changelogs
+      uses: cocogitto/cocogitto-action@v3
+      with:
+        verify: false
+        release: false
+      run: |
+        cog bump --auto --disable-bump-commit
+
+    - name: install distribution dependencies
+      run: |
+        pdm sync --prod -G monorepo
+
+    - name: build all packages
+      run: |
+        pdm build
+
+    - name: publish on pypi
+      env:
+        UV_PUBLISH_TOKEN: ${{ secrets.PYPI_TOKEN }}
+      run: |
+        pdm publish --no-build --dest ./dist
+
+    - name: export changelog
+      uses: actions/upload-artifact@v4
+      with:
+        name: changelog
+        path: ${{ github.workspace }}/CHANGELOG.md
+
+  release:
+    name: Create GitHub Release
+    needs: [ deploy ]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: changelog
+          path: ${{ github.workspace }}
+
+      - id: create_release
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: ${{ github.workspace }}/CHANGELOG.md
+          prerelease: ${{ (startsWith(steps.tag_name.outputs.version, 'v0')) || (endsWith(steps.tag_name.outputs.version, '-pre')) || (endsWith(steps.tag_name.outputs.version, '-dev')) }}
+          draft: false
+          name: Release ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+          token: ${{ secrets.GITHUB_TOKEN }}
