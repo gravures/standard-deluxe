@@ -37,8 +37,8 @@ dependencies = []
 # PDM
 #####################################################
 [build-system]
-requires = ["pdm-backend"]
 build-backend = "pdm.backend"
+requires = ["pdm-backend"]
 
 [tool.pdm]
 distribution = true
@@ -46,6 +46,7 @@ distribution = true
 [tool.pdm.build]
 package-dir = "src"
 source-includes = ["licenses"]
+excludes = ["**/.*"]
 includes = ["src/deluxe/"]
 editable-backend = "path"
 
@@ -54,22 +55,17 @@ source = "scm"
 write_to = "deluxe/_version.py"
 write_template = "__version__ = '{}'"
 
-[tool.pdm.dev-dependencies]
-dev = [
-  "ruff>=0.9",
-  "basedpyright>=1.28",
-  "pre-commit>=4.1",
-  "dead>=2.1",
-  "pretty-errors>=1.2.25",
-]
-monorepo = ["pdm>=2.22.4", "pdm-backend>=2.4.3"]
+[dependency-groups]
+dev = ["ruff>=0.9", "pre-commit>=4.1", "dead>=2.1", "pretty-errors>=1.2.25"]
 test = [
+  "basedpyright>=1.28",
   "pytest>=8.3",
   "hypothesis",
   "coverage[toml]>=7.6",
   "tox>=4.24",
   "tox-pdm>=0.7.2",
 ]
+monorepo = ["pdm>=2.22.4", "pdm-backend>=2.4.3"]
 
 #####################################################
 # PDM MONOREPO PACKAGES
