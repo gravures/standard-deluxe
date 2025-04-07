@@ -36,8 +36,8 @@ dependencies = []
 # PDM
 #####################################################
 [build-system]
-requires = ["pdm-backend"]
 build-backend = "pdm.backend"
+requires = ["pdm-backend"]
 
 [tool.pdm]
 distribution = true
@@ -45,6 +45,7 @@ distribution = true
 [tool.pdm.build]
 package-dir = "src"
 source-includes = ["licenses"]
+excludes = ["**/.*"]
 includes = ["src/deluxe/"]
 editable-backend = "path"
 
@@ -53,27 +54,22 @@ source = "scm"
 write_to = "deluxe/_version.py"
 write_template = "__version__ = '{}'"
 
-[tool.pdm.dev-dependencies]
-dev = [
-  "ruff>=0.9",
-  "basedpyright>=1.28",
-  "pre-commit>=4.1",
-  "dead>=2.1",
-  "pretty-errors>=1.2.25",
-]
-monorepo = ["pdm>=2.22.4", "pdm-backend>=2.4.3"]
+[dependency-groups]
+dev = ["ruff>=0.9", "pre-commit>=4.1", "dead>=2.1", "pretty-errors>=1.2.25"]
 test = [
+  "basedpyright>=1.28",
   "pytest>=8.3",
   "hypothesis",
   "coverage[toml]>=7.6",
   "tox>=4.24",
   "tox-pdm>=0.7.2",
 ]
+monorepo = ["pdm>=2.22.4", "pdm-backend>=2.4.3"]
 
 #####################################################
 # PDM MONOREPO PACKAGES
 #####################################################
-[tool.pdm.monorepo.packages.console]
+[tool.pdm.namespace.packages.console]
 includes = ["src/deluxe/console"]
 source-excludes = ["licenses"]
 excludes = ["tests"]
@@ -81,7 +77,7 @@ project.name = "deluxe-console"
 project.description = "Standard-deluxe console package."
 project.classifiers = ["Development Status :: 3 - Beta"]
 
-[tool.pdm.monorepo.packages.factory]
+[tool.pdm.namespace.packages.factory]
 includes = ["src/deluxe/factory"]
 source-excludes = ["licenses"]
 excludes = ["tests"]
@@ -89,7 +85,7 @@ project.name = "deluxe-factory"
 project.description = "Standard-deluxe factory package."
 project.classifiers = ["Development Status :: 3 - Beta"]
 
-[tool.pdm.monorepo.packages.availability]
+[tool.pdm.namespace.packages.availability]
 includes = ["src/deluxe/availability.py"]
 source-excludes = ["licenses"]
 excludes = ["tests"]
@@ -97,7 +93,7 @@ project.name = "deluxe-availability."
 project.description = "Standard-deluxe availability module."
 project.classifiers = ["Development Status :: 3 - Alpha"]
 
-[tool.pdm.monorepo.packages.files]
+[tool.pdm.namespace.packages.files]
 includes = ["src/deluxe/files.py"]
 source-excludes = ["licenses"]
 excludes = ["tests"]
@@ -105,7 +101,7 @@ project.name = "deluxe-files"
 project.description = "Standard-deluxe files module."
 project.classifiers = ["Development Status :: 3 - Alpha"]
 
-[tool.pdm.monorepo.packages.importers]
+[tool.pdm.namespace.packages.importers]
 includes = ["src/deluxe/importers.py"]
 source-excludes = ["licenses"]
 excludes = ["tests"]
@@ -113,7 +109,7 @@ project.name = "deluxe-importers"
 project.description = "Standard-deluxe importers module."
 project.classifiers = ["Development Status :: 3 - Alpha"]
 
-[tool.pdm.monorepo.packages.mappings]
+[tool.pdm.namespace.packages.mappings]
 includes = ["src/deluxe/mappings.py"]
 source-excludes = ["licenses"]
 excludes = ["tests"]
@@ -121,14 +117,14 @@ project.name = "deluxe-mappings"
 project.description = "Standard-deluxe mappings module."
 project.classifiers = ["Development Status :: 4 - Beta"]
 
-[tool.pdm.monorepo.packages.mureq]
+[tool.pdm.namespace.packages.mureq]
 includes = ["src/deluxe/mureq.py"]
 excludes = ["tests"]
 project.name = "deluxe-mureq"
 project.description = "Standard-deluxe mureq module."
 project.classifiers = ["Development Status :: 3 - Alpha"]
 
-[tool.pdm.monorepo.packages.process]
+[tool.pdm.namespace.packages.process]
 includes = ["src/deluxe/process.py", "src/deluxe/availability.py"]
 source-excludes = ["licenses"]
 excludes = ["tests"]
