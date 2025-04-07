@@ -54,7 +54,7 @@ This module includes utilities to:
 
 - Get platform hints based on the current system
 - Check platform support against inclusion/exclusion rules
-- Decorator function for platform availability restrictions
+- Decorator for function and class to restrict usage following platform availability hints
 """
 
 from __future__ import annotations
@@ -62,7 +62,7 @@ from __future__ import annotations
 import functools
 import re
 import sys
-from typing import TYPE_CHECKING, ParamSpec, TypeVar
+from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar, cast
 
 
 if TYPE_CHECKING:
@@ -127,18 +127,20 @@ def supported(only: tuple[str, ...], but: tuple[str, ...]) -> bool:
     return include
 
 
-P = ParamSpec("P")
-R = TypeVar("R")
+_P = ParamSpec("_P")
+_R = TypeVar("_R")
+_C = TypeVar("_C", bound=type)
+_T = TypeVar("_T")
 
 
 def availability(
-    only: tuple[str, ...], but: tuple[str, ...]
-) -> Callable[[Callable[P, R]], Callable[P, R]]:
-    """Decorator for restrincting function call to platforms availability hints.
+    only: tuple[str, ...], but: tuple[str, ...] | None = None
+) -> Callable[[_T], _T]:  # Callable[[_C], _C] | Callable[[Callable[_P, _R]], Callable[_P, _R]]:
+    """Decorator restrincting call to function or class supported by platforms availability hints.
 
-    This decorator will raise a NotImplementedError if the decorated function is called
-    on a platform that does not fit the specification passed as arguments, otherwise
-    it will return seamlessly the decoated function.
+    This decorator will raise a NotImplementedError if the decorated function or class
+    is called on a platform that does not fit the specification passed as arguments,
+    otherwise it will return seamlessly the decorated function or class.
 
     Args:
         only: A tuple of platform hints that the function is supported on.
@@ -146,20 +148,37 @@ def availability(
         but: A tuple of platform hints that the function should not be supported on.
 
     Returns:
-        Callable[..., Callable[P, R]]: The decorated function.
+        Callable[..., Callable[P, R]]: The decorated function or class.
     """
+    is_supported = supported(only, but := but or ())
 
-    def decorator_(func: Callable[P, R]) -> Callable[P, R]:
-        @functools.wraps(func)
-        def implement(*args: P.args, **kwargs: P.kwargs) -> R:
-            if not supported(only, but):
-                msg = (
-                    f"{type(func).__name__} <{func.__name__}> supported on {only or 'all'} "
-                    f"platforms{' except on ' if but else ''}{but}."
-                )
+    def decorator(decorated: _C | Callable[_P, _R]) -> _C | Callable[_P, _R]:
+        msg = (
+            f"{type(decorated).__name__} <{decorated.__name__}> only supported on {only or 'all'} "
+            f"platforms{' except on ' if but else ''}{but}."
+        )
+
+        if issubclass(type(decorated), type):
+            decorated = cast("_C", decorated)
+
+            def __new__(cls: type, *args: Any, **kwargs: Any) -> _C:  # noqa: N807
                 raise NotImplementedError(msg)
-            return func(*args, **kwargs)
 
-        return implement
+            if not is_supported:
+                decorated.__new__ = __new__
+            return decorated
 
-    return decorator_
+        decorated = cast("Callable[_P, _R]", decorated)
+
+        @functools.wraps(decorated)
+        def wrapped(*args: _P.args, **kwargs: _P.kwargs) -> _R:
+            def unsupported(*_args: _P.args, **_kwargs: _P.kwargs) -> _R:
+                raise NotImplementedError(msg)
+
+            if not is_supported:
+                return unsupported(*args, **kwargs)
+            return decorated(*args, **kwargs)
+
+        return wrapped
+
+    return cast("Callable[[_T], _T]", decorator)
