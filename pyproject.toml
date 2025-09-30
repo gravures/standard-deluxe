@@ -1,8 +1,7 @@
-#:schema https://gist.githubusercontent.com/zevisert/086638d2145d937a33bf570ace8cba4a/raw/cd2d511369239f54dc7728e641b10e54f009135c/pyproject.json
+[build-system]
+build-backend = "pdm.backend"
+requires = ["pdm-backend"]
 
-#####################################################
-# Project Metadatas
-#####################################################
 [project]
 name = "standard-deluxe"
 description = "A handfull collection of python modules."
@@ -15,7 +14,6 @@ classifiers = [
   "Intended Audience :: Developers",
   "Operating System :: OS Independent",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
@@ -29,16 +27,12 @@ urls.documentation = "https://github.com/gravures/standard-deluxe"
 urls.issue = "https://github.com/gravures/standard-deluxe/issues"
 
 dynamic = ["version"]
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = []
 
 #####################################################
 # PDM
 #####################################################
-[build-system]
-build-backend = "pdm.backend"
-requires = ["pdm-backend"]
-
 [tool.pdm]
 distribution = true
 
@@ -47,12 +41,16 @@ package-dir = "src"
 source-includes = ["licenses"]
 excludes = ["**/.*"]
 includes = ["src/deluxe/"]
-editable-backend = "path"
 
 [tool.pdm.version]
 source = "scm"
 write_to = "deluxe/_version.py"
 write_template = "__version__ = '{}'"
+
+##
+#
+[tool.uv.sources]
+furo = { path = "../furo/", editable = false } # "furo @ git+https://github.com/gravures/furo.git@gravures"
 
 [dependency-groups]
 dev = ["ruff>=0.9", "pre-commit>=4.1", "dead>=2.1", "pretty-errors>=1.2.25"]
@@ -64,87 +62,45 @@ test = [
   "tox>=4.24",
   "tox-pdm>=0.7.2",
 ]
+docs = ["sphinx", "sphinx-autoapi", "myst-parser", "sphinx-copybutton", "furo"]
 monorepo = ["pdm>=2.22.4", "pdm-backend>=2.4.3"]
 
 #####################################################
-# PDM MONOREPO PACKAGES
+# Documentation
 #####################################################
-[tool.pdm.namespace.packages.console]
-includes = ["src/deluxe/console"]
-source-excludes = ["licenses"]
-excludes = ["tests"]
-project.name = "deluxe-console"
-project.description = "Standard-deluxe console package."
-project.classifiers = ["Development Status :: 3 - Beta"]
-
-[tool.pdm.namespace.packages.factory]
-includes = ["src/deluxe/factory"]
-source-excludes = ["licenses"]
-excludes = ["tests"]
-project.name = "deluxe-factory"
-project.description = "Standard-deluxe factory package."
-project.classifiers = ["Development Status :: 3 - Beta"]
-
-[tool.pdm.namespace.packages.availability]
-includes = ["src/deluxe/availability.py"]
-source-excludes = ["licenses"]
-excludes = ["tests"]
-project.name = "deluxe-availability."
-project.description = "Standard-deluxe availability module."
-project.classifiers = ["Development Status :: 3 - Alpha"]
-
-[tool.pdm.namespace.packages.files]
-includes = ["src/deluxe/files.py"]
-source-excludes = ["licenses"]
-excludes = ["tests"]
-project.name = "deluxe-files"
-project.description = "Standard-deluxe files module."
-project.classifiers = ["Development Status :: 3 - Alpha"]
-
-[tool.pdm.namespace.packages.importers]
-includes = ["src/deluxe/importers.py"]
-source-excludes = ["licenses"]
-excludes = ["tests"]
-project.name = "deluxe-importers"
-project.description = "Standard-deluxe importers module."
-project.classifiers = ["Development Status :: 3 - Alpha"]
-
-[tool.pdm.namespace.packages.mappings]
-includes = ["src/deluxe/mappings.py"]
-source-excludes = ["licenses"]
-excludes = ["tests"]
-project.name = "deluxe-mappings"
-project.description = "Standard-deluxe mappings module."
-project.classifiers = ["Development Status :: 4 - Beta"]
-
-[tool.pdm.namespace.packages.mureq]
-includes = ["src/deluxe/mureq.py"]
-excludes = ["tests"]
-project.name = "deluxe-mureq"
-project.description = "Standard-deluxe mureq module."
-project.classifiers = ["Development Status :: 3 - Alpha"]
-
-[tool.pdm.namespace.packages.process]
-includes = ["src/deluxe/process.py", "src/deluxe/availability.py"]
-source-excludes = ["licenses"]
-excludes = ["tests"]
-project.name = "deluxe-process"
-project.description = "Standard-deluxe process module."
-project.classifiers = ["Development Status :: 4 - Beta"]
+[tool.esbonio.sphinx]
+buildCommand = [
+  "sphinx-build",
+  "-M",
+  "dirhtml",
+  "./docs/sources/",
+  "${defaultBuildDir}",
+]
+pythonCommand = ["uv", "run", "python"]
 
 #####################################################
 # PDM SCRIPTS
 #####################################################
 [tool.pdm.scripts]
-test = "pytest -s -v -k {args}"
+lock_ = "uv lock --no-python-downloads"
+sync_ = "uv sync --locked --all-packages --no-python-downloads {args}"
+build_ = "uv build --all-packages --no-python-downloads"
+publish_ = "uv publish -v --no-python-downloads ./dists/*"
+install_ = { composite = ["lock_", "sync_"] }
+
+itest = "pytest -s -v -k {args}"
 test-all = "coverage run -m pytest"
 test-types = "pdm run basedpyright --stats ./src/**"
 test-cover = "coverage report"
 test-tox = "tox --develop -r -e py"
 test-dead = "dead"
+
+docs-html = "pdm run sphinx-build -M html ./docs/sources ./docs/build"
+
 install-traceback = "_traceback.py"
 list-group = "pdm list --fields name,groups,version,licenses,homepage --sort groups,name,licenses --exclude :sub"
 export-require = "pdm export -f requirements -o requirements.txt"
+
 pc-init = { composite = ["pre-commit install --install-hooks", "pc-update"] }
 pc-update = "pre-commit autoupdate"
 pc-check = { env = { "SKIP" = "basedpyright" }, cmd = "pre-commit run --all-files" }
