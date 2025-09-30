@@ -17,12 +17,12 @@
 # This code was forked from the mureq library:
 #   https://github.com/slingamn/mureq.git
 #   licensed under the BSD Zero Clause License
-#   Copyright (c) 2021 Shivaram Lingamneni
+#   Copyright (c) 2021 Shivaree Lingamneni
 #
 # This version of mureq has been modified as follow:
 # - include type hints for all the functions and methods in the module.
-# - docstrings have been reformatted to accomoddate the formers.
-# - the module docstring has been written with the library readme's content.
+# - docstrings have been reformatted to be compliant the formers.
+# - the module docstring has been written with the library readme content.
 # - a new case for a raised exception has been added where a possible
 #   unbound variable seems to have been missed by original code.
 #
@@ -65,7 +65,7 @@ dependencies like chardet https://github.com/chardet/chardet that are not needed
 by typical consumers. Here's a simple benchmark using Python 3.9.7, as packaged
 by Ubuntu 21.10 for amd64:
 
-.. prompt:: bash
+.. code-block:: bash
 
     python3 -c "import os; os.system('grep VmRSS /proc/' str(os.getpid()) + '/status')"
     VmRSS:      7404 kB
@@ -188,7 +188,6 @@ If you're switching from python-requests, there are a few things to keep in mind
 
 from __future__ import annotations
 
-import abc
 import contextlib
 import io
 import os.path
@@ -222,7 +221,7 @@ DEFAULT_UA = f"Python {sys.version.split()[0]}"
 
 
 @runtime_checkable
-class Buffer(Protocol, abc.ABC):  # type: ignore[misc]  # pyright: ignore[reportGeneralTypeIssues]
+class Buffer(Protocol):  # type: ignore[misc]
     def __buffer__(self, flags: int, /) -> memoryview: ...
 
 
