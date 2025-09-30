@@ -162,3 +162,8 @@ builddir/
 .pdm-python
 .pdm-build
 .pdm-plugins
+
+# Helpers
+AGENTS.md
+.qodo
+.codiumai*

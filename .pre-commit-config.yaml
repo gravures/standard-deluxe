@@ -5,7 +5,7 @@ default_language_version:
 repos:
   # Conventional commit
   - repo: https://github.com/compilerla/conventional-pre-commit
-    rev: v4.0.0
+    rev: v4.2.0
     hooks:
       - id: conventional-pre-commit
         stages: [commit-msg]
@@ -18,7 +18,7 @@ repos:
         args: []
   # Pre-commit hooks
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
+    rev: v6.0.0
     hooks:
       # Generic checks
       - id: trailing-whitespace
@@ -64,20 +64,20 @@ repos:
       - id: rst-directive-colons
       - id: rst-inline-touching-normal
   - repo: https://github.com/Lucas-C/pre-commit-hooks-safety
-    rev: v1.4.0
+    rev: v1.4.2
     hooks:
       - id: python-safety-dependencies-check
         stages: [manual]
         files: requirements
         args: ["--short-report"]
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.11.2
+    rev: v0.13.2
     hooks:
       - id: ruff
         args: ["--ignore=PLR0912,RUF100,T20,D,TD,FIX,DOC"]
       - id: ruff-format
-  # PDM
-  - repo: https://github.com/pdm-project/pdm
-    rev: 2.23.0
+  # UV-lock
+  - repo: https://github.com/astral-sh/uv-pre-commit
+    rev: 0.8.22
     hooks:
-      - id: pdm-lock-check
+      - id: uv-lock
