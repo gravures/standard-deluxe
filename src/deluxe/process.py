@@ -75,7 +75,7 @@ def get_real_users() -> set[str]:
     """
     with Path("/etc/login.defs").open(
         "r",
-        encoding=locale.getpreferredencoding(False),  # noqa: FBT003
+        encoding=locale.getpreferredencoding(do_setlocale=False),
     ) as lgn:
         min_uid = int(sch[1]) if (sch := re.search(r"^UID_MIN\s+(\d+)", lgn.read())) else 1000
     return {
@@ -100,7 +100,7 @@ class Command:
     and handling the output.
 
     It also supports specifying the user to run the command as on POSIX systems.
-    The actual implementation use the sudo command to eecute the command
+    The actual implementation use the sudo command to execute the command
     if user is specified.
 
     Commands are never executed through a shell.
@@ -114,7 +114,7 @@ class Command:
 
     Raises:
         Command.Error: If the command is not found on the system.
-        NotmplementedError: if user is specified on non POSIX systems.
+        NotImplementedError: if user is specified on non POSIX systems.
     """
 
     _SYS_USERS: set[str] = get_real_users()
@@ -150,7 +150,7 @@ class Command:
         self.name: str = name
 
         if not _USER_SUPPORT and user:
-            msg = "specifying user is only supported on POSIX plateforms."
+            msg = "specifying user is only supported on POSIX platforms."
             raise NotImplementedError(msg)
 
         self._user: str | None
@@ -181,7 +181,7 @@ class Command:
     def __call__(
         self,
         *args: str,
-        input: bytes | None = None,  # noqa: A002
+        input: bytes | None = None,
         capture: bool = True,
         text: Literal[False],
         encoding: str | None = "UTF-8",
@@ -193,7 +193,7 @@ class Command:
     def __call__(
         self,
         *args: str,
-        input: str | None = None,  # noqa: A002
+        input: str | None = None,
         capture: bool = True,
         text: Literal[True] = True,
         encoding: str | None = "UTF-8",
@@ -227,7 +227,7 @@ class Command:
 
         Raises:
             Command.Error: If the command returns with a non-zero exit status.
-        """
+        """  # noqa: DOC502
         args_ = self._compose(*args)
         cp = subprocess.run(  # noqa: S603
             args_,
@@ -384,7 +384,7 @@ class _DaemonMeta(ABCMeta):
         cls: type[type[T]],
         name: str,
         bases: tuple[type, ...],
-        namespace: dict[str, Any],
+        namespace: dict[str, object],
         **kwds: Any,
     ) -> type[T]:
         workpath = kwds.pop("workpath", "/")
@@ -413,7 +413,6 @@ class _DaemonMeta(ABCMeta):
         return type("Daemonized", (_RealDaemon, daemon), {})
 
     def __call__(cls: type[T], *args: Any, **kwds: Any) -> T:
-        """Called when instancing the type."""
         if cls.__name__ == "Daemonized":
             # return a instance of the Daemon if not already running
             pidfile: Path = getattr(cls, _DaemonMeta.PIDFILE_VAR)
@@ -450,7 +449,7 @@ class Daemon(ABC, metaclass=_DaemonMeta):
 
     The daemon executes in its own detached session with no tty attached,
     so it will not inherit the standard files from the python interpreter
-    where it was instancied.
+    where it was instanciated.
 
     Code instancing the daemon, as any could expect will received
     a functional instance of the class they defined. This instance
@@ -508,7 +507,11 @@ class Daemon(ABC, metaclass=_DaemonMeta):
 
     @final
     def stop(self) -> None:
-        """Stop the daemon."""
+        """Stop the daemon.
+
+        Raises:
+            OSError: if the daemon could not be killed.
+        """
         if not (pid := self.pid):
             msg: str = "Daemon is not running.\n"
             warn(msg, stacklevel=1)
