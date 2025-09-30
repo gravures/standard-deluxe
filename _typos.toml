@@ -6,3 +6,4 @@ ignore-dot = true
 
 [default.extend-words]
 TRO = "TRO"
+instancated = "instanciated"
