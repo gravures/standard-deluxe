@@ -24,9 +24,11 @@ or those found in the python documentation under the 'Availability' section
 
 The hints function in this module will composed a tuple of hints based on the current
 system, for example on MacOs it could returned:
-    ('posix', 'darwin', 'macos', 'cpython').
+
+    ('posix', 'darwin', 'macos', 'cpython')
 
 The returned hints are as much as possible ordered to fit this hierarchy:
+
     Api: <nt> or <posix>
     Kernel: <win32>, <linux>, <darwin> or the generic <unix> hint
     Os: <macos>, <android>, <windows>, <freebsd>, <aix>, ...
@@ -34,27 +36,28 @@ The returned hints are as much as possible ordered to fit this hierarchy:
     extra: <mobile> is set for ios and android
 
 This classification is certainly not perfect but try to mnimize the ambiguity
-poduced by the many sources that developers face to in the python ecosystem (sys.platform,
+produced by the many sources that developers face to in the python ecosystem (sys.platform,
 os.name, platform.system(), ...) and try to mimic the 'Availability' sections found
 in the python documentation.
 
 Returned and input hints in function call are all lowercased for disambiguity.
 
-Examples:
-@availability(only=('posix',), but=('darwin',))
-my_unice_function(a: int, b: int) -> int:
-    print("will print on linux but also aix, freebsd, wasi and other")
+Examples::
 
-@availability(only=(), but=('mobile',))
-my_desktop_function(a: int, b: int) -> int:
-    print("will raise a notImplementedError on ios and android")
+    @availability(only='posix', but='darwin')
+    my_unice_function(a: int, b: int) -> int:
+        print("will print on linux but also aix, freebsd, wasi and other")
+
+    @availability(only=None, but='mobile')
+    my_desktop_function(a: int, b: int) -> int:
+        print("will raise a notImplementedError on ios and android")
 
 
 This module includes utilities to:
 
-- Get platform hints based on the current system
-- Check platform support against inclusion/exclusion rules
-- Decorator for function and class to restrict usage following platform availability hints
+    - Get platform hints based on the current system
+    - Check platform support against inclusion/exclusion rules
+    - Decorator for function and class to restrict usage following platform availability hints
 """
 
 from __future__ import annotations
@@ -104,24 +107,34 @@ def hints() -> tuple[str, ...]:  # noqa: PLR0911
     return ("posix", "unix", hint, sys.implementation.name)
 
 
-def supported(only: tuple[str, ...], but: tuple[str, ...]) -> bool:
-    """Checks if the current platform is supported by specified hints.
+def supported(
+    only: tuple[str, ...] | str | None, but: tuple[str, ...] | str | None = None
+) -> bool:
+    """Checks if the current platform is supported by the specified hints.
 
     Args:
-        only: A tuple of platform hints that the function should be supported on.
-        but: A tuple of platform hints that the function should not be supported on.
+        only: A single hint, a tuple of platform hints that should be supported or None.
+        but: A single hint, a tuple of platform hints that should not be supported or None,
+             default to None.
 
     Returns:
         bool: True if the platform is supported, False otherwise.
     """
-    only_ = tuple(e.lower() for e in only)
-    but_ = tuple(e.lower() for e in but)
-    id_ = hints()
+    if isinstance(only, tuple):
+        only = tuple(e.lower() for e in only)
+    elif isinstance(only, str):
+        only = (only.lower(),)
 
-    include = any(hint in id_ for hint in only_) if only_ else True
-    if include:
-        for hint in but_:
-            if hint in id_:
+    if isinstance(but, tuple):
+        but = tuple(e.lower() for e in but)
+    elif isinstance(but, str):
+        but = (but.lower(),)
+    hints_ = hints()
+
+    include = any(h in hints_ for h in only) if only else True
+    if include and but:
+        for hint in but:
+            if hint in hints_:
                 include = False
                 break
     return include
@@ -134,23 +147,23 @@ _T = TypeVar("_T")
 
 
 def availability(
-    only: tuple[str, ...], but: tuple[str, ...] | None = None
+    only: tuple[str, ...] | str | None, but: tuple[str, ...] | str | None = None
 ) -> Callable[[_T], _T]:  # Callable[[_C], _C] | Callable[[Callable[_P, _R]], Callable[_P, _R]]:
-    """Decorator restrincting call to function or class supported by platforms availability hints.
+    """Decorator restrincting call to function or class defined by platforms availability hints.
 
     This decorator will raise a NotImplementedError if the decorated function or class
     is called on a platform that does not fit the specification passed as arguments,
     otherwise it will return seamlessly the decorated function or class.
 
     Args:
-        only: A tuple of platform hints that the function is supported on.
-              An empty tuple means all platforms are supported.
-        but: A tuple of platform hints that the function should not be supported on.
+        only: A single hint, a tuple of platform hints that should be supported or None.
+        but: A single hint, a tuple of platform hints that should not be supported or None,
+             default to None.
 
     Returns:
         Callable[..., Callable[P, R]]: The decorated function or class.
     """
-    is_supported = supported(only, but := but or ())
+    is_supported = supported(only, but)
 
     def decorator(decorated: _C | Callable[_P, _R]) -> _C | Callable[_P, _R]:
         msg = (
