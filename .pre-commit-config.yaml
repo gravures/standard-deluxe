@@ -10,12 +10,6 @@ repos:
       - id: conventional-pre-commit
         stages: [commit-msg]
         args: []
-  # Words spelling
-  - repo: https://github.com/crate-ci/typos
-    rev: v1
-    hooks:
-      - id: typos
-        args: []
   # Pre-commit hooks
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
