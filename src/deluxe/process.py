@@ -59,7 +59,7 @@ if TYPE_CHECKING:
 _USER_SUPPORT: bool = supported(only=("posix",), but=("wasi", "ios"))
 
 
-@availability(only=("posix",), but=("wasi", "ios"))
+@availability(only="posix", but=("wasi", "ios"))
 def get_real_users() -> set[str]:
     """Return a set of all real user accounts on the system.
 
@@ -240,6 +240,8 @@ class Command:
             cwd=cwd,
             env=env,
         )
+        if cp.returncode:
+            raise self._create_exception()(cp.stderr, cp.returncode, args_)
         return cp.stdout or "" if text else b""
 
     async def async_call(
@@ -424,7 +426,7 @@ class _DaemonMeta(ABCMeta):
         return super().__call__(*args, **kwds)
 
 
-# @availability(only=("posix",), but=("wasi",))
+@availability(only="posix", but="wasi")
 class Daemon(ABC, metaclass=_DaemonMeta):
     """A generic Unix daemon abstract base class.
 
@@ -438,7 +440,7 @@ class Daemon(ABC, metaclass=_DaemonMeta):
     -------------
 
     Subclass of the abstract Daemon class should implement the run()
-    method. It's were the working logic of the daemon begin. User
+    method. It's where the working logic of the daemon begin. User
     defined Daemon instances should not call this method directly.
 
     The daemon will write a lock file on the system at its start process.
@@ -451,16 +453,16 @@ class Daemon(ABC, metaclass=_DaemonMeta):
     where it was instancied.
 
     Code instancing the daemon, as any could expect will received
-    a functional instance of the class they defined. But it should
-    be used as a daemon controller with the help of its stop(), start()
+    a functional instance of the class they defined. This instance
+    will act as a daemon controller with the help of its stop(), start()
     and restart() methods.
 
     Interprocess Communication
     --------------------------
 
     Daemon subclass will ends up with two instances, the 'controller'
-    living in the calling process and the 'worker' in its detached
-    session. This class make no prevention in regard of a specific
+    living in the calling process and the 'worker' living in its own
+    detached session. This class make no prevention in regard of a specific
     protocol for interprocess communication, it's up to the class
     implementation.
 
