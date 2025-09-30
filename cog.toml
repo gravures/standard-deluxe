@@ -17,10 +17,6 @@ generate_mono_repository_package_tags = true
 pre_package_bump_hooks = []
 post_package_bump_hooks = []
 
-[packages]
-pdm-bump-scm = { path = "src/plugins/pdm-bump-scm" }
-pdm-build-monorepo = { path = "src/plugins/pdm-build-monorepo" }
-
 [commit_types]
 # feat*, fix*,  security*, build, ci, revert, docs, test, style, chore, perf*
 security = { changelog_title = "Security", bump_minor = true }
@@ -35,9 +31,10 @@ test = { changelog_title = "", omit_from_changelog = true }
 path = "CHANGELOG.md"
 authors = [{ username = "gravures", signature = "Gilles Coissac" }]
 remote = "github.com"
-repository = "pdm-devhelp"
+repository = "standard-deluxe"
 owner = "gravures"
 template = "changelog.tera"
 
 [bump_profiles]
 [git_hooks]
+[packages]

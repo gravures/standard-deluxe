@@ -1,8 +1,8 @@
 {
-    "pythonVersion": "3.10",
+    "pythonVersion": "3.11",
     "pythonPlatform": "All",
     "stubPath": "./typings",
-    "ignore": [ "./typings" ],
+    "ignore": [ "./typings", "./.venv" ],
     "typeCheckingMode": "all",
     "reportAny": false,
     "reportExplicitAny": "hint",
