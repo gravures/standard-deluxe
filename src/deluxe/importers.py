@@ -81,6 +81,9 @@ __all__ = (
 )
 
 
+__all__ = ("Module", "Patch", "Patchable", "loads_module", "monkey")
+
+
 logger = logging.getLogger(__name__)
 
 Patchable = object
