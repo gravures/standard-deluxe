@@ -37,7 +37,7 @@ except ImportError:
     def _(message: str) -> str:
         return message
 
-    def ngettext(singular: object, plural: object, n: int) -> object:  # noqa: D103
+    def ngettext(singular: object, plural: object, n: int) -> object:
         return singular if n == 1 else plural
 
 
@@ -46,7 +46,19 @@ if TYPE_CHECKING:
     from types import ModuleType
 
 
+__all__ = (
+    "SHELL_COMPLETION",
+    "AnsiHelpFormatter",
+    "ArgumentDefaultsAnsiHelpFormatter",
+    "PrettyHelpFormatter",
+    "PrettyParser",
+    "RawAnsiHelpFormatter",
+    "RawDescriptionAnsiHelpFormatter",
+)
+
+
 SHELL_COMPLETION = {"bash", "zsh", "fish", "powershell"}
+
 
 _S = TypeVar("_S", bound="AnsiHelpFormatter._Section")  # pyright:ignore[reportPrivateUsage]
 
