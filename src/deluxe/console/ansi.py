@@ -52,6 +52,25 @@ from typing import (
 )
 
 
+__all__ = [
+    "BG",
+    "FG",
+    "MOD",
+    "bell",
+    "clear_fullscreen",
+    "clear_line",
+    "clear_line_after",
+    "clear_line_before",
+    "clear_screen",
+    "clear_screen_before",
+    "clear_scrollback",
+    "length",
+    "set_title",
+    "strip_esc",
+    "style",
+]
+
+
 # NOTE: see https://en.wikipedia.org/wiki/C1_control_codes
 # TODO: cursor positioning
 
@@ -64,7 +83,6 @@ if sys.platform in {"win32", "cygwin"} and importlib.util.find_spec("colorama"):
 class C0(Protocol):
     """C0 Control codes Protocol."""
 
-    @abstractmethod
     def __call__(self) -> str:
         """Should return the associate characters sequence."""
         ...
@@ -340,22 +358,3 @@ def length(string: str) -> int:
         int: length of the string after stripping ANSI escape sequences.
     """
     return len(strip_esc(string))
-
-
-__all__ = [
-    "BG",
-    "FG",
-    "MOD",
-    "bell",
-    "clear_fullscreen",
-    "clear_line",
-    "clear_line_after",
-    "clear_line_before",
-    "clear_screen",
-    "clear_screen_before",
-    "clear_scrollback",
-    "length",
-    "set_title",
-    "strip_esc",
-    "style",
-]
