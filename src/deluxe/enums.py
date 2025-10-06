@@ -23,9 +23,10 @@ from enum import Enum as _Enum
 from enum import EnumMeta, FlagBoundary, _EnumDict  # pyright: ignore[reportPrivateUsage]
 from functools import partial
 from operator import is_
-from typing import TYPE_CHECKING, ClassVar, Self, TypeVar, cast
+from typing import TYPE_CHECKING, ClassVar, Generic, Self, TypeVar, cast
 
-from deluxe.types import Monad
+
+# from deluxe.types import Monad
 
 
 __all__ = ("Enum", "EnumType", "MaybeCallable")
@@ -113,7 +114,7 @@ class Enum(_Enum, metaclass=EnumType):
 _T = TypeVar("_T", covariant=False)
 
 
-class MaybeCallable(Monad[_T]):
+class MaybeCallable(Generic[_T]):
     """Generic Monad wrapping up a type or a callable returning this same type."""
 
     __slots__: ClassVar[tuple[str, ...]] = ("_callable_", "_value_")
@@ -134,18 +135,18 @@ class MaybeCallable(Monad[_T]):
 
     def __init__(self, value: _T | Callable[[_T], _T]) -> None:
         self._callable_: Callable[[_T], _T]
-        self._value_: _T | Callable[[_T], _T]  # pyright: ignore[reportIncompatibleVariableOverride]
+        self._value_: _T | Callable[[_T], _T]
 
     @classmethod
-    def pure(cls, value: _T | Callable[[_T], _T]) -> Self:  # pyright: ignore[reportIncompatibleMethodOverride]
+    def pure(cls, value: _T | Callable[[_T], _T]) -> Self:
         """Returns a plain value wrapped into the monadic context."""
         return cls(value)
 
-    def map(self, func: Callable[[_T | Callable[[_T], _T]], _T]) -> Self:  # pyright: ignore[reportIncompatibleMethodOverride]
+    def map(self, func: Callable[[_T | Callable[[_T], _T]], _T]) -> Self:
         """Returns the result of a functorial map."""
         return self.pure(func(self._value_))
 
-    def bind(self, func: Callable[[_T | Callable[[_T], _T]], Self]) -> Self:  # pyright: ignore[reportIncompatibleMethodOverride]
+    def bind(self, func: Callable[[_T | Callable[[_T], _T]], Self]) -> Self:
         """Returns the result of a monadic bind."""
         return func(self._value_)
 
