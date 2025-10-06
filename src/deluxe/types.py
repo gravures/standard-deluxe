@@ -1,4 +1,4 @@
-# Copyright (c) 2024 - Gilles Coissac
+# Copyright (c) 2025 - Gilles Coissac
 # This file is part of standard-deluxe library.
 #
 # standard-deluxe is free software: you can redistribute it and/or modify
@@ -13,22 +13,146 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with standard-deluxe. If not, see <https://www.gnu.org/licenses/>
+#
 # ruff: noqa: B032, B009, B010, N807, C901, PYI024
 from __future__ import annotations
 
 import weakref
 from collections import namedtuple
+from os import PathLike
+from types import NotImplementedType
 from typing import (
     TYPE_CHECKING,
     Any,
+    Protocol,
+    TypeAlias,
     TypeVar,
     cast,
     final,
+    runtime_checkable,
 )
+
+from deluxe.enums import Enum
 
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
+
+
+__all__ = (
+    "AnyFilePath",
+    "FilePath",
+    "Monad",
+    "Multiton",
+    "MultitonType",
+    "Null",
+    "NullType",
+    "Unset",
+    "UnsetType",
+)
+
+
+AnyStr = TypeVar("AnyStr", str, bytes)
+FilePath: TypeAlias = AnyStr | PathLike[AnyStr]
+AnyFilePath: TypeAlias = FilePath[str] | FilePath[bytes]
+
+
+##
+#
+class Imut:
+    def __setattr__(self, name: str, value: object, /) -> None:
+        if name in self.__class__.__static_attributes__ and hasattr(self, name):  # pyright: ignore[reportUnknownMemberType, reportAttributeAccessIssue]
+            msg = f"{name} attribute is immutable"
+            raise AttributeError(msg)
+        object.__setattr__(self, name, value)
+
+
+##
+#
+# _Digit: TypeAlias = Literal[
+#     b"0",
+#     b"1",
+#     b"2",
+#     b"3",
+#     b"4",
+#     b"5",
+#     b"6",
+#     b"7",
+#     b"8",
+#     b"9",
+# ]
+#
+#
+# class Char(bytes, Enum):
+#     a = "a"
+#
+#
+# def test(c: Char):
+#     print(c)
+#
+#
+# b = bytes("a")
+# test(c=Char("a"))
+
+##
+# NullType - A Sentinel Type as a None Alternative
+# bool(Null) = True
+NullType = Enum("NullType", "_Null")
+Null = NullType._Null
+
+
+##
+# UnsetType - A sentinel Type that could be assigned to any type
+# bool(Unset) = False
+UnsetType = (
+    type("UnsetType", (NotImplementedType,), {})
+    if TYPE_CHECKING
+    else type(
+        "UnsetType",
+        (type,),
+        {
+            "__bool__": lambda _: False,
+            "__call__": lambda _: (_ for _ in ()).throw(
+                TypeError("'UnsetType' object is not callable")
+            ),
+        },
+    )
+)
+Unset = UnsetType("Unset", (), {})
+
+##
+# Monad Protocol
+_T_co = TypeVar("_T_co", covariant=True)
+_U = TypeVar("_U")
+
+
+@runtime_checkable
+class Monad(Protocol[_T_co]):
+    """Protocol for any monadic type.
+
+    Laws (informally):
+        1. pure(a) >> f  ≡  f(a)                       (left identity)
+        2. m >> pure     ≡  m                         (right identity)
+        3. (m >> f) >> g ≡  m >> (λx: f(x) >> g)     (associativity)
+    """
+
+    _value_: _T_co
+
+    @classmethod
+    def pure(cls, value: _U) -> Monad[_U]:
+        """Wrap up a plain value into the monadic context."""
+        ...
+
+    def bind(self, func: Callable[[_T_co], Monad[_U]]) -> Monad[_U]:
+        """Monadic bind."""
+        ...
+
+    def map(self, func: Callable[[_T_co], _U]) -> Monad[_U]:
+        """Functorial map (derived from bind and pure).
+
+        `map` can be implemented in terms of `>>` and `pure`,
+        """
+        return self.bind(lambda x: self.pure(func(x)))
 
 
 _Multiton = TypeVar("_Multiton")
