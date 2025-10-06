@@ -67,13 +67,27 @@ from contextvars import Context, ContextVar, copy_context
 from enum import Enum, unique
 from functools import cache, lru_cache
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal, NamedTuple, TypeAlias, cast, final, overload
+from typing import TYPE_CHECKING, Any, Literal, NamedTuple, cast, final, overload
+
+from deluxe.types import FilePath
 
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
     from types import ModuleType, TracebackType
 
+__all__ = (
+    "BinaryNotFoundError",
+    "NodeContext",
+    "NodeError",
+    "NodeInstallError",
+    "Target",
+    "VersionCheckFailedError",
+    "get_pkg_version",
+    "latest",
+    "run",
+    "version",
+)
 
 log: logging.Logger = logging.getLogger(__name__)
 
@@ -136,9 +150,6 @@ class Target(Enum):
     NPX = "npx"
 
 
-PathLike: TypeAlias = str | os.PathLike[str] | None
-
-
 ##
 #  utility functions
 #
@@ -147,6 +158,7 @@ def _is_windows() -> bool:
 
 
 def get_usr_cache_dir() -> Path:
+    # FIXME: use dirs module instead
     """Locate a user's cache directory.
 
     respects the XDG environment if present, otherwise defaults to `~/.cache`.
@@ -332,11 +344,11 @@ def _resolve_strategy() -> _Strategy:
 # Node Context Manager
 #
 _node_target = ContextVar[Target]("node_target", default=Target.NODE)
-_node_cache_dir = ContextVar[PathLike]("node_cache_dir", default=str(get_usr_cache_dir()))
+_node_cache_dir = ContextVar[FilePath[str]]("node_cache_dir", default=str(get_usr_cache_dir()))
 _node_version = ContextVar[str | None]("node_version", default=None)
 _node_use_nodejs_wheel = ContextVar[bool]("node_use_nodejs_wheel", default=True)
 _node_use_global = ContextVar[bool]("node_use_global", default=True)
-_nodeenv_dir = ContextVar[PathLike]("nodeenv_dir", default=str(_get_nodeenv_dir()))
+_nodeenv_dir = ContextVar[FilePath[str]]("nodeenv_dir", default=str(_get_nodeenv_dir()))
 
 
 @final
@@ -410,7 +422,7 @@ class NodeContext:
         _node_target.set(val)
 
     @property
-    def nodeenv_dir(self) -> PathLike:
+    def nodeenv_dir(self) -> FilePath[str]:
         """The nodeenv directory to use with this context.
 
         Only used if opt'in for a nodeenv strategy, default
@@ -419,12 +431,12 @@ class NodeContext:
         return _nodeenv_dir.get()
 
     @nodeenv_dir.setter
-    def nodeenv_dir(self, val: PathLike) -> None:
+    def nodeenv_dir(self, val: FilePath[str]) -> None:
         if val:
             _nodeenv_dir.set(val)
 
     @property
-    def cache_dir(self) -> PathLike:
+    def cache_dir(self) -> FilePath[str]:
         """The node cache directory to use with this context.
 
         Default to XDG environment if present otherwise defaults to `~/.cache`.
@@ -432,7 +444,7 @@ class NodeContext:
         return _node_cache_dir.get()
 
     @cache_dir.setter
-    def cache_dir(self, val: PathLike) -> None:
+    def cache_dir(self, val: FilePath[str]) -> None:
         _node_cache_dir.set(val)
 
     @property

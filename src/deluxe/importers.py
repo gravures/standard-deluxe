@@ -24,15 +24,19 @@ import sys
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any, ClassVar, final
 
+from deluxe.types import Null
+
 
 if TYPE_CHECKING:
     from pathlib import Path
     from types import ModuleType
 
 
+__all__ = ("Module", "Patch", "Patchable", "loads_module", "monkey")
+
+
 logger = logging.getLogger(__name__)
 
-_NULL: type[None] = type(None)  # an undefined value that is not None
 Patchable = object
 Patch = Callable[..., object]
 
@@ -142,7 +146,7 @@ class Module:
 
     def share_root(self, other: str) -> bool:
         """Returns True if self and other name have a common root prefix that is not ''."""
-        return other.split(".")[0] == self.root if self.root else False
+        return other.split(".", maxsplit=1)[0] == self.root if self.root else False
 
     def __str__(self) -> str:
         return self.full_name
@@ -174,7 +178,7 @@ class monkey:  # noqa: N801
         self._module: Module = Module(module)
         self._target: str = target
         self._patch: Patch = monkey._null_patch
-        self._origin: Patchable = _NULL
+        self._origin: Patchable = Null
         monkey._patches[str(self)] = self
 
     def __call__(self, patch: Patch) -> Patch:  # noqa: D102
@@ -197,7 +201,7 @@ class monkey:  # noqa: N801
     def apply_all(cls) -> None:
         """Apply all registered patches."""
         for patch in monkey._patches.values():
-            if patch._origin is _NULL:
+            if patch._origin is Null:
                 patch._apply()
         monkey._reload_modules()
 
@@ -215,7 +219,7 @@ class monkey:  # noqa: N801
             msg = f"{name} is not a known monkey patch."
             raise KeyError(msg) from e
         else:
-            if patch._origin is _NULL:
+            if patch._origin is Null:
                 msg = f"target for {patch!r} is not yet available, call monkey.apply_all() before."
                 raise RuntimeError(msg)
             return patch._origin
@@ -235,7 +239,7 @@ class monkey:  # noqa: N801
             cls._to_reload.add(mod)
 
     def _apply(self) -> None:
-        """Actually ubstitute target with the set patch."""
+        """Actually substitute target with the set patch."""
         self._module.load()
         self._origin = getattr(self._module.module, self._target)
         setattr(self._module.module, self._target, self._patch)

@@ -31,6 +31,9 @@ from textwrap import TextWrapper
 from deluxe.console.ansi import length, strip_esc
 
 
+__all__ = ("AnsiTextWrapper",)
+
+
 class AnsiTextWrapper(TextWrapper):
     """TextWrapper SubClass aware of ansi escape codes."""
 

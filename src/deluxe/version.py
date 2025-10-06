@@ -22,6 +22,9 @@ from sys import maxsize
 from typing import NamedTuple
 
 
+__all__ = ("Version", "VersionError")
+
+
 _INF = maxsize
 _NEGINF = -maxsize - 1
 _VERSION: re.Pattern[str] = re.compile(

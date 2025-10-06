@@ -72,6 +72,9 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 
+__all__ = ("availability", "hints", "supported")
+
+
 def hints() -> tuple[str, ...]:  # noqa: PLR0911
     """Returns a tuple of platform hints based on the current system.
 

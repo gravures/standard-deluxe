@@ -40,7 +40,6 @@ from typing import (
     Any,
     ClassVar,
     Literal,
-    TypeAlias,
     TypeVar,
     cast,
     final,
@@ -54,6 +53,11 @@ from deluxe.availability import availability, supported
 if TYPE_CHECKING:
     from asyncio.subprocess import Process
     from collections.abc import Mapping
+
+    from deluxe.types import AnyFilePath
+
+
+__all__ = ("Command", "Daemon", "get_real_users")
 
 
 _USER_SUPPORT: bool = supported(only=("posix",), but=("wasi", "ios"))
@@ -87,10 +91,6 @@ def get_real_users() -> set[str]:
             and p.pw_dir.startswith("/home")
         )
     }
-
-
-PathLike: TypeAlias = str | os.PathLike[str]
-StrOrBytesPath: TypeAlias = str | bytes | os.PathLike[str] | os.PathLike[bytes]
 
 
 class Command:
@@ -185,7 +185,7 @@ class Command:
         capture: bool = True,
         text: Literal[False],
         encoding: str | None = "UTF-8",
-        cwd: StrOrBytesPath | None = None,
+        cwd: AnyFilePath | None = None,
         env: Mapping[str, str] | None = None,
     ) -> bytes: ...
 
@@ -197,7 +197,7 @@ class Command:
         capture: bool = True,
         text: Literal[True] = True,
         encoding: str | None = "UTF-8",
-        cwd: StrOrBytesPath | None = None,
+        cwd: AnyFilePath | None = None,
         env: Mapping[str, str] | None = None,
     ) -> str: ...
 
@@ -208,7 +208,7 @@ class Command:
         capture: bool = True,
         text: bool = True,
         encoding: str | None = "UTF-8",
-        cwd: StrOrBytesPath | None = None,
+        cwd: AnyFilePath | None = None,
         env: Mapping[str, str] | None = None,
     ) -> str | bytes:
         """Run this command.
@@ -249,7 +249,7 @@ class Command:
         *args: str,
         input: bytes | None = None,  # noqa: A002
         capture: bool = True,
-        cwd: StrOrBytesPath | None = None,
+        cwd: AnyFilePath | None = None,
         env: Mapping[str, str] | None = None,
     ) -> Task[Future[bytes]]:
         """Run this command asynchronously.
@@ -371,7 +371,7 @@ class _RealDaemon:
         self.__pidfile__.unlink()
 
 
-T = TypeVar("T")
+_T = TypeVar("_T")
 
 
 class _DaemonMeta(ABCMeta):
@@ -381,12 +381,12 @@ class _DaemonMeta(ABCMeta):
     PIDFILE_VAR: str = "__pidfile__"
 
     def __new__(
-        cls: type[type[T]],
+        cls: type[type[_T]],
         name: str,
         bases: tuple[type, ...],
         namespace: dict[str, object],
         **kwds: Any,
-    ) -> type[T]:
+    ) -> type[_T]:
         workpath = kwds.pop("workpath", "/")
         if not (workpath := Path(workpath)).is_dir():
             msg = f"<{workpath}> should be an existing directory."
@@ -409,10 +409,10 @@ class _DaemonMeta(ABCMeta):
         ps.join()
 
     @staticmethod
-    def subclass(daemon: type[T]) -> type:
+    def subclass(daemon: type[_T]) -> type:
         return type("Daemonized", (_RealDaemon, daemon), {})
 
-    def __call__(cls: type[T], *args: Any, **kwds: Any) -> T:
+    def __call__(cls: type[_T], *args: Any, **kwds: Any) -> _T:
         if cls.__name__ == "Daemonized":
             # return a instance of the Daemon if not already running
             pidfile: Path = getattr(cls, _DaemonMeta.PIDFILE_VAR)
