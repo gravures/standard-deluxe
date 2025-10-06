@@ -17,13 +17,10 @@
 
 from __future__ import annotations
 
-import copy
-import sys
 from collections import OrderedDict
 from collections.abc import (
     Callable,
     ItemsView,
-    Iterable,
     Iterator,
     KeysView,
     Mapping,
@@ -31,14 +28,11 @@ from collections.abc import (
     ValuesView,
 )
 from copy import deepcopy
-from pathlib import Path
 from typing import (
-    IO,
     TYPE_CHECKING,
     Any,
     ClassVar,
     Generic,
-    Literal,
     Protocol,
     TypeVar,
     cast,
@@ -46,302 +40,21 @@ from typing import (
     overload,
 )
 
+from deluxe.environ import Environment, EnvValue, Separator
+
 
 if TYPE_CHECKING:
     from types import ModuleType
 
 
-EnvValue = str | bool | int | list[str | Path] | None
-Separator = Literal[";", ":", ",", " "]
-
-
-class Environment(MutableMapping[str, EnvValue]):  # noqa: PLR0904
-    """Class representing an environment mapping.
-
-    This class provides a way to manage and manipulate environment variables.
-    """
-
-    __slots__: ClassVar[tuple[str, ...]] = ("__dict__", "_kwargs", "_lock", "_protected")
-    __list_separator: ClassVar[dict[str, Separator]] = {}
-    __hash__: ClassVar[None]
-
-    def __init__(self, **kwargs: EnvValue) -> None:
-        self._kwargs: Mapping[str, EnvValue] = kwargs
-        self._protected: set[str] = set()
-        self._lock: bool = True
-
-    @staticmethod
-    def add_list_separator(attribute: str, separator: Separator) -> None:
-        """Adds a list separator for a specific attribute.
-
-        Args:
-            attribute (str): The attribute to add the separator for.
-            separator (str): The separator character.
-        """
-        Environment.__list_separator[attribute] = separator
-
-    def get(self, name: str, default: EnvValue = "") -> EnvValue:
-        """Retrieve the value associated with a name.
-
-        Retrieve the value associated with the given name.
-
-        Args:
-            name (str): The name to retrieve the value for.
-            default (Any, optional): The default value to return
-            if name is not found. Defaults to an empty string.
-
-        Returns:
-            Any: The value associated with name if found,
-            otherwise the default value.
-        """
-        return self.__dict__.get(name, default)
-
-    def items(self) -> ItemsView[str, EnvValue]:
-        """Returns a view of the name-value pairs of this Mapping.
-
-        Returns:
-            An ItemsView that provides a dynamic view on this Mapping.
-        """
-        return self.__dict__.items()
-
-    def keys(self) -> KeysView[str]:
-        """Returns a view of the keys this Mapping.
-
-        Returns:
-            A KeysView that provides a dynamic view on this Mapping's keys.
-        """
-        return self.__dict__.keys()
-
-    def values(self) -> ValuesView[EnvValue]:
-        """Returns a view of the values in this Mapping.
-
-        Returns:
-            A ValuesView that provides a dynamic view on
-            this Mapping's values.
-        """
-        return self.__dict__.values()
-
-    def copy(self) -> Environment:
-        """Creates a deep copy of this mapping.
-
-        Returns:
-            EnvMapping: A new EnvMapping object that is a deep
-            copy of the original.
-        """
-        duply = self.__class__(**self._kwargs)
-        for k, v in self.items():
-            duply.__dict__[k] = copy.copy(v)
-        return duply
-
-    def update(  # pyright: ignore[reportIncompatibleMethodOverride]
-        self, other: Environment | Mapping[str, EnvValue], clear: list[str] | None = None
-    ) -> None:
-        """Update this Mapping.
-
-        Update this Mapping with the values from another Mapping.
-
-        Parameters:
-            other (EnvMapping | dict[str, Any]): The object or mapping
-            containing the values to update the EnvMapping with.
-            clear (list[str], optional): A list of names to set as empty lists
-            in the EnvMapping. Defaults to an empty list.
-        """
-        clear = clear or []
-
-        if isinstance(other, Environment):
-            other = other.__dict__
-        for key, value in other.items():
-            if key not in self._protected:
-                if (key in clear) and (isinstance(self.__dict__[key], list)):
-                    self.__dict__[key] = []
-                setattr(self, key, value)
-
-    def clear(self) -> None:
-        """Clears all attributes."""
-        self.__dict__.clear()
-
-    def pop(self, name: str, default: object | None = None) -> EnvValue:
-        """Removes and returns the value associated with a name.
-
-        If name is in the mapping, remove it and return its value,
-        else return default. If default is not given and name is not
-        in the mapping, a KeyError is raised..
-
-        Args:
-            name (str): The name of the attribute to remove.
-            default (str): A default value to return.
-
-        Returns:
-            Any: The value associated with the name.
-
-        Raises:
-            KeyError: If the name is not found.
-        """  # noqa: DOC502
-        return self.__dict__.pop(name, default)
-
-    def popitem(self) -> tuple[str, EnvValue]:
-        """Removes and returns a name-value pair from the mapping.
-
-        Returns:
-            tuple[str, Any]: A name-value pair from the mapping.
-
-        Raises:
-            KeyError: If the mapping is empty.
-        """  # noqa: DOC502
-        return self.__dict__.popitem()
-
-    def setdefault(self, name: str, default: EnvValue = None) -> EnvValue:
-        """Sets the value associated with a name.
-
-        If name is defined in the mapping, return its value.
-        If not, defined it with a value of default and return default.
-        default defaults to None.
-
-        Args:
-            name (str): The name of the attribute to set.
-            default (Any, optional): The default value to set if name is not found.
-
-        Returns:
-            Any: The value associated with name.
-        """
-        if name in self.__dict__:
-            return self.__dict__[name]
-        setattr(self, name, default)
-        return default
-
-    def __setattr__(self, name: str, value: object) -> None:
-        # __slots__ case
-        for _cls in self.__class__.__mro__:
-            if _cls is not object and name in _cls.__slots__:  # pyright: ignore[reportUnknownMemberType]
-                object.__setattr__(self, name, value)
-                return
-        # protected attributes
-        if name in self._protected and self._lock:
-            msg = f"{name} is a protected attribute and can't be set by assignment."
-            raise AttributeError(msg)
-        # normal attributes
-        if isinstance(value, list):
-            value = cast("list[object]", value)
-            self._append_list(name, value)
-        else:
-            self.__dict__[name] = value
-
-    def _append_list(self, key: str, values_list: list[object]) -> None:
-        if key in self.__dict__:
-            self.__dict__[key] = self.ulist(self.__dict__[key] + values_list)
-        else:
-            self.__dict__[key] = self.ulist(values_list)
-
-    @staticmethod
-    def ulist(iterable: Iterable[object], lifo: bool = False) -> list[object]:
-        """Returns a list of unique items from seq.
-
-        Generate a list of unique elements from the iterable argument.
-        By default first element will be kept at their index removing
-        further duplicate occurrences. Setting lifo to True will inverse
-        this behavior.
-
-        Args:
-            iterable (Iterable[object]): The input Sequence.
-            lifo (bool, optional): If True, return the unique elements
-            in Last-In-First-Out order. Defaults to False.
-
-        Returns:
-            list: A new list containing only unique elements.
-        """
-        unique_: list[object] = []
-        lst_ = list(iterable)[::-1] if lifo else list(iterable)
-        for v in lst_:
-            if v not in unique_:
-                unique_.append(v)
-        return unique_[::-1] if lifo else unique_
-
-    @staticmethod
-    def env_hook(env: dict[str, EnvValue]) -> dict[str, EnvValue]:
-        """Called by the env property getter function.
-
-        Does nothing by default. Subclasses can override this method.
-        This method is called by the env property getter function,
-        just before beginning to return the environment variables.
-        A working dictionary is passed to this method, so subclass
-        can manipulate it before returning it.
-
-        Returns:
-            dict[str, EnvValue]: the altered mapping.
-        """
-        return env
-
-    @property
-    def env(self) -> dict[str, str]:
-        """Returns this EnvMapping as environment variables.
-
-        Returns:
-            dict[str, str]: A dictionary containing the environment
-            variables.
-        """
-        env_: dict[str, str] = {}
-        for k, v in self.env_hook(dict(self.__dict__)).items():
-            if isinstance(v, list):
-                separator = Environment.__list_separator.get(k, ":")
-                env_[k] = separator.join([str(p) for p in v])
-            elif isinstance(v, bool):
-                env_[k] = str(int(v))
-            elif not str(v) or v is None:
-                continue
-            else:
-                env_[k] = str(v)
-        return env_
-
-    def dump(self, file: IO[str] = sys.stdout) -> None:
-        """Dump the environment variables to a file.
-
-        Args:
-            file (IO[str], optional): The file to write the environment
-            variables to. Defaults to sys.stdout.
-        """
-        dump = "".join(f"{k} = {v}\n" for k, v in self.env.items())
-        file.write(dump)
-
-    def __len__(self) -> int:
-        return len(self.__dict__)
-
-    def __getitem__(self, key: str) -> EnvValue:
-        return self.__dict__[key]
-
-    def __setitem__(self, key: str, value: EnvValue) -> None:
-        self.__setattr__(key, value)
-
-    def __delitem__(self, key: str) -> None:
-        if key not in self._protected:
-            del self.__dict__[key]
-
-    def __iter__(self) -> Iterator[str]:
-        return iter(self.__dict__)
-
-    def __contains__(self, key: object) -> bool:
-        return key in self.__dict__
-
-    def __bool__(self) -> bool:
-        return any(self.__dict__.values())
-
-    def __str__(self) -> str:
-        return str(self.__dict__)
-
-    def __or__(self, other: Environment | dict[str, EnvValue]) -> Environment:
-        res = self.copy()
-        res.update(other)
-        return res
-
-    def __ior__(self, other: Environment | dict[str, EnvValue]) -> None:  # noqa: PYI034
-        self.update(other)
-
-    def __eq__(self, other: object) -> bool:
-        other = other.__dict__ if isinstance(other, Environment) else other
-        return self.__dict__ == other
-
-    def __ne__(self, other: object) -> bool:
-        other = other.__dict__ if isinstance(other, Environment) else other
-        return self.__dict__ != other
+__all__ = (
+    "EnvValue",
+    "Environment",
+    "FilteredView",
+    "FrozenMap",
+    "OrderableDict",
+    "Separator",
+)
 
 
 _KT = TypeVar("_KT")
