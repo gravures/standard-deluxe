@@ -13,6 +13,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with standard-deluxe. If not, see <https://www.gnu.org/licenses/>
+#
 # ruff: noqa: PYI025, PYI019, PLW1641, ARG002
 """Sequences module."""
 
@@ -30,8 +31,35 @@ if TYPE_CHECKING:
     from collections.abc import Iterable
 
 
+__ALL__ = ("OrderedFrozenSet", "OrderedSet", "dedup_list")
+
+
 _V = TypeVar("_V")
 _OST = TypeVar("_OST")
+
+
+def dedup_list(iterable: Iterable[object], lifo: bool = False) -> list[object]:
+    """Returns a list of distinc items from seq.
+
+    Generate a list of distinct elements from the iterable argument.
+    By default first element will be kept at their index removing
+    further duplicate occurrences. Setting lifo to True will inverse
+    this behavior.
+
+    Args:
+        iterable (Iterable[object]): The input Sequence.
+        lifo (bool, optional): If True, return the distinct elements
+        in Last-In-First-Out order. Defaults to False.
+
+    Returns:
+        list: A new list containing only distinct items.
+    """
+    unique_: list[object] = []
+    list_ = list(iterable)[::-1] if lifo else list(iterable)
+    for v in list_:
+        if v not in unique_:
+            unique_.append(v)
+    return unique_[::-1] if lifo else unique_
 
 
 class _AbstractOrderedSet(ABC, Set[_V], Generic[_V]):
