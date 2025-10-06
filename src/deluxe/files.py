@@ -34,15 +34,28 @@ import os
 import re
 import struct
 from pathlib import Path, PurePosixPath, PureWindowsPath
-from typing import TypeAlias
+from typing import TYPE_CHECKING
+
+
+if TYPE_CHECKING:
+    from deluxe.types import FilePath
+
+
+__all__ = (
+    "get_pe_version",
+    "is_binary",
+    "is_exec",
+    "is_winexec",
+    "is_winpath",
+    "mount_point",
+    "split_drive",
+)
 
 
 _POSIX: bool = os.name == "posix"
 
-FilePath: TypeAlias = str | os.PathLike[str]
 
-
-def split_drive(path: FilePath) -> tuple[str, str]:
+def split_drive(path: FilePath[str]) -> tuple[str, str]:
     """Split a file path into its drive part and the rest of the path.
 
     Args:
@@ -57,7 +70,7 @@ def split_drive(path: FilePath) -> tuple[str, str]:
     return ("", path)
 
 
-def is_winpath(path: FilePath) -> bool:
+def is_winpath(path: FilePath[str]) -> bool:
     """Check if the given path is a Windows path.
 
     Args:
@@ -76,19 +89,10 @@ def is_winpath(path: FilePath) -> bool:
         return True
 
     drv, pth = split_drive(path)
-    if bool(drv) and drv != "file":
-        return True
-
-    if pth.startswith("\\\\"):
-        return True
-
-    if "/" in pth:
-        return False
-
-    return False
+    return True if bool(drv) and drv != "file" else bool(pth.startswith("\\\\"))
 
 
-def is_binary(path: FilePath) -> bool:
+def is_binary(path: FilePath[str]) -> bool:
     """Test if path point to a binary file.
 
     Returns:
@@ -123,7 +127,7 @@ def is_binary(path: FilePath) -> bool:
     return (float(binary_length) / data_length) >= char_threshold
 
 
-def is_exec(path: FilePath) -> bool:
+def is_exec(path: FilePath[str]) -> bool:
     """Check if a file has the executable permission set.
 
     Checks if the path corresponds to an existing file
@@ -142,7 +146,7 @@ def is_exec(path: FilePath) -> bool:
     return path.is_file() and os.access(path, os.X_OK)
 
 
-def is_winexec(path: FilePath) -> bool:
+def is_winexec(path: FilePath[str]) -> bool:
     """Check if a file has an extension associated with executable files on Windows.
 
     The function checks if the file has a suffix (extension) that matches any of the
@@ -180,7 +184,7 @@ def is_winexec(path: FilePath) -> bool:
     )
 
 
-def get_pe_version(file: FilePath) -> str | None:
+def get_pe_version(file: FilePath[str]) -> str | None:
     r"""Extract the version information from a Portable Executable (PE) file.
 
     Reads the specified Portable Executable (PE) file and extracts its version
@@ -213,7 +217,7 @@ def get_pe_version(file: FilePath) -> str | None:
     sig = struct.pack("32s", "VS_VERSION_INFO".encode("utf-16-le"))
     version = None
 
-    # NOTE: there is a pefile module available on pypi
+    # NOTE: there is a pe file module available on pypi
     #       https://github.com/erocarrera/pefile
 
     # NOTE: This pulls the whole file into memory,
@@ -234,12 +238,12 @@ def get_pe_version(file: FilePath) -> str | None:
     return version
 
 
-def mount_point(path: FilePath) -> Path | PureWindowsPath:
+def mount_point(path: FilePath[str]) -> Path | PureWindowsPath:
     r"""Finds the mount point (root) of the filesystem containing the given path.
 
     Takes a file path and traverses up the directory tree until it finds
     its root. On POSIX it will be the mount point containing the path.
-    On Windows or if path is a PureWindowsPaththe, returns the root
+    On Windows or if path is a PureWindowsPath, returns the root
     of the filesystem (aka the anchor).
 
     Args:
