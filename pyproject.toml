@@ -63,7 +63,6 @@ test = [
   "tox-pdm>=0.7.2",
 ]
 docs = ["sphinx", "sphinx-autoapi", "myst-parser", "sphinx-copybutton", "furo"]
-monorepo = ["pdm>=2.22.4", "pdm-backend>=2.4.3"]
 
 #####################################################
 # Documentation
