@@ -81,7 +81,6 @@
             "reportRedeclaration": false,
             "reportReturnType": false,
             "reportSelfClsParameterName": false,
-            "reportShadowedImports": false,
             "reportTypeCommentUsage": false,
             "reportTypedDictNotRequiredAccess": false,
             "reportUnboundVariable": false,
