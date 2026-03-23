@@ -1,17 +1,17 @@
 # RUFF configuration file
 # see: https://docs.astral.sh/ruff/settings
 #      https://docs.astral.sh/ruff/rules
-line-length  = 99
+line-length = 99
 indent-width = 4
-src          = ["src", "tests"]            # ["."]
-exclude      = ['docs/conf.py', 'typings']
-builtins     = ["_i"]                      # ipython hidden variable
-fix          = false
+src = ["src", "tests"]                # ["."]
+exclude = ['docs/conf.py', 'typings']
+builtins = ["_i"]                     # ipython hidden variable
+fix = false
 
 [format]
-preview                   = true
-quote-style               = "double"
-indent-style              = "space"
+preview = true
+quote-style = "double"
+indent-style = "space"
 skip-magic-trailing-comma = false
 
 [lint]
@@ -53,13 +53,14 @@ ignore = [
 ]
 
 [lint.isort]
-lines-after-imports    = 2
-required-imports       = ["from __future__ import annotations"]
+lines-after-imports = 2
+required-imports = ["from __future__ import annotations"]
+combine-as-imports = true
 extra-standard-library = ["tomllib"]
 
 [lint.pydocstyle]
-convention          = "google"
-ignore-decorators   = ["typing.overload"]
+convention = "google"
+ignore-decorators = ["typing.overload"]
 property-decorators = ["gi.repository.GObject.Property"]
 
 [lint.pylint]
