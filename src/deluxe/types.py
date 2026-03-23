@@ -14,41 +14,34 @@
 # You should have received a copy of the GNU General Public License
 # along with standard-deluxe. If not, see <https://www.gnu.org/licenses/>
 #
-# ruff: noqa: B032, B009, B010, N807, C901, PYI024
+# ruff: noqa: E501
 from __future__ import annotations
 
-import weakref
-from collections import namedtuple
+# import inspect
+# import re
+# from collections.abc import Collection, Mapping
 from os import PathLike
-from types import NotImplementedType
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Protocol,
-    TypeAlias,
-    TypeVar,
-    cast,
-    final,
-    runtime_checkable,
-)
 
-from deluxe.enums import Enum
+# from sys import getsizeof
+from typing import TypeAlias, TypeVar
 
-
-if TYPE_CHECKING:
-    from collections.abc import Callable, Iterator
+from deluxe._cctypes import Frozen, Unset, UnsetType
+from deluxe._multiton import Multiton, MultitonType
+from deluxe._static import FrozenType, StaticType
 
 
 __all__ = (
     "AnyFilePath",
     "FilePath",
-    "Monad",
+    "Frozen",
+    "FrozenType",
     "Multiton",
     "MultitonType",
-    "Null",
-    "NullType",
+    "StaticType",
     "Unset",
     "UnsetType",
+    # "get_static_attributes",
+    # "sizeof",
 )
 
 
@@ -57,332 +50,69 @@ FilePath: TypeAlias = AnyStr | PathLike[AnyStr]
 AnyFilePath: TypeAlias = FilePath[str] | FilePath[bytes]
 
 
-##
-#
-class Imut:
-    def __setattr__(self, name: str, value: object, /) -> None:
-        if name in self.__class__.__static_attributes__ and hasattr(self, name):  # pyright: ignore[reportUnknownMemberType, reportAttributeAccessIssue]
-            msg = f"{name} attribute is immutable"
-            raise AttributeError(msg)
-        object.__setattr__(self, name, value)
+# _self_re = re.compile(r"\bself\.(?P<attr>\w*)\s?=\s?")
 
 
-##
-#
-# _Digit: TypeAlias = Literal[
-#     b"0",
-#     b"1",
-#     b"2",
-#     b"3",
-#     b"4",
-#     b"5",
-#     b"6",
-#     b"7",
-#     b"8",
-#     b"9",
-# ]
-#
-#
-# class Char(bytes, Enum):
-#     a = "a"
-#
-#
-# def test(c: Char):
-#     print(c)
-#
-#
-# b = bytes("a")
-# test(c=Char("a"))
+# def get_static_attributes(obj: object) -> set[str]:
+#     """Returns static attributes of an object.
 
-##
-# NullType - A Sentinel Type as a None Alternative
-# bool(Null) = True
-NullType = Enum("NullType", "_Null")
-Null = NullType._Null
+#     Differences from __static_attributes__ (python 3.12):
+#         * return all __slots__ names, even if never assigned
+#         * dive into class inheritance to look up attributes,
+#           so get_static_attributes(A) >= A.__static_attributes__
+#         * get_static_attributes(A()) and get_static_attributes(A)
+#           could be different
+#     """
+#     attrs = set[str]()
+#     type_ = obj if isinstance(obj, type) else type(obj)
+#     for base in type_.__mro__:
+#         attrs.update(getattr(base, "__slots__", ()))
+
+#     if obj is not type_:
+#         attrs.update(getattr(obj, "__dict__", {}).keys())
+#     else:
+#         for base in type_.__mro__:
+#             for _name, func in inspect.getmembers_static(base, inspect.isfunction):
+#                 attrs.update(_self_re.findall(inspect.getsource(func)))
+#     return attrs
 
 
-##
-# UnsetType - A sentinel Type that could be assigned to any type
-# bool(Unset) = False
-UnsetType = (
-    type("UnsetType", (NotImplementedType,), {})
-    if TYPE_CHECKING
-    else type(
-        "UnsetType",
-        (type,),
-        {
-            "__bool__": lambda _: False,
-            "__call__": lambda _: (_ for _ in ()).throw(
-                TypeError("'UnsetType' object is not callable")
-            ),
-        },
-    )
-)
-Unset = UnsetType("Unset", (), {})
+# ##
+# #
+# def sizeof(obj: object) -> int:
+#     """Returns an approximate size in bytes of object and all of its contents."""
+#     seen = set[int]()
+#     default_size = getsizeof(object())
 
-##
-# Monad Protocol
-_T_co = TypeVar("_T_co", covariant=True)
-_U = TypeVar("_U")
+#     def attr_size() -> int:
+#         return sum(
+#             map(
+#                 sizeof,
+#                 iter(getattr(obj, key) for key in get_static_attributes(obj) if hasattr(obj, key)),
+#             )
+#         )
 
+#     def sizeof(obj: object) -> int:
+#         if id(obj) in seen:
+#             return 0
 
-@runtime_checkable
-class Monad(Protocol[_T_co]):
-    """Protocol for any monadic type.
+#         seen.add(id(obj))
+#         size = getsizeof(obj, default_size)
 
-    Laws (informally):
-        1. pure(a) >> f  ≡  f(a)                       (left identity)
-        2. m >> pure     ≡  m                         (right identity)
-        3. (m >> f) >> g ≡  m >> (λx: f(x) >> g)     (associativity)
-    """
+#         try:
+#             mv = memoryview(obj)  # _pyright: ignore[reportArgumentType]
+#         except TypeError:
+#             size += attr_size()
+#         else:
+#             buffer_size = mv.nbytes
+#             size = size if size > buffer_size else buffer_size + size
+#             return size + attr_size()
 
-    _value_: _T_co
+#         if isinstance(obj, Collection) and not isinstance(obj, (str,)):
+#             if isinstance(obj, Mapping):
+#                 size += sum(map(sizeof, iter(obj.values())))  # _pyright: ignore[reportUnknownArgumentType]
+#             else:
+#                 size += sum(map(sizeof, iter(obj)))
+#         return size
 
-    @classmethod
-    def pure(cls, value: _U) -> Monad[_U]:
-        """Wrap up a plain value into the monadic context."""
-        ...
-
-    def bind(self, func: Callable[[_T_co], Monad[_U]]) -> Monad[_U]:
-        """Monadic bind."""
-        ...
-
-    def map(self, func: Callable[[_T_co], _U]) -> Monad[_U]:
-        """Functorial map (derived from bind and pure).
-
-        `map` can be implemented in terms of `>>` and `pure`,
-        """
-        return self.bind(lambda x: self.pure(func(x)))
-
-
-_Multiton = TypeVar("_Multiton")
-
-
-class IDError(TypeError): ...
-
-
-@final
-class MultitonType(type):
-    """Multiton metaclass.
-
-    The Multiton is an extension of the singleton. It ensures that
-    a limited number of instances of a class can exist by associating
-    a value with each instance and allowing only a single object to be
-    created for each of those values.
-
-    For the sake of avoiding memory leak, the default behavior of a Multiton
-    class is to store weak references of the created instances. This way,
-    as soon as the reference count of an instance falls to zero, this reference
-    is discarded from the internal hash table.
-
-    So, it's up to the user to store instance's reference to keep them alive.
-    Alternatively to disable this behaviour, ones could pass the weakref=False
-    parameter at class definition this way :
-
-        class M(metaclass=MultitonType, weakref=False):
-            ...
-
-    Like with the Singleton of this module, the __init__ method is ensure to
-    be called only once by instance (except in the case of being explicitly called).
-    """
-
-    ID_METH_NAME = "__id__"
-    INSTANCES_MAP_NAME = "__instances__"
-    WEAKREF_FLAG_NAME = "__multiton_weakref__"
-
-    # NOTE: could a Multiton be subclassed ?
-    # NOTE: should we offer a __getstate__, __setstate__ implementation ?
-    def __new__(
-        cls: type[type[_Multiton]],
-        name: str,
-        bases: tuple[type, ...],
-        namespace: dict[str, Any],
-        **kwds: Any,
-    ) -> type[_Multiton]:
-        """Type creation."""
-        use_weakref = bool(kwds.pop("weakref", True))
-
-        bases = tuple(
-            base
-            for base in bases
-            if (base.__qualname__, base.__module__) != ("Multiton", __name__)
-        )
-
-        statics = cast("tuple[str, ...]", namespace.get("__static_attributes__", ()))
-        namespace.setdefault("__match_args__", statics)
-
-        namespace[MultitonType.INSTANCES_MAP_NAME] = {}
-        namespace[MultitonType.WEAKREF_FLAG_NAME] = use_weakref
-
-        # __slots__ case
-        slots = namespace.get("__slots__")
-        if slots is not None and use_weakref and "__weakref__" not in slots:
-            namespace["__slots__"] = ("__weakref__", "_values_", *slots)
-
-        def __setattr__(self: _Multiton, name: str, value: object, /) -> None:
-            if name in {"_values_", *getattr(self, "__match_args__")} and hasattr(self, name):
-                msg = f"{name} attribute is immutable"
-                raise AttributeError(msg)
-            object.__setattr__(self, name, value)
-
-        def __hash__(self: _Multiton) -> int:
-            return hash(getattr(self, "_values_"))
-
-        def __eq__(self: _Multiton, value: object, /) -> bool:
-            try:
-                return hash(self) == hash(value)
-            except TypeError:
-                return False
-
-        def __len__(self: _Multiton) -> int:
-            return len(getattr(self, "_values_"))
-
-        def __iter__(self: _Multiton) -> Iterator[object]:
-            yield from getattr(self, "_values_")
-
-        def __contains__(self: _Multiton, value: object, /) -> bool:
-            return value in getattr(self, "_values_")
-
-        def __getitem__(self: _Multiton, key: slice, /) -> object:
-            return getattr(self, "_values_")[key]
-
-        def _asdict(self: _Multiton) -> dict[str, object]:
-            return cast(
-                "dict[str, object]",
-                cast("object", (zip(getattr(self, "__match_args__"), self, strict=False))),  # pyright: ignore[reportArgumentType]
-            )
-
-        def __copy__(self: _Multiton) -> _Multiton:
-            return self
-
-        def __deepcopy__(self: _Multiton, _memo: Any) -> _Multiton:
-            return self
-
-        # def __replace__(self: _Multiton, /, **changes: object) -> _Multiton:
-        #     ic(self, changes)
-        #     return self.__new__(self.__class__, **changes)
-
-        namespace["__setattr__"] = __setattr__
-        namespace["__hash__"] = __hash__
-        namespace["__eq__"] = __eq__
-        namespace["__len__"] = __len__
-        namespace["__iter__"] = __iter__
-        namespace["__contains__"] = __contains__
-        namespace["__getitem__"] = __getitem__
-        namespace["_asdict"] = _asdict
-        namespace["__copy__"] = __copy__
-        namespace["__deepcopy__"] = __deepcopy__
-        # namespace["__replace__"] = __replace__
-
-        return type.__new__(cls, name, bases, namespace, **kwds)
-
-    if TYPE_CHECKING:
-
-        def __init__(cls: type[_Multiton], *_args: Any, **_kwds: Any) -> None:
-            # sourcery skip: instance-method-first-arg-name
-            # type annotations for class attributes
-            # cls.__match_args__: tuple[str, ...]  # disable static hint attribute matching
-            cls.__instances__: dict[int, type]
-            cls.__len__: Callable[[], int]
-            cls.__iter__: Callable[[], Iterator[object]]
-            cls.__contains__: Callable[[object], bool]
-            cls.__getitem__: Callable[[slice | int], object]
-            cls._asdict: Callable[[], dict[str, object]]
-            cls.__copy__: Callable[[], Multiton]
-            cls.__deepcopy__: Callable[..., Multiton]
-            # cls.__replace__: Callable[..., Multiton]
-
-    def __call__(cls: type[_Multiton], *args: Any, **kwds: Any) -> _Multiton:  # noqa: D102
-        # Returns a Multiton instance
-        use_weakref: bool = getattr(cls, MultitonType.WEAKREF_FLAG_NAME)
-        instances: dict[int, weakref.ReferenceType[_Multiton]] = getattr(
-            cls, MultitonType.INSTANCES_MAP_NAME
-        )
-
-        tmp: tuple[object, ...] = getattr(cls, "__id__")(*args, **kwds)
-        try:
-            uid = hash((*tmp,))
-        except TypeError as e:
-            msg = f"{cls.__name__}.__id__ class method should return a tuple of hashables, {e}"
-            raise TypeError(msg) from e
-
-        def finalize(_cls: type[_Multiton], uid: int) -> None:
-            del instances[uid]
-
-        if instance := instances.get(uid):
-            instance = instance() if use_weakref else cast("_Multiton", instance)
-
-        if not instance:
-            instance = cast("_Multiton", type.__call__(cls, *args, **kwds))
-            setattr(instance, "_values_", tuple(tmp))
-
-            try:  # sanity check
-                test = hash(instance)
-            except TypeError as e:
-                msg = (
-                    f"{cls.__name__}.__match_args__ should refer to hashable attributes, found {e}"
-                )
-                raise TypeError(msg) from e
-            else:
-                if uid != test:
-                    msg = (
-                        f"{cls.__name__}.__id__ class method is incompatible"
-                        " with instance __hash__ method"
-                    )
-                    raise TypeError(msg)
-
-            instances[uid] = weakref.ref(instance) if use_weakref else instance  # pyright: ignore[reportArgumentType]
-            if use_weakref:
-                weakref.finalize(instance, finalize, cls, uid)
-
-        return instance
-
-    def __instancecheck__(cls, instance: object, /) -> bool:
-        return (
-            (cls.__qualname__, cls.__module__) == ("Multiton", __name__)
-        ) or super().__instancecheck__(instance)
-
-    def __id__(cls: type[_Multiton], *args: object, **kwds: object) -> tuple[object, ...]:
-        # sourcery skip: instance-method-first-arg-name
-        """Returns a tuple of values for an incoming Multiton instance.
-
-        This class method is called before actual instance creation
-        (before the __new__ method was called). Arguments are the same
-        as those that will be passed to the __new__ and __init__ methods.
-
-        This method should return a tuple of hashable value that will uniquely
-        identify the future instance. How to build this tuple, based or not
-        on the passed arguments is in charge of the implementation.
-
-        For example: returning (cls,) will make this class a singleton.
-        """  # noqa: DOC501
-        tmp = namedtuple("tmp", getattr(cls, "__match_args__"))  # pyright: ignore[reportUntypedNamedTuple]
-        try:
-            return tmp(*args, **kwds)
-        except TypeError as err:
-            msg = (
-                f"either defined {cls.__name__}.__match_args__ class attribute or override"
-                f" {cls.__name__}.__id__ class method"
-            )
-            raise IDError(msg) from err
-
-    def __get_instance__(
-        cls: type[_Multiton], value: int, default: _Multiton | None = None
-    ) -> _Multiton | None:
-        # sourcery skip: instance-method-first-arg-name, move-assign
-        """Return an instance of this class by its stored id value.
-
-        This method is intended to be called in a Multiton implementation
-        by a public get() method with a more useful signature than requiring
-        the internal and usually opaque id value.
-        """
-        use_weakref: bool = getattr(cls, MultitonType.WEAKREF_FLAG_NAME)
-        instances: dict[int, weakref.ReferenceType[_Multiton]] = getattr(
-            cls, MultitonType.INSTANCES_MAP_NAME
-        )
-        if instance := instances.get(value):
-            instance = instance() if use_weakref else cast("_Multiton", instance)
-        return instance or default
-
-
-class Multiton(metaclass=MultitonType): ...
+#     return sizeof(obj)
