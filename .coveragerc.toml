@@ -1,0 +1,53 @@
+[run]
+branch = true
+relative_files = true
+plugins = ["coverage_conditional_plugin", "Cython.Coverage"]
+source = ["src"]
+omit = ["*/__main__.py", "*/_version.py", "mureq.py"]
+
+[coverage_conditional_plugin.omit]
+"sys_platform == 'linux'" = [
+  "src/deluxe/_dirs_nt.py",
+  "src/deluxe/_dirs_darwin.py",
+]
+"sys_platform == 'win32'" = [
+  "src/deluxe/_dirs_linux.py",
+  "src/deluxe/_dirs_darwin.py",
+]
+"sys_platform == 'darwin'" = [
+  "src/deluxe/_dirs_linux.py",
+  "src/deluxe/_dirs_nt.py",
+]
+
+[coverage_conditional_plugin.rules]
+
+[report]
+fail_under = 0
+show_missing = true
+skip_covered = true
+partial_also = [
+  # our platform pragmas
+  "\\# pragma: (nt|posix|cygwin|darwin|linux|msys|win32|cpython|pypy) (no )?cover\\b",
+  # our version pragmas
+  "\\# pragma: (>=?|<=?|==|!=)\\d+\\.\\d+ cover\\b",
+]
+exclude_also = [
+  # allow defensive code
+  "^\\s*raise AssertionError\\b",
+  "^\\s*raise NotImplementedError\\b",
+  "^\\s*return NotImplemented\\b",
+  "^\\s*raise$",
+  # typing-related code
+  "^\\s*if (False|TYPE_CHECKING):",
+  ": \\.\\.\\.(\\s*#.*)?$",
+  "^ +\\.\\.\\.$",
+  "-> ['\"]?NoReturn['\"]?:",
+  # typeVar
+  "^.*\\s=\\sTypeVar\\(.*\\)$",
+  #
+  "^\\s*__slots__.*$",
+  # non-runnable code
+  "if __name__ == ['\"]__main__['\"]:$",
+  # overload method
+  "^@overload",
+]
