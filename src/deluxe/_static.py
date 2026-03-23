@@ -23,6 +23,7 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Protocol,
+    _no_init_or_replace_init,  # pyright: ignore[reportUnknownVariableType, reportAttributeAccessIssue]
     _ProtocolMeta,  # pyright: ignore[reportPrivateUsage]
     cast,
     no_type_check,
@@ -188,6 +189,9 @@ class StaticType(FrozenType, _ProtocolMeta):
                 if hasattr(abstract, "_is_protocol"):
                     namespace["_is_protocol"] = is_protocol
                     del_protocol = True
+                    if is_protocol:
+                        # Set __init__ to prevent protocol instantiation
+                        namespace["__init__"] = _no_init_or_replace_init  # pyright: ignore[reportUnreachable]
                 del_init = "__init__" not in namespace
 
             borrow_type(abstract or origin, namespace, name)
