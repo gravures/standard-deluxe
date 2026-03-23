@@ -44,13 +44,16 @@ ignore = [
 
 [lint.per-file-ignores]
 "tests/**.py" = [
-  "T20",    # Allow print statements in tests
-  "D",      # Ignore docstring rules in tests
-  "ANN",    # Ignore type annotations in tests
-  "S101",   # Yeah of course we assert in tests
-  "B009",   # Allow calling `getattr` in tests since it can be used to make the test clearer.
-  "CPY001", # missing copyright
+  "T20",  # Allow print statements in tests
+  "D",    # Ignore docstring rules in tests
+  "ANN",  # Ignore type annotations in tests
+  "S101", # Yeah of course we assert in tests
+  "B009", # Allow calling `getattr` in tests since it can be used to make the test clearer.
+  "CPY",  # missing copyright
+  "N801", # class name begin with cap
+  "I001", # unsorted import
 ]
+"**/*.pyi" = ["E3", "I", "PYI021", "CPY"]
 
 [lint.isort]
 lines-after-imports = 2
