@@ -376,7 +376,7 @@ def cythonize_extensions(context: Context) -> list[Extension]:
     )
 
     # return fast if no extensions were defined
-    if not settings.pop("extensions"):
+    if "extensions" not in settings or not settings.pop("extensions"):
         return []
 
     # extension handling
