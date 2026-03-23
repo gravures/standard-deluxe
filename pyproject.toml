@@ -62,6 +62,9 @@ nthreads = 0
 exclude_failures = false
 show_all_warnings = false
 
+[[tool.cython.cythonize.extensions]]
+name = "deluxe._cctypes"
+sources = ["src/deluxe/_ctypes.pyx"]
 
 [tool.cython.build]
 optional = false
