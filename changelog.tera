@@ -1,9 +1,11 @@
 {% if version.tag and from.tag -%}
     ##  Changelog for release [{{ version.tag }}]
+    {% set _ = "" %}
     {{repository_url ~ "/compare/" ~ from.tag ~ ".." ~ version.tag}}
     {{ date | date(format="%Y-%m-%d") }}
 {% elif version.tag and from.id -%}
     ##  Changelog for release [{{ version.tag }}]
+    {% set _ = "" %}
     {{repository_url ~ "/compare/" ~ from.id ~ ".." ~ version.tag}}
     {{ date | date(format="%Y-%m-%d") }}
 {% else -%}
@@ -12,12 +14,14 @@
     {% set from_shorthand = from.id | truncate(length=7, end="") -%}
     {% set to_shorthand = version.id | truncate(length=7, end="") -%}
     ## Unreleased [{{ from_shorthand ~ ".." ~ to_shorthand }}]
+    {% set _ = "" %}
     ({{repository_url ~ "/compare/" ~ from_shorthand ~ ".." ~ to_shorthand}})
 {% endif -%}
 
 {% if packages -%}
 {% if package_lock -%}
 ### Packages
+    {% set _ = "" %}
     {% for package in packages -%}
     {% if package.version.tag -%}
     - [{{ package.version.tag }}]({{ package.package_path }}) locked to [{{ package.version.tag }}]({{repository_url ~ "/tree/" ~ package.version.tag }})
@@ -25,6 +29,7 @@
     {% endfor -%}
     {% else -%}
     ### Package updates
+    {% set _ = "" %}
     {% for package in packages -%}
     {% if package.version.tag and package.from.tag -%}
     - [{{ package.version.tag }}]({{ package.package_path }}) bumped to [{{ package.version.tag }}]({{repository_url ~ "/compare/" ~ package.from.tag ~ ".." ~ package.version.tag}})
@@ -56,6 +61,7 @@
     {% set shorthand = commit.id | truncate(length=7, end="") -%}
     {{"  "}}- **({{ scope }})**{% if commit.breaking_change %} [**breaking**]{% endif %} {{ commit.summary }} - ([{{shorthand}}]({{ commit_link }})) - {{ author }}
 {% endfor -%}
+{% set _ = "" %}
 {% endfor -%}
 
 {% for commit in typed_commits | unscoped -%}
@@ -70,4 +76,5 @@
     {% set shorthand = commit.id | truncate(length=7, end="") -%}
     {{"  "}}- **{% if commit.breaking_change %} [**breaking**]{% endif %}{{ commit.summary }} - ([{{shorthand}}]({{ commit_link }})) - {{ author }}
 {% endfor -%}
+{% set _ = "" %}
 {% endfor -%}
