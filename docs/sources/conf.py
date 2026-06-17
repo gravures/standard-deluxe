@@ -50,19 +50,17 @@ author = ", ".join(authors)
 documentation_summary = read_toml("project", "description")
 
 # VERSIONS HANDLING
-version = "unknown"
+version = None
 with (
     contextlib.suppress(OSError),
-    Path(f"../../src/{project_lib}/_version.py").open("r", encoding="utf-8") as f,
+    (Path(__file__).parent.parent.parent / f"src/{project_lib}/_version.py").open(
+        "r", encoding="utf-8"
+    ) as file_,
 ):
     # we can't read dynamic variable from pyproject.toml
-    line = None
-    while line:
-        line = f.readline()
-        if line.startswith("__version__"):
-            version = line.split()[-1]
-            break
-release = version.strip("'")
+    _, _, version = file_.readline().partition("=")
+version = version or "unknown"
+release = version.strip(" '")
 
 # SPHINX GLOBALS
 extensions = [
@@ -86,7 +84,7 @@ modindex_common_prefix = [f"{project_lib}."]
 
 # SPHINX AUTO-API
 autoapi_dirs = [f"../../src/{project_lib}"]
-autoapi_ignore = []
+autoapi_ignore = []  # ["**/_types.pyx"]
 autoapi_root = "autoapi"
 autoapi_type = "python"
 autoapi_keep_files = False
@@ -94,7 +92,7 @@ autoapi_add_toctree_entry = False
 autoapi_python_class_content = "both"
 autoapi_member_order = "bysource"
 autoapi_python_use_implicit_namespaces = True
-autoapi_file_patterns = ["*.py", "*.pyi", "*.pyx"]
+autoapi_file_patterns = ["*.py", "*.pyi"]
 autoapi_template_dir = "sources/_templates/autoapi"
 autodoc_typehints = "signature"
 autodoc_inherit_docstrings = False
@@ -102,11 +100,11 @@ autoapi_options = [
     "members",
     "inherited-members",
     "undoc-members",
-    # "private-members",
     "show-inheritance",
     "show-module-summary",
+    "imported-members",
+    # "private-members",
     # "special-members",
-    # "imported-members",
     # "show-inheritance-diagram"
 ]
 
@@ -168,7 +166,7 @@ html_theme = "furo"
 html_theme_options = {
     "sidebar_hide_name": True,
     "announcement": (
-        f"<bold>{project.capitalize()}</bold> documentation<small>- version {release}</small>"
+        f"<bold>{project.capitalize()}</bold> documentation<small> - version {release}</small>"
     ),
     "navigation_with_keys": True,
     "top_of_page_button": "edit",  # None
