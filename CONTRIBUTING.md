@@ -1,5 +1,7 @@
 # Contributing
 
+<!-- rst content start -->
+
 Contributions are welcome and greatly appreciated!
 Every little bit helps, and credit will always be given.
 Environment Setup
