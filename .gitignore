@@ -167,3 +167,5 @@ builddir/
 AGENTS.md
 .qodo
 .codiumai*
+.grepai/
+.cython_errors
