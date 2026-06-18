@@ -83,6 +83,9 @@ add_function_parentheses = True
 add_module_names = False
 modindex_common_prefix = [f"{project_lib}."]
 
+# InterSphinx
+intersphinx_mapping = {"python": ("https://docs.python.org/3", None)}
+
 # SPHINX AUTO-API
 autoapi_dirs = [f"../../src/{project_lib}"]
 autoapi_ignore = []  # ["**/_types.pyx"]
