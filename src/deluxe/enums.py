@@ -14,45 +14,91 @@
 # You should have received a copy of the GNU General Public License
 # along with standard-deluxe. If not, see <https://www.gnu.org/licenses/>
 #
-# ruff: noqa: B009, ARG002
+# ruff: noqa: B009
+'''
+Provides an extended `EnumMeta` type.
+
+Allows usage of inlined docstrings on `Enum`'s members::
+
+    from deluxe.enums import Enum
+
+    class Colors(Enum):
+        black = "#00000"
+        """Pure black color."""
+
+        red = "#FF000"
+        """Pure red color."""
+
+
+Make the __set_name__() method of members to be called if present::
+
+    from deluxe.enums import Enum
+
+    class Named:
+        def __init__(self, value: object) -> None:
+            self.my_value: object = value
+            self.my_name: str
+            self.__objclass__: type
+
+        def __set_name__(self, owner: type, name: str) -> None:
+            self.my_name = name
+            self.__objclass__ = owner
+
+        def __str__(self) -> str:
+            return f"member {self.my_name} of {self.__objclass__} with value {self.my_value}"
+
+    class MyEnum(Enum):
+        ONE = Named(value = 1)
+        TWO = Named(value = "2")
+
+    >>> print(MyEnum.ONE.value)
+    member ONE of <enum 'MyEnum'> with value 1
+
+'''
+
 from __future__ import annotations
 
 import ast
 import inspect
-from enum import Enum as _Enum
-from enum import EnumMeta, FlagBoundary, _EnumDict  # pyright: ignore[reportPrivateUsage]
+from enum import (
+    Enum as _Enum,
+    EnumMeta,
+    FlagBoundary,
+    _EnumDict,  # pyright: ignore[reportPrivateUsage]
+)
 from functools import partial
 from operator import is_
-from typing import TYPE_CHECKING, ClassVar, Generic, Self, TypeVar, cast
+from typing import TYPE_CHECKING, TypeVar
 
 
-# from deluxe.types import Monad
-
-
-__all__ = ("Enum", "EnumType", "MaybeCallable")
+__all__ = ("Enum", "EnumType")
 
 
 _E = TypeVar("_E", bound="EnumType")
 
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
-
     # NOTE: At least pyright do not correctly see a valid EnumType,
-    #       here hidding our metaclass to typecheker has no downside.
+    #       here hiding our metaclass to type checker has no downside.
     EnumType = EnumMeta
+    """Subclass of python standard :class:`enum.EnumType` metaclass.
+
+    Features:
+        - Add support for inlined docstrings on members.
+        - Make the __set_name__() method of members to be called if present.
+    """
 
 else:
 
     class EnumType(EnumMeta):
-        """Subclass of python standard EnumType.
+        """Subclass of python standard :class:`enum.EnumType` metaclass.
 
         Features:
             - Add support for inlined docstrings on members.
             - Make the __set_name__() method of members to be called if present.
         """
 
-        def __new__(
+        def __new__(  # noqa: D102
             cls: type[_E],
             name: str,
             bases: tuple[type, ...],
@@ -62,7 +108,7 @@ else:
             _simple: bool = False,
             **kwds: object,
         ) -> _E:
-            cls_: _E = EnumType.__new__(
+            cls_: _E = EnumMeta.__new__(
                 cls, name, bases, classdict, boundary=boundary, _simple=_simple, **kwds
             )
             return EnumType._docstrings(cls_)
@@ -75,18 +121,22 @@ else:
             if (set_name := getattr(value, "__set_name__", None)) and callable(set_name):
                 set_name(cls, name)
 
-            getattr(EnumType, "_add_member_")(cls, name, member)
+            getattr(EnumMeta, "_add_member_")(cls, name, member)
 
         @staticmethod
         def _docstrings(enum: _E) -> _E:
             try:
                 mod = ast.parse(inspect.getsource(enum))
-            except OSError:  # no source code available
+            except OSError:  # pragma: no cover
+                # no source code available
                 return enum
 
-            if mod.body and isinstance(class_def := mod.body[0], ast.ClassDef):
-                # An enum member docstring is unassigned if it is the exact same object
-                # as enum.__doc__.
+            if mod.body and isinstance(class_def := mod.body[0], ast.ClassDef):  # pragma: no cover
+                # NOTE: coverage say this scope is untested but obviously it is!
+                #       so mark it `pragma: no cover`
+
+                # An enum member docstring is unassigned if it is the exact
+                # same object as enum.__doc__.
                 unassigned = partial(is_, enum.__doc__)
                 names = enum.__members__.keys()
                 member: _E | None = None
@@ -108,67 +158,4 @@ else:
 
 
 class Enum(_Enum, metaclass=EnumType):
-    """Standard python Enum class with `deluxe.EnumType`."""
-
-
-_T = TypeVar("_T", covariant=False)
-
-
-class MaybeCallable(Generic[_T]):
-    """Generic Monad wrapping up a type or a callable returning this same type."""
-
-    __slots__: ClassVar[tuple[str, ...]] = ("_callable_", "_value_")
-
-    def __new__(cls, value: _T | Callable[[_T], _T]) -> Self:  # noqa: D102
-        self = object.__new__(cls)
-        self._value_ = value
-        if callable(value):
-            self._callable_ = cast("Callable[[_T], _T]", value)
-        else:
-
-            def _u(*_: _T) -> _T:
-                msg = f"'{type(value).__name__}' object is not callable"
-                raise TypeError(msg)
-
-            self._callable_ = _u
-        return self
-
-    def __init__(self, value: _T | Callable[[_T], _T]) -> None:
-        self._callable_: Callable[[_T], _T]
-        self._value_: _T | Callable[[_T], _T]
-
-    @classmethod
-    def pure(cls, value: _T | Callable[[_T], _T]) -> Self:
-        """Returns a plain value wrapped into the monadic context."""
-        return cls(value)
-
-    def map(self, func: Callable[[_T | Callable[[_T], _T]], _T]) -> Self:
-        """Returns the result of a functorial map."""
-        return self.pure(func(self._value_))
-
-    def bind(self, func: Callable[[_T | Callable[[_T], _T]], Self]) -> Self:
-        """Returns the result of a monadic bind."""
-        return func(self._value_)
-
-    def unwrap(self) -> _T:
-        """Returns the plain wrapped value.
-
-        Raises:
-            TypeError: if value is a callable.
-        """
-        if callable(self._value_):
-            msg = "could only unwrap plain value"
-            raise TypeError(msg)
-        return self._value_
-
-    def __call__(self, *args: _T) -> _T:
-        """Returns a call on the wrapped value."""
-        return self._callable_(*args)
-
-    def __repr__(self) -> str:
-        if not isinstance(self, MaybeCallable) and callable(self):  # pyright: ignore[reportUnnecessaryIsInstance]
-            return f"{self.__class__.__name__}"  # Enum's member case
-        return f"{self.__class__.__name__}({self})"
-
-    def __str__(self) -> str:
-        return str(self._value_) if hasattr(self, "_value_") else self.__repr__()
+    """Standard python :class:`enum.Enum` class with `deluxe` :class:`EnumType` as metaclass."""
