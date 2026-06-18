@@ -26,37 +26,35 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
 
 
-##
-# Multiton Type
 _Multiton = TypeVar("_Multiton")
 
 
-class IDError(TypeError): ...
+class IDError(TypeError):
+    """Exception for Multiton identity errors.
+
+    Raised during Multiton instance creation when ``__id__`` arguments
+    do not match ``__match_args__``.
+
+    See :class:`Multiton` for details.
+    """
 
 
 @final
 class MultitonType(type):
-    """Multiton metaclass.
+    """Metaclass for the Multiton pattern.
 
-    The `Multiton` is an extension of the singleton design pattern.
-    It ensures that a limited number of instances of a class can exist
-    by associating a value with each instance and allowing only a single
-    object to be created for each of those values.
+    Implements the Multiton pattern where each unique combination of constructor
+    arguments maps to a single instance. Full documentation and usage details
+    are provided in the :class:`Multiton` base class.
 
-    For the sake of avoiding memory leak, the default behavior of a `Multiton`
-    class is to store weak references of the created instances. This way,
-    as soon as the reference count of an instance falls to zero, this reference
-    is discarded from its internal hash table.
+    Example::
 
-    So, it's up to the user to store instance's reference to keep them alive.
-    Alternatively to disable this behaviour, ones could pass the weakref=False
-    parameter at class definition this way :
+        class Point(metaclass=MultitonType):
+            __match_args__ = ('x', 'y')
 
-        class M(metaclass=MultitonType, weakref=False):
-            ...
-
-    The __init__ method of a `Multiton` is ensure to be called only once
-    by instance (except in the case of being explicitly called).
+            def __init__(self, x, y):
+                self.x = x
+                self.y = y
     """
 
     ID_METH_NAME = "__id__"
@@ -152,7 +150,6 @@ class MultitonType(type):
     if TYPE_CHECKING:
 
         def __init__(cls: type[_Multiton], *_args: Any, **_kwds: Any) -> None:
-            # sourcery skip: instance-method-first-arg-name
             # type annotations for class attributes
             # cls.__match_args__: tuple[str, ...]  # disable static hint attribute matching
             cls.__instances__: dict[int, type]
@@ -180,12 +177,12 @@ class MultitonType(type):
             raise TypeError(msg) from e
 
         def finalize(_cls: type[_Multiton], uid: int) -> None:
-            del instances[uid]
+            instances.pop(uid, None)
 
         if instance := instances.get(uid):
             instance = instance() if use_weakref else cast("_Multiton", instance)
 
-        if not instance:
+        if instance is None:
             instance = cast("_Multiton", type.__call__(cls, *args, **kwds))
             setattr(instance, "_values_", tuple(tmp))
 
@@ -216,18 +213,6 @@ class MultitonType(type):
         ) or super().__instancecheck__(instance)
 
     def __id__(cls: type[_Multiton], *args: object, **kwds: object) -> tuple[object, ...]:
-        """Returns a tuple of values for an incoming Multiton instance.
-
-        This class method is called before actual instance creation
-        (before the __new__ method was called). Arguments are the same
-        as those that will be passed to the __new__ and __init__ methods.
-
-        This method should return a tuple of hashable value that will uniquely
-        identify the future instance. How to build this tuple, based or not
-        on the passed arguments is in charge of the implementation.
-
-        For example: returning (cls,) will make this class a singleton.
-        """  # noqa: DOC501
         tmp = namedtuple("tmp", getattr(cls, "__match_args__"))  # pyright: ignore[reportUntypedNamedTuple]
         try:
             return tmp(*args, **kwds)
@@ -241,14 +226,6 @@ class MultitonType(type):
     def __get_instance__(
         cls: type[_Multiton], value: int, default: _Multiton | None = None
     ) -> _Multiton | None:
-        """Return an instance of this class by its stored id value.
-
-        This method is intended to be called in a Multiton implementation
-
-
-        by a public get() method with a more useful signature than requiring
-        the internal and usually opaque id value.
-        """
         use_weakref: bool = getattr(cls, MultitonType.WEAKREF_FLAG_NAME)
         instances: dict[int, weakref.ReferenceType[_Multiton]] = getattr(
             cls, MultitonType.INSTANCES_MAP_NAME
@@ -258,4 +235,121 @@ class MultitonType(type):
         return instance or default
 
 
-class Multiton(metaclass=MultitonType): ...
+class Multiton(metaclass=MultitonType):
+    """Multiton.
+
+    Implements the Multiton pattern, which extends the Singleton pattern
+    to allow a limited number of instances based on identifying values.
+
+    Each unique combination of constructor arguments maps to a single instance.
+    Subsequent calls with the same arguments return the same instance, while
+    different argument combinations create new instances (up to the limit of
+    unique argument combinations).
+
+    By default, instances are stored using weak references to prevent memory
+    leaks. When no strong references to an instance remain, it is automatically
+    removed from the internal cache. To disable weak reference behavior and
+    maintain strong references to all instances, set ``weakref=False`` when
+    defining the class:
+
+        class MyClass(Multiton, weakref=False):
+            ...
+
+    The `__init__` method of each instance is guaranteed to be called exactly
+    once per unique instance, unless explicitly invoked by user code.
+
+    To use this class, subclasses must either:
+
+    1. Define a `__match_args__` class attribute listing the attribute names
+       used for instance identification, or
+    2. Override the `__id__` class method to return a tuple of hashable values
+       that uniquely identify instances based on constructor arguments.
+
+    .. note::
+        The default weak reference behavior means instances will be garbage
+        collected when no longer referenced elsewhere in the program. To keep
+        instances alive, maintain a strong reference to them.
+
+    .. warning::
+        Overriding ``__id__`` or ``__match_args__`` incorrectly can lead to
+        unexpected behavior where different constructor arguments might
+        return the same instance or identical arguments might create
+        different instances.
+
+    Examples::
+
+        >>> class Point(Multiton):
+        ...     __match_args__ = ('x', 'y')
+        ...
+        ...     def __init__(self, x, y):
+        ...         self.x = x
+        ...         self.y = y
+        ...
+        >>> p1 = Point(1, 2)
+        >>> p2 = Point(1, 2)
+        >>> p1 is p2
+        True
+        >>> p3 = Point(3, 4)
+        >>> p1 is p3
+        False
+
+    Subclassing Interface
+    ----------------------
+
+    Multiton provides two overridable methods to customize instance identification
+    and retrieval:
+
+    ``__id__(cls, *args, **kwds) -> tuple[object, ...]``
+        Generates a unique instance identifier from constructor arguments.
+
+        The default implementation uses :attr:`__match_args__` to construct a
+        namedtuple from the constructor's positional and keyword arguments.
+        Override this method to provide custom identification logic when
+        :attr:`__match_args__` alone is insufficient.
+
+        This method accepts any positional (``*args``) and keyword (``**kwds``)
+        arguments passed to the class constructor and returns a tuple of
+        hashable values that uniquely identify the instance. Raises
+        :exc:`IDError` if the provided arguments do not match the attributes
+        defined in :attr:`__match_args__` and ``__id__`` has not been overridden.
+
+        Examples::
+
+            >>> class Point(Multiton):
+            ...     __match_args__ = ('x', 'y')
+            ...     def __init__(self, x, y):
+            ...         self.x = x
+            ...         self.y = y
+            ...
+            >>> Point.__id__(1, 2)
+            tmp(x=1, y=2)
+            >>> Point.__id__(x=3, y=4)
+            tmp(x=3, y=4)
+
+    ``__get_instance__(cls, value: int, default: T | None = None) -> T | None``
+        Retrieve an existing instance by its identifier hash.
+
+        This method looks up a previously created Multiton instance using
+        the hash value computed from the identifier tuple returned by
+        ``__id__``. It is intended to be called by a public ``get()`` class
+        method that provides a more user-friendly interface.
+
+        The ``value`` parameter should be the integer hash of the instance
+        identifier tuple. The ``default`` parameter specifies the value to
+        return if no instance with the given identifier hash exists (defaults
+        to ``None``).
+
+        Examples::
+
+            >>> class Point(Multiton):
+            ...     __match_args__ = ('x', 'y')
+            ...     def __init__(self, x, y):
+            ...         self.x = x
+            ...         self.y = y
+            ...
+            >>> p1 = Point(1, 2)
+            >>> Point.__get_instance__(hash(Point.__id__(1, 2))) is p1
+            True
+            >>> Point.__get_instance__(9999) is None
+            True
+    """

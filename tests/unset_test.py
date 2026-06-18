@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, assert_type
 
 import pytest
-from deluxe._cctypes import Unset, UnsetType
+from deluxe.types import Unset, UnsetType
 
 
 if TYPE_CHECKING:

@@ -107,6 +107,33 @@ def test_del():
         del a.a  # pyright: ignore[reportAttributeAccessIssue]
 
 
+def test_default_has_empty_slot():
+    class A(Frozen):
+        __frozen__: ClassVar[tuple[str, ...]] = ("a", "b")
+
+    class B(A): ...
+
+    assert "__slots__" in A.__dict__
+    assert "__slots__" in B.__dict__
+
+    b = B()
+    with pytest.raises(AttributeError):
+        b.o = 0  # pyright: ignore[reportAttributeAccessIssue]
+
+
+def test_slotted_frozen():
+    class A(Frozen):
+        __frozen__: ClassVar[tuple[str, ...]] = ("a", "b")
+        __slots__ = ("s",)  # pyright: ignore[reportUnannotatedClassAttribute]
+
+    a = A()
+    a.s = 2
+    a.s = 3
+
+    with pytest.raises(AttributeError):
+        a.o = 0  # pyright: ignore[reportAttributeAccessIssue]
+
+
 @pytest.fixture
 def point():
     class Point(Frozen):
