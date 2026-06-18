@@ -120,7 +120,13 @@ test = [
   "tox-pdm>=0.7.2",
   "dead>=2.1",
 ]
-docs = ["sphinx", "sphinx-autoapi", "myst-parser", "sphinx-copybutton", "furo"]
+docs = [
+  "sphinx",
+  "sphinx-autoapi",
+  "myst-parser",
+  "sphinx-copybutton",
+  "sphinx-immaterial",
+]
 
 #####################################################
 # PyTest
@@ -174,7 +180,7 @@ test-cover = "coverage report --skip-covered"
 test-bench = "pytest --force-short-summary --benchmark-only  --benchmark-warmup=on --benchmark-warmup-iterations=1000 --benchmark-name=short --benchmark-columns=mean,stddev,iqr,ops -k {args}"
 test-dead = "dead"
 
-builld-docs = "pdm run sphinx-build -M html ./docs/sources ./docs/build"
+build-doc = "pdm run sphinx-build -M html ./docs/sources ./docs/build"
 export-require = "pdm export -f requirements -o requirements.txt"
 
 checkup = { composite = [
