@@ -143,12 +143,13 @@ dmypy.json
 
 # Cython debug symbols
 cython_debug/
+.cython_errors
+src/deluxe/**/*.c
 
 # distribution generated file
 src/**/_version.py
 
-# sourcery
-.sourcery.yaml
+# ruff
 .ruff_cache
 
 # common
@@ -165,7 +166,4 @@ builddir/
 
 # Helpers
 AGENTS.md
-.qodo
-.codiumai*
 .grepai/
-.cython_errors
