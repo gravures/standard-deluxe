@@ -70,6 +70,7 @@ extensions = [
     "sphinx.ext.intersphinx",
     "sphinx.ext.viewcode",
     "sphinx_copybutton",
+    "sphinx_immaterial",
     "myst_parser",
 ]
 exclude_patterns = ["build", "Thumbs.db", ".DS_Store"]
@@ -159,31 +160,69 @@ inheritance_edge_attrs = {
 }
 
 # HTML OUTPUT
+# see: https://jbms.github.io/sphinx-immaterial/customization.html#customization
 templates_path = ["_templates"]
 html_static_path = ["_static"]
-html_theme = "furo"
-# html_title = f"{project.capitalize()} {release}"
+html_theme = "sphinx_immaterial"
+html_logo = None
 html_theme_options = {
-    "sidebar_hide_name": True,
-    "announcement": (
-        f"<bold>{project.capitalize()}</bold> documentation<small> - version {release}</small>"
-    ),
-    "navigation_with_keys": True,
-    "top_of_page_button": "edit",  # None
-    "dark_logo": "logo_dark.png",
-    "light_logo": "logo_light.png",
-    "footer_icons": [
+    "icon": {"logo": "material/library"},
+    "repo_url": read_toml("project", "urls", "repository"),
+    "features": [
+        "header.autohide",
+        "navigation.footer",
+        # "navigation.instant",  # BUG: break content.code.copy !
+        "navigation.sections",
+        "navigation.top",
+        "navigation.tracking",
+        "content.code.copy",
+        "content.tooltips",
+        "search.highlight",
+        "search.share",
+        # "toc.sticky",
+    ],
+    "toc_title_is_page_title": True,
+    "font": {
+        "text": "Roboto",  # used for all the pages' text
+        "code": "Roboto Mono",  # used for literal code blocks
+    },
+    "palette": [
         {
-            "name": "GitHub",
-            "url": read_toml("project", "urls", "homepage"),
-            "html": """
-                <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 16 16">
-                    <path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"></path>
-                </svg>
-            """,
-            "class": "",
+            "media": "(prefers-color-scheme)",
+            "scheme": "default",
+            "primary": "deep-purple",
+            "accent": "lime",
+            "toggle": {
+                "icon": "material/lightbulb",
+                "name": "Switch to light mode",
+            },
+        },
+        {
+            "media": "(prefers-color-scheme: light)",
+            "scheme": "default",
+            "primary": "purple",
+            "accent": "teal",
+            "toggle": {
+                "icon": "material/lightbulb",
+                "name": "Switch to dark mode",
+            },
+        },
+        {
+            "media": "(prefers-color-scheme: dark)",
+            "scheme": "slate",
+            "primary": "deep-purple",
+            "accent": "lime",
+            "toggle": {
+                "icon": "material/lightbulb",
+                "name": "Switch to system preference",
+            },
         },
     ],
+    "status": {
+        "new": {"title": "Recently added", "icon": "material/alert-decagram"},
+        "deprecated": {"title": "Deprecated", "icon": "material/trash-can"},
+    },
+    "navigation_with_keys": True,
 }
 
 
