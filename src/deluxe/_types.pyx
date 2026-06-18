@@ -7,8 +7,7 @@ from cpython.dict cimport PyDict_Contains, PyDict_SetItem, PyDict_GetItem
 cimport cython
 
 import sys
-from types import ModuleType
-from typing import TYPE_CHECKING, Any, ClassVar, Never, final, Protocol
+from typing import Any, ClassVar, Never, final
 
 
 cdef extern from "Python.h":
@@ -32,22 +31,26 @@ class _UnsetMeta(type):
 
 Unset: UnsetType
 
-
 @final
 class UnsetType(type, metaclass=_UnsetMeta):
-    """The type of the Unset singleton.
+    """The type of the :class:`Unset` singleton.
 
-    The `Unset` singleton is design to act as a sentinel type that
-    could be assigned to any type and mimic as far as possible `None`.
+    The `Unset` singleton is design to act as a sentinel value that
+    can be assigned to any type and mimics `None` where possible,
+    while being type-checker friendly.
 
     Example:
-        foo: str = None  # static type checker normally complain
-        bar: str = Unset  # should be valid for static type checker
-        assert not isinstance(bar, str)
+        >>> foo: str = None  # static type checker may complain
+        >>> bar: str = Unset  # should be valid for static type checker
+        >>> isinstance(bar, str)
+        False
+        >>> not Unset
+        True
+        >>> UnsetType() is Unset
+        True
 
-        assert not None
-        assert not Unset
-        assert UnsetType() is Unset
+    See Also:
+        :class:`Unset`: The singleton instance of this type.
     """
     def __new__(cls, *args: Any, **kwds: Any) -> UnsetType:
         global Unset
@@ -95,8 +98,6 @@ class UnsetType(type, metaclass=_UnsetMeta):
 
 
 Unset = UnsetType()
-"""The `Unset` singleton is design to act as a sentinel type that
-could be assigned to any type and mimic as far as possible `None`."""
 cdef PyObject* UNSET_PTR = <PyObject*> Unset
 
 ##
@@ -235,31 +236,3 @@ cdef class _Frozen:
     def __repr__(self) -> str:
         inner = ", ".join("=".join((k, str(getattr(self, k, Unset)))) for k in self.__frozen__)
         return f"{self.__class__.__name__}({inner})"
-
-
-class FrozenProtocol(Protocol):
-    __frozen__: ClassVar[tuple[str, ...]]
-
-
-class Frozen(FrozenProtocol, _Frozen):
-    def __init_subclass__(cls, **kwds: Any) -> None:
-        _Frozen.__cinit_subclass__(cls)
-
-    def __hash__(self) -> int:
-        return _Frozen.__hash__(self)
-
-    def __eq__(self, value: object, /) -> bool:
-        return _Frozen.__eq__(self, value)
-##
-#
-class _FrozenModule(ModuleType):
-    def __delattr__(self, name: str, /) -> None:
-        msg = f"cannot delete '{name}'"
-        raise SyntaxError(msg)
-
-    def __setattr__(self, name: str, value: Any, /) -> None:
-        msg = f"cannot assign to '{name}'"
-        raise SyntaxError(msg)
-
-
-sys.modules[__name__].__class__ = _FrozenModule

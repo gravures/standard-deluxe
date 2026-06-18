@@ -29,7 +29,7 @@ from typing import (
     no_type_check,
 )
 
-from deluxe._cctypes import Unset
+from deluxe._types import Unset
 
 
 if TYPE_CHECKING:
@@ -39,6 +39,58 @@ if TYPE_CHECKING:
 ##
 # FrozenType
 class FrozenType(type):
+    """A metaclass that make class immutable.
+
+    FrozenType creates types that cannot have their attributes modified after
+    class creation. This provides compile-time safety and prevents accidental
+    or intentional changes to class-level state.
+
+    Immutability Rules:
+        * **Deletion**: Attributes cannot be deleted from the class
+        * **Assignment**: Most attributes cannot be modified after creation
+
+    Exceptions:
+        The following attributes are exempt from immutability and can be modified:
+
+        * ``__abstractmethods__``: Required for ABC/Protocol functionality
+        * ``__protocol_attrs__``: Required for Protocol functionality
+        * Any attribute that is currently :class:`~deluxe._types.Unset`
+
+    Use Cases:
+        * Create classes that should never be modified
+        * Prevent accidental class attribute changes in large codebases
+        * Provide a stable class interface that cannot be altered by consumers
+        * Serve as a base for other metaclasses that need immutability
+          (e.g., :class:`StaticType`)
+
+    Examples:
+        Create a frozen class::
+
+            class Constants(metaclass=FrozenType):
+                VERSION = "1.0"
+                MAX_SIZE = 100
+
+            # These raise TypeError
+            Constants.VERSION = "2.0"  # TypeError: cannot set 'VERSION' attribute...
+            del Constants.VERSION     # TypeError: cannot delete 'VERSION' attribute...
+
+        Check if a class is frozen::
+
+            class Mutable:
+                pass
+
+            class Immutable(metaclass=FrozenType):
+                pass
+
+            type(Mutable)   # Returns <class 'type'>
+            type(Immutable) # Returns <class 'FrozenType'>
+
+    Note:
+        FrozenType only prevents changes at the class level. Instance attributes
+        (stored in ``__dict__``) are not affected — only class attributes defined
+        on the type itself.
+    """
+
     def __delattr__(cls, name: str, /) -> None:
         msg = f"cannot delete '{name}' attribute of immutable type '{cls.__name__}'"
         raise TypeError(msg)
@@ -54,6 +106,109 @@ class FrozenType(type):
 ##
 # StaticType
 class StaticType(FrozenType, _ProtocolMeta):
+    """A metaclass that make class derivation static.
+
+    StaticType creates types that "borrow" their attributes (methods, classmethods,
+    staticmethods, etc.) from a base class without using normal class inheritance.
+    When a class inherits from a StaticType-based type, it automatically becomes
+    a new StaticType and borrows all attributes from its parent.
+
+    This approach avoids the drawbacks of inheritance (method resolution order issues,
+    diamond problems, tight coupling) while allowing derived classes to use the
+    borrowed behaviors as if they were their own.
+
+    The borrowing mechanism:
+        * Attributes are copied (not referenced) from the parent to the child
+        * The child becomes a new StaticType, allowing further derivation
+        * ``__slots__`` from parent and child are merged if both are defined
+
+    Single Inheritance Restriction:
+        Because a class can only borrow from one source, multiple concrete base
+        classes are not supported. However, this metaclass supports special
+        combination with :class:`typing.Protocol` or :class:`abc.ABC` to allow
+        borrowing from a Protocol while remaining a Protocol.
+
+    Immutability:
+        Like :class:`FrozenType`, StaticType makes the created class immutable —
+        attributes cannot be set or deleted after class creation.
+
+    Relation to Traits:
+        StaticType shares the core philosophy of the `Traits`_ design pattern:
+        composing behavior without traditional inheritance. However, there are
+        key differences:
+
+        * **Implementation vs Interface**: Traits define a contract (interface)
+          that must be implemented by consuming classes. StaticType copies
+          behavior from an already-implemented class—the source already has full
+          implementations, not just signatures.
+
+        * **Multiple Composition**: Traits allow composing multiple traits into
+          a single class. StaticType supports only a single borrowing source
+          per class (linear derivation chain).
+
+        * **Commutativity**: Traits are commutative—``A + B`` is equivalent to
+          ``B + A``. StaticType is not commutative: deriving from ``A`` produces
+          a different result than deriving from ``B``, and importantly, you can
+          only derive from one source at a time.
+
+        * **Associativity**: Traits are associative—``(A + B) + C`` is equivalent
+          to ``A + (B + C)``. StaticType is not associative. Since you can only
+          borrow from one parent, the derivation is a linear chain:
+          ``Child → Parent → GrandParent``, not a tree or composition.
+
+        .. _Traits: https://en.wikipedia.org/wiki/Traits_(computer_programming)
+
+    Examples:
+        First, create a class using StaticType as its metaclass.
+        This class serves as the source of borrowed implementations::
+
+            class Vehicle(metaclass=StaticType):
+                def start(self) -> str:
+                    return "Engine started"
+
+                def stop(self) -> str:
+                    return "Engine stopped"
+
+        Now derive from it—attributes are copied (borrowed) to the new class::
+
+            class Car(Vehicle):
+                pass
+
+            # Car borrows start() and stop() from Vehicle
+            c = Car()
+            c.start()  # Returns "Engine started"
+
+        Deriving again creates a linear chain—each level borrows from its parent::
+
+            class SportsCar(Car):
+                pass
+
+            # Linear chain: SportsCar → Car → Vehicle
+            # SportsCar borrows from Car, which borrowed from Vehicle
+            sc = SportsCar()
+            sc.start()  # Returns "Engine started"
+
+        Combine with :class:`typing.Protocol` to create a non-instantiable
+        interface that can be implemented by derivation::
+
+            class Drawable(Protocol, metaclass=StaticType):
+                def draw(self) -> None: ...
+
+            # Drawable cannot be instantiated (it's a Protocol)
+            Drawable()  # Raises TypeError
+
+            class Shape(Drawable):
+                def draw(self) -> None:
+                    print("Drawing shape")
+
+            # Shape implements Drawable by derivation
+            Shape().draw()  # Prints "Drawing shape"
+
+    Raises:
+        TypeError: If multiple concrete base classes are provided, or if
+            attempting to create a Protocol from a non-Protocol concrete type.
+    """
+
     if TYPE_CHECKING:
 
         def __init__(cls, *_args: Any, **_kwds: Any) -> None:
@@ -121,7 +276,7 @@ class StaticType(FrozenType, _ProtocolMeta):
 
         @no_type_check
         def process_bases():
-            # Allow Protocol or ABC to be in bases along a concret type
+            # Allow Protocol or ABC to be in bases along a concrete type
             nonlocal is_protocol, bases, orig_bases, origin, abstract
 
             if len(bases) != 2:
