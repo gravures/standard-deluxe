@@ -1,7 +1,7 @@
 [run]
 branch = true
 relative_files = true
-plugins = ["coverage_conditional_plugin", "Cython.Coverage"]
+plugins = ["covdefaults", "coverage_conditional_plugin", "Cython.Coverage"]
 source = ["src"]
 omit = ["*/__main__.py", "*/_version.py", "mureq.py"]
 
@@ -22,7 +22,7 @@ omit = ["*/__main__.py", "*/_version.py", "mureq.py"]
 [coverage_conditional_plugin.rules]
 
 [report]
-fail_under = 0
+fail_under = 75
 show_missing = true
 skip_covered = true
 partial_also = [
