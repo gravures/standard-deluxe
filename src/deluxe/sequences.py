@@ -14,24 +14,48 @@
 # You should have received a copy of the GNU General Public License
 # along with standard-deluxe. If not, see <https://www.gnu.org/licenses/>
 #
-# ruff: noqa: PYI025, PYI019, PLW1641, ARG002
-"""Sequences module."""
+# ruff: noqa: PYI025, PYI019, PLW1641, ARG002, PLR1711, FURB180
+"""Ordered set data structures and sequence utilities.
+
+This module provides ordered set implementations that preserve insertion
+order while supporting the full :class:`~collections.abc.Set` protocol.
+Two variants are provided:
+
+* :class:`OrderedFrozenSet` — an immutable, hashable ordered set.
+* :class:`OrderedSet` — a mutable ordered set supporting in-place updates.
+
+The :func:`dedup_list` helper deduplicates a sequence while preserving
+element order.
+"""
 
 from __future__ import annotations
 
-from abc import ABC
+from abc import ABCMeta
 from collections.abc import Hashable, Iterator, MutableSet, Sequence, Set
 from copy import copy
 from functools import reduce
-from operator import and_, or_, sub, xor
+from operator import (
+    and_,  # pyright: ignore[reportUnknownVariableType]
+    ior,  # pyright: ignore[reportUnknownVariableType]
+    isub,  # pyright: ignore[reportUnknownVariableType]
+    ixor,  # pyright: ignore[reportUnknownVariableType]
+    or_,  # pyright: ignore[reportUnknownVariableType]
+    sub,
+    xor,  # pyright: ignore[reportUnknownVariableType]
+)
 from typing import TYPE_CHECKING, ClassVar, Generic, Literal, TypeVar, cast
 
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
+# NOTE: python operator module is poorly typed, this will cause
+#       a lot of type casting and type ignore comment.
+#       See: https://github.com/python/typeshed/issues/15611
+#
+# TODO: Implements sequence module in C
 
-__ALL__ = ("OrderedFrozenSet", "OrderedSet", "dedup_list")
+__ALL__ = ("OrderedFrozenSet", "OrderedSet", "dedup_list")  # pragma: no cover
 
 
 _V = TypeVar("_V")
@@ -39,17 +63,16 @@ _OST = TypeVar("_OST")
 
 
 def dedup_list(iterable: Iterable[object], lifo: bool = False) -> list[object]:
-    """Returns a list of distinc items from seq.
+    """Return a list of distinct items from iterable.
 
-    Generate a list of distinct elements from the iterable argument.
     By default first element will be kept at their index removing
     further duplicate occurrences. Setting lifo to True will inverse
     this behavior.
 
     Args:
-        iterable (Iterable[object]): The input Sequence.
+        iterable (:class:`Iterable[object]`): The input Sequence.
         lifo (bool, optional): If True, return the distinct elements
-        in Last-In-First-Out order. Defaults to False.
+            in Last-In-First-Out order. Defaults to False.
 
     Returns:
         list: A new list containing only distinct items.
@@ -62,7 +85,7 @@ def dedup_list(iterable: Iterable[object], lifo: bool = False) -> list[object]:
     return unique_[::-1] if lifo else unique_
 
 
-class _AbstractOrderedSet(ABC, Set[_V], Generic[_V]):
+class _AbstractOrderedSet(Set[_V], Generic[_V], metaclass=ABCMeta):  # pragma: no cover
     __slots__: ClassVar[tuple[str, ...]] = ("_map",)
 
     def __new__(cls: type[_OST], iterable: Iterable[_V] | None = None) -> _OST:
@@ -97,38 +120,39 @@ class _AbstractOrderedSet(ABC, Set[_V], Generic[_V]):
         return f"{self.__class__.__name__}({'{'}{', '.join(repr(e) for e in self._map)}{'}'})"
 
     def copy(self: _OST) -> _OST:
+        """Return a shallow copy of the set."""
         return copy(self)
 
     def issubset(self, other: Iterable[_V]) -> bool:
-        """Returns whether every element in the set is in other."""
+        """Return whether every element in the set is in other."""
         return self <= OrderedSet(other)
 
     def issuperset(self, other: Iterable[_V]) -> bool:
-        """Returns whether every element in other is in the set."""
+        """Return whether every element in other is in the set."""
         return self >= OrderedSet(other)
 
     def union(self: _OST, *others: Iterable[_V]) -> _OST:
         """Return a new set with elements from the set and all others."""
-        return reduce(or_, (self, *others)) if others else copy(self)
+        return cast("_OST", reduce(or_, (self, *others)) if others else copy(self))  # pyright: ignore[reportUnknownArgumentType]
 
     def intersection(self: _OST, *others: Iterable[_V]) -> _OST:
         """Return a new set with elements common to the set and all others."""
-        return reduce(and_, (self, *others)) if others else copy(self)
+        return cast("_OST", reduce(and_, (self, *others)) if others else copy(self))  # pyright: ignore[reportUnknownArgumentType]
 
     def difference(self: _OST, *others: Iterable[_V]) -> _OST:
         """Return a new set with elements in the set that are not in the others."""
-        return reduce(sub, (self, *others)) if others else copy(self)
+        return cast("_OST", reduce(sub, (self, *others)) if others else copy(self))  # pyright: ignore[reportArgumentType]
 
     def symmetric_difference(self: _OST, *others: Iterable[_V]) -> _OST:
         """Return a new set with elements in either the set or other but not both."""
-        return reduce(xor, (self, *others)) if others else copy(self)
+        return cast("_OST", reduce(xor, (self, *others)) if others else copy(self))  # pyright: ignore[reportUnknownArgumentType]
 
     # Sequence protocol:
     # NOTE: uses a linear search through the keys,
     #       which is inefficient (O(n) complexity).
     def __getitem__(self, index: int) -> _V:
         index = index if index >= 0 else index + len(self)
-        if index > 0:
+        if index >= 0:
             for i, elmnt in enumerate(self._map):
                 if i == index:
                     return elmnt
@@ -140,6 +164,17 @@ class _AbstractOrderedSet(ABC, Set[_V], Generic[_V]):
         yield from self._map.__reversed__()
 
     def index(self, item: _V) -> int:
+        """Return the position of *item* in the set.
+
+        Args:
+            item: The element to locate.
+
+        Returns:
+            :obj:`int`: The index of *item* in insertion order.
+
+        Raises:
+            ValueError: If *item* is not in the set.
+        """
         if item not in self._map:
             raise ValueError
         for i, elmnt in enumerate(self._map.keys()):
@@ -148,11 +183,25 @@ class _AbstractOrderedSet(ABC, Set[_V], Generic[_V]):
         raise ValueError
 
     def count(self, item: _V) -> Literal[0, 1]:
+        """Return ``1`` if *item* is in the set, ``0`` otherwise."""
         return 1 if item in self._map else 0
 
 
 class OrderedFrozenSet(_AbstractOrderedSet[_V], Hashable):
-    """A FrozenSet implementation retaining addition order."""
+    """An immutable ordered set that preserves insertion order.
+
+    :class:`OrderedFrozenSet` supports the full :class:`~collections.abc.Set`
+    protocol plus the :class:`~collections.abc.Sequence` protocol
+    (indexing, ``reversed()``, :meth:`index`, :meth:`count`).
+    Because it is :class:`~collections.abc.Hashable` it can be used as a
+    dictionary key or as a member of another set.
+
+    For a mutable variant see :class:`OrderedSet`.
+
+    .. note::
+        __getitem__ method uses a linear search through the keys,
+        which is inefficient (O(n) complexity) compared to a :class:`frozenset`.
+    """
 
     __slots__: ClassVar[tuple[str, ...]] = ()
 
@@ -161,54 +210,78 @@ class OrderedFrozenSet(_AbstractOrderedSet[_V], Hashable):
 
 
 class OrderedSet(_AbstractOrderedSet[_V], MutableSet[_V]):
-    """A mutable set implementation retaining addition order."""
+    """A mutable ordered set that preserves insertion order.
+
+    :class:`OrderedSet` extends :class:`~collections.abc.MutableSet` with
+    insertion-order memory and supports the :class:`~collections.abc.Sequence`
+    protocol (indexing, ``reversed()``, :meth:`index`, :meth:`count`).
+
+    .. note::
+        The :meth:`pop` method removes and returns the **most recently**
+        added element (LIFO order).
+
+    .. note::
+        __getitem__ method uses a linear search through the keys,
+        which is inefficient (O(n) complexity) compared to a :class:`set`.
+    """
 
     __slots__: ClassVar[tuple[str, ...]] = ()
 
     def add(self, value: _V) -> None:
-        """Add element elem to the set."""
-        # XXX: maybe this should be different, if val already in set just return
-        #      this would be more consistent until a implementing MutableSequence
-        self._map.pop(value, None)
-        self._map[value] = len(self)
+        """Add *value* to the set if it is not already present."""
+        if value not in self._map:
+            self._map[value] = len(self._map) + 1
 
     def discard(self, value: _V) -> None:
-        """Remove element elem from the set if it is present."""
-        # XXX: default pop the first item, seems more natural to pop out the last
+        """Remove *value* from the set if it is present; otherwise do nothing."""
         if value in self._map:
             self._map.pop(value)
 
     def pop(self) -> _V:
-        """Returns and removes the first element from the set.
+        """Return and remove the most recently added element (LIFO order).
 
         Raises:
-            KeyError: if the set is empty.
-        """  # noqa: DOC502
-        return super().pop()
+            KeyError: If the set is empty.
+        """
+        try:
+            tmp = self[-1]
+            del self._map[tmp]
+        except IndexError:
+            raise KeyError from None
+        else:
+            return tmp
 
     def clear(self) -> None:
         """Remove all elements from the set."""
         self._map.clear()
 
     def update(self, *others: Iterable[_V]) -> None:
-        """Update the set, adding elements from all others."""
+        """Update the set, adding the union of all iterables."""
         if others:
-            reduce(or_, (self, *others))
+            reduce(ior, (self, *others))  # pyright: ignore[reportUnknownArgumentType]
+        return  # pragma: no cover
 
     def intersection_update(self, *others: Iterable[_V]) -> None:
         """Update the set, keeping only elements found in it and all others."""
         if others:
-            reduce(and_, (self, *others))
+            # reduce(iand, (self, *others))
+            tmp: OrderedSet[_V] = OrderedSet[_V](self)
+            for o in others:
+                tmp = cast("OrderedSet[_V]", and_(tmp, OrderedSet(o)))
+            self._map = tmp._map  # pyright: ignore[reportUnannotatedClassAttribute]
+        return  # pragma: no cover
 
     def difference_update(self, *others: Iterable[_V]) -> None:
         """Update the set, removing elements found in others."""
         if others:
-            reduce(sub, (self, *others))
+            reduce(isub, (self, *others))  # pyright: ignore[reportUnknownArgumentType]
+        return  # pragma: no cover
 
     def symmetric_difference_update(self, *others: Iterable[_V]) -> None:
         """Update the set, keeping only elements found in either set, but not in both."""
         if others:
-            reduce(xor, (self, *others))
+            reduce(ixor, (self, *others))  # pyright: ignore[reportUnknownArgumentType]
+        return  # pragma: no cover
 
 
 Set.register(OrderedFrozenSet)  # pyright: ignore[reportUnknownMemberType, reportAttributeAccessIssue]
