@@ -19,13 +19,6 @@
 This module provides a collection of functions for working with files and paths
 across different operating systems. It includes utilities for path manipulation,
 file type detection, and system-specific operations.
-
-Key features:
-- Path splitting and drive detection
-- Windows and POSIX path differentiation
-- Binary and executable file detection
-- Windows PE file version extraction
-- Filesystem mount point identification
 """
 
 from __future__ import annotations
@@ -47,7 +40,6 @@ __all__ = (
     "is_exec",
     "is_winexec",
     "is_winpath",
-    "mount_point",
     "split_drive",
 )
 
@@ -56,10 +48,10 @@ _POSIX: bool = os.name == "posix"
 
 
 def split_drive(path: FilePath[str]) -> tuple[str, str]:
-    """Split a file path into its drive part and the rest of the path.
+    """Split a filepath into its drive part and the rest of the path.
 
     Args:
-        path (str|Path): The file path to split.
+        path (:class:`FilePath`): The filepath to split.
 
     Returns:
         tuple[str, str]: A tuple containing the drive and the rest of the path.
@@ -74,34 +66,37 @@ def is_winpath(path: FilePath[str]) -> bool:
     """Check if the given path is a Windows path.
 
     Args:
-        path (FilePath): The path to check.
+        path (:class:`FilePath`): The path to check.
 
     Returns:
         bool: on windows if the path is not a PurePosixPath always return True.
-        On POSIX return True if the path is an instance of PureWindowsPath.
-        Otherwise test the presence of a drive letter, UNC path double back slash
-        and forward slash as a guessing.
+        On POSIX return True if the path is an instance of PureWindowsPath,
+        otherwise test the presence of a drive letter, UNC path double back slash
+        and forward slash as guessing.
     """
-    if not _POSIX:
+    if not _POSIX:  # pragma: posix no cover
         return not isinstance(path, PurePosixPath)
 
     if isinstance(path, PureWindowsPath):
         return True
 
     drv, pth = split_drive(path)
+
     return True if bool(drv) and drv != "file" else bool(pth.startswith("\\\\"))
 
 
 def is_binary(path: FilePath[str]) -> bool:
     """Test if path point to a binary file.
 
+    Args:
+        path (:class:`FilePath`): The path to check.
+
     Returns:
         bool: True if file is binary, False otherwise.
     """
     # NOTE: https://gist.github.com/magnetikonline/7a21ec5f5bcdbf7adb92f9d617e6198f
     #        https://github.com/djmattyg007/python-isbinary
-    path_ = Path(path)
-    if not path_.is_file():
+    if not (path_ := Path(path)).is_file():
         return False
 
     read_bytes = 512
@@ -134,16 +129,14 @@ def is_exec(path: FilePath[str]) -> bool:
     and if this file has the executable permission set.
 
     Args:
-        path: The file path to check
-        for executable permission.
+        path (:class:`FilePath`): The path to check for executable permission.
 
     Returns:
         bool: True if the file has the executable permission, False otherwise.
               If the file does not exist or is not a regular file, the function
               returns False.
     """
-    path = Path(path).resolve()
-    return path.is_file() and os.access(path, os.X_OK)
+    return (path := Path(path).resolve()).is_file() and os.access(path, os.X_OK)
 
 
 def is_winexec(path: FilePath[str]) -> bool:
@@ -156,7 +149,7 @@ def is_winexec(path: FilePath[str]) -> bool:
     case-insensitive (capitalized) to handle different cases.
 
     Args:
-        path: The file path to check for the Windows
+        path (:class:`FilePath`): The path to check for the Windows
         executable extension.
 
     Returns:
@@ -164,9 +157,8 @@ def is_winexec(path: FilePath[str]) -> bool:
               If the file does not exist or is not a regular file, the function
               returns False
     """
-    path = Path(path).resolve()
     return bool(
-        path.is_file()
+        (path := Path(path).resolve()).is_file()
         and path.suffix.upper()
         in {
             ".COM",
@@ -184,7 +176,7 @@ def is_winexec(path: FilePath[str]) -> bool:
     )
 
 
-def get_pe_version(file: FilePath[str]) -> str | None:
+def get_pe_version(path: FilePath[str]) -> str | None:
     r"""Extract the version information from a Portable Executable (PE) file.
 
     Reads the specified Portable Executable (PE) file and extracts its version
@@ -193,7 +185,7 @@ def get_pe_version(file: FilePath[str]) -> str | None:
     'Major.Minor.Patch.Build' if available.
 
     Args:
-        file: The path to the Portable Executable (PE) file.
+        path (:class:`FilePath`): The path to the Portable Executable (PE) file.
 
     Returns:
         str or None: The version information of the PE file if available,
@@ -210,68 +202,32 @@ def get_pe_version(file: FilePath[str]) -> str | None:
         - The function returns None if the 'VS_VERSION_INFO' structure is not found
           or if an error occurs.
     """
-    if not Path(file).is_file():
+    if not Path(path).is_file():
         return None
 
     # http://windowssdk.msdn.microsoft.com/en-us/library/ms646997.aspx
     sig = struct.pack("32s", "VS_VERSION_INFO".encode("utf-16-le"))
-    version = None
 
     # NOTE: there is a pe file module available on pypi
     #       https://github.com/erocarrera/pefile
 
     # NOTE: This pulls the whole file into memory,
     #       so not very feasible for large binaries.
-    with Path(file).open("rb") as f:
-        data = f.read()
-        offset = data.find(sig)
-        if offset != -1:
-            data = data[offset + 32 : offset + 32 + (13 * 4)]
-            version_struct = struct.unpack("13I", data)
-            ver_ms, ver_ls = version_struct[4], version_struct[5]
-            version = "%d.%d.%d.%d" % (
-                ver_ls & 0x0000FFFF,
-                (ver_ms & 0xFFFF0000) >> 16,
-                ver_ms & 0x0000FFFF,
-                (ver_ls & 0xFFFF0000) >> 16,
-            )
-    return version
+    data = Path(path).read_bytes()
+    offset = data.find(sig)
+    if offset == -1:
+        return None
 
+    try:
+        data = data[offset + 32 : offset + 32 + (13 * 4)]
+        version_struct = struct.unpack("13I", data)
+    except struct.error:
+        return None
 
-def mount_point(path: FilePath[str]) -> Path | PureWindowsPath:
-    r"""Finds the mount point (root) of the filesystem containing the given path.
-
-    Takes a file path and traverses up the directory tree until it finds
-    its root. On POSIX it will be the mount point containing the path.
-    On Windows or if path is a PureWindowsPath, returns the root
-    of the filesystem (aka the anchor).
-
-    Args:
-        path: The file path for which to find the mount point.
-
-    Returns:
-        Path: The mount point or anchor containing the given path.
-
-    Examples:
-        >>> mount_point("/home/user/documents/file.txt")
-        PosixPath('/')
-
-        >>> mount_point("/mnt/data/photos/image.jpg")
-        PosixPath('/mnt')
-
-        >>> mount_point("C:\\projects\\code\\script.py")
-        WindowsPath('C:/')
-
-        >>> mount_point(PureWindowsPath('//host/share/usr'))
-        WindowsPath('//host/share/')
-    """
-    if not _POSIX:
-        return Path(path).expanduser().parents[-1]
-
-    if is_winpath(path):
-        return PureWindowsPath(path).parents[-1]
-
-    path = Path(path).expanduser()
-    while not path.is_mount():
-        path = path.parent
-    return path
+    ver_ms, ver_ls = version_struct[4], version_struct[5]
+    return "%d.%d.%d.%d" % (
+        ver_ls & 0x0000FFFF,
+        (ver_ms & 0xFFFF0000) >> 16,
+        ver_ms & 0x0000FFFF,
+        (ver_ls & 0xFFFF0000) >> 16,
+    )
