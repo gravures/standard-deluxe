@@ -19,9 +19,9 @@
 #   licensed under the BSD Zero Clause License
 #   Copyright (c) 2021 Shivaree Lingamneni
 #
-# This version of mureq has been modified as follow:
+# This version of mureq has been modified as follows:
 # - include type hints for all the functions and methods in the module.
-# - docstrings have been reformatted to be compliant the formers.
+# - docstrings have been reformatted to be compliant with former.
 # - the module docstring has been written with the library readme content.
 # - a new case for a raised exception has been added where a possible
 #   unbound variable seems to have been missed by original code.
@@ -68,17 +68,17 @@ by Ubuntu 21.10 for amd64:
 .. code-block:: bash
 
     python3 -c "import os; os.system('grep VmRSS /proc/' str(os.getpid()) + '/status')"
-    VmRSS:      7404 kB
+    VmRSS:      7404 kb
     python3 -c "import os, mureq; os.system('grep VmRSS /proc/' + str(os.getpid()) + '/status')"
-    VmRSS:     13304 kB
+    VmRSS:     13304 kb
     python3 -c "import os, mureq; mureq.get('https://www.google.com');
                 os.system('grep VmRSS /proc/' + str(os.getpid()) + '/status')"
-    VmRSS:     15872 kB
+    VmRSS:     15872 kb
     python3 -c "import os, requests; os.system('grep VmRSS /proc/' + str(os.getpid()) + '/status')"
-    VmRSS:     21488 kB
+    VmRSS:     21488 kb
     python3 -c "import os, requests; requests.get('https://www.google.com');
                 os.system('grep VmRSS /proc/' + str(os.getpid()) + '/status')"
-    VmRSS:     24352 kB
+    VmRSS:     24352 kb
 
 In terms of the time cost of HTTP requests, any differences between mureq and python-requests
 should be negligible, except in the case of workloads that use the connection pooling functionality
@@ -91,7 +91,7 @@ In order to use connection pooling, you must explicitly create and manage a `req
 
 It's unclear to me whether connection pooling even makes sense in the typical Python context
 (single-threaded synchronous I/O, where there's no guarantee that the thread of control will
-re-enter the connection pool). It is much easier to implement this correctly in Go
+reenter the connection pool). It is much easier to implement this correctly in Go
 (see: https://pkg.go.dev/net/http#Client).
 
 Security
@@ -374,7 +374,7 @@ def yield_response(
             source_address=source_address,
             ssl_context=ssl_context,
         )
-        enc_params = ""  # don't reappend enc_params if we get redirected
+        enc_params = ""  # don't re-append enc_params if we get redirected
         visited_urls.append(url)
         try:
             try:
@@ -406,7 +406,7 @@ def yield_response(
 class Response:
     """Response contains a completely consumed HTTP response.
 
-    :ivar str url: the retrieved URL, indicating whether a redirection occurred
+    :ivar str url: the retrieved URL, indicating whether redirection occurred
     :ivar int status_code: the HTTP status code
     :ivar http.client.HTTPMessage headers: the HTTP headers
     :ivar bytes body: the payload body of the response
@@ -573,7 +573,7 @@ def _prepare_outgoing_headers(headers: HTTPHeaders | HTTPMessage | None) -> HTTP
         headers = new_headers
 
     # NOTE: seems to be necessary for type checkers that do not want
-    #       to consider our HTTPHeedears type as acceptable parent type
+    #       to consider our HTTPHeaders type as acceptable parent type
     headers = cast("HTTPHeaders", dict(headers))
 
     _setdefault_header(headers, "User-Agent", DEFAULT_UA)
