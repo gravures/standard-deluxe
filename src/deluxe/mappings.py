@@ -48,6 +48,8 @@ from typing import (
     overload,
 )
 
+from deluxe.importers import import_fresh_module
+
 
 if TYPE_CHECKING:
     from types import ModuleType
@@ -84,10 +86,6 @@ class _OrderableDictMeta(type):
         namespace: dict[str, object],
         **kwds: object,
     ) -> _OrderableDictMeta:
-        from test.support.import_helper import (  # noqa: PLC0415
-            import_fresh_module,  # pyright:ignore[reportUnknownVariableType]
-        )
-
         collections_ = cast(
             "ModuleType",
             import_fresh_module("collections", blocked=["_collections"]),
