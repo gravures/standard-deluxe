@@ -1,3 +1,19 @@
+# Copyright (c) 2024 - Gilles Coissac
+# This file is part of standard-deluxe library.
+#
+# standard-deluxe is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published
+# by the Free Software Foundation, either version 3 of the License,
+# or (at your option) any later version.
+#
+# standard-deluxe is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty
+# of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with standard-deluxe. If not, see <https://www.gnu.org/licenses/>
+#
 """Functional programming utilities and monadic types.
 
 This module provides functional programming constructs including monads,
@@ -202,15 +218,12 @@ class Monad(Protocol[_T]):  # pragma: no cover
             print(lazy_string.unwrap())  # "42"
 
     Protocol Methods:
-        :meth:`pure`: Wrap a plain value in the monadic context.
-        :meth:`map`: Apply a function to the wrapped value (functorial map).
-        :meth:`bind`: Chain a function that returns cast(_OST, a monadic value.)
-        :meth:`join`: Flatten a monad of monads into a single monad.
-        :meth:`unwrap`: Extract the wrapped value from the monadic context.
-        :meth:`__call__`: Alias for :meth:`unwrap`, allowing monads to be called.
-
-    Type Parameters:
-        _T: The type of the value wrapped in the monadic context.
+        - :meth:`pure`: Wrap a plain value in the monadic context.
+        - :meth:`map`: Apply a function to the wrapped value (functorial map).
+        - :meth:`bind`: Chain a function that returns cast(_OST, a monadic value.)
+        - :meth:`join`: Flatten a monad of monads into a single monad.
+        - :meth:`unwrap`: Extract the wrapped value from the monadic context.
+        - :meth:`__call__`: Alias for :meth:`unwrap`, allowing monads to be called.
 
     See Also:
         - :class:`Lazy`: A concrete implementation of the :class:`Monad` protocol for
@@ -249,14 +262,14 @@ class Monad(Protocol[_T]):  # pragma: no cover
         theory.
 
         Args:
-            func: A function that takes a value of type ``_T`` and returns a
-                value of type ``_U``.
+            func: A callable that receives the wrapped value and returns a
+                transformed value of a (potentially different) type.
             *args: Additional positional arguments to pass to ``func``.
             **kwds: Additional keyword arguments to pass to ``func``.
 
         Returns:
-            A monadic instance of type ``Monad[_U]`` containing the result
-            of applying ``func`` to the wrapped value.
+            A monadic instance wrapping the result of ``func``, whose type
+            matches the return type of ``func``.
         """
         ...
 
@@ -272,14 +285,15 @@ class Monad(Protocol[_T]):  # pragma: no cover
         for sequencing computations.
 
         Args:
-            func: A function that takes a value of type ``_T`` and returns a
-                monadic value of type ``Monad[_U]``.
+            func: A callable that receives the wrapped value and returns a
+                monadic instance wrapping a value of a (potentially different)
+                type.
             *args: Additional positional arguments to pass to ``func``.
             **kwds: Additional keyword arguments to pass to ``func``.
 
         Returns:
-            A monadic instance of type ``Monad[_U]`` containing the result
-            of applying ``func`` to the wrapped value, with the nested monadic
+            A monadic instance wrapping the result of ``func``, whose type
+            matches the return type of ``func``, with the nested monadic
             structure flattened.
         """
         ...
@@ -312,8 +326,7 @@ class Monad(Protocol[_T]):  # pragma: no cover
         referential transparency.
 
         Returns:
-            The plain value of type ``_T`` that was wrapped in the monadic
-            context.
+            The plain value that was wrapped in the monadic context.
         """
         ...
 
@@ -325,8 +338,7 @@ class Monad(Protocol[_T]):  # pragma: no cover
         calling :meth:`unwrap`.
 
         Returns:
-            The plain value of type ``_T`` that was wrapped in the monadic
-            context.
+            The plain value that was wrapped in the monadic context.
         """
         ...
 
@@ -388,29 +400,152 @@ class Maybe(Generic[_T]):
 
     @property
     def type(self) -> type[_T]:
+        """Return the Python type of the wrapped value.
+
+        Returns:
+            The type of the value stored in this :class:`Maybe` instance.
+        """
         return self._type
 
     @classmethod
     def pure(cls, value: _T) -> Self:
+        """Wrap a plain value into the :class:`Maybe` monadic context.
+
+        Creates a new :class:`Maybe` instance containing the given value.
+        This is the primary way to enter the :class:`Maybe` context from
+        a non-monadic value.
+
+        Args:
+            value: The plain value to wrap in the :class:`Maybe` context.
+
+        Returns:
+            A :class:`Maybe` instance containing the wrapped ``value``.
+
+        Raises:
+            ValueError: If ``value`` is :class:`deluxe.types.Unset`.
+
+        Examples::
+
+            >>> from deluxe.functional import Maybe
+            >>> Maybe.pure(42)
+            Maybe[int](42)
+            >>> Maybe.pure("hello")
+            Maybe[str](hello)
+        """
         if value is Unset:
             msg = "Invalid 'Unset' value"
             raise ValueError(msg)
         return cls(value)
 
     def map(self, func: Callable[[_T], _U], *_args: Any, **_kwds: Any) -> Maybe[_U]:
+        """Apply a function to the wrapped value (functorial map).
+
+        This method transforms the value inside the :class:`Maybe` context by
+        applying the given function. It preserves the monadic structure, returning
+        a new :class:`Maybe` containing the transformed value.
+
+        If this :class:`Maybe` is empty (contains :class:`deluxe.types.Unset`),
+        the function is not called and an empty :class:`Maybe` is returned.
+
+        Args:
+            func: A callable that receives the wrapped value and returns a
+                transformed value of a (potentially different) type.
+
+        Returns:
+            A new :class:`Maybe` wrapping the result of ``func``, whose type
+            matches the return type of ``func``. Returns an empty :class:`Maybe`
+            if this instance is empty.
+
+        Examples::
+
+            >>> from deluxe.functional import Maybe
+            >>> Maybe.pure(5).map(lambda x: x * 2)
+            Maybe[int](10)
+            >>> Maybe().map(lambda x: x * 2)
+            Maybe[NoneType](Unset)
+        """
         if self._value is Unset:
             return cast("Maybe[_U]", Maybe())
         return Maybe(func(self._value))
 
     def bind(self, func: Callable[[_T], Maybe[_U]], *_args: Any, **_kwds: Any) -> Maybe[_U]:
+        """Chain a function that returns a :class:`Maybe` value.
+
+        This method allows for chaining computations that produce :class:`Maybe`
+        results. It applies the function to the wrapped value, which itself returns
+        a :class:`Maybe`, and then flattens the result to avoid nested monads.
+
+        If this :class:`Maybe` is empty (contains :class:`deluxe.types.Unset`),
+        the function is not called and an empty :class:`Maybe` is returned.
+
+        The ``bind`` operation (also known as ``flatMap`` or ``>>=`` in other
+        languages) is the fundamental operation that gives monads their power
+        for sequencing computations.
+
+        Args:
+            func: A callable that receives the wrapped value and returns a
+                :class:`Maybe` wrapping a value of a (potentially different)
+                type.
+        Returns:
+            A new :class:`Maybe` wrapping the result of ``func``, whose type
+            matches the return type of ``func``, with the nested :class:`Maybe`
+            structure flattened.
+
+        Examples::
+
+            >>> from deluxe.functional import Maybe
+            >>> def double_if_positive(x: int) -> Maybe[int]:
+            ...     return Maybe(x * 2) if x > 0 else Maybe()
+            >>> Maybe.pure(5).bind(double_if_positive)
+            Maybe[int](10)
+            >>> Maybe.pure(-1).bind(double_if_positive)
+            Maybe[NoneType](Unset)
+        """
         if self._value is Unset:
             return cast("Maybe[_U]", Maybe())
         return func(self._value)
 
     def join(self) -> Self:
+        """Flatten a nested :class:`Maybe` into a single :class:`Maybe`.
+
+        This method unwraps one level of monadic structure, which is useful
+        when dealing with nested :class:`Maybe` contexts. It extracts the
+        value and re-wraps it in a fresh :class:`Maybe`.
+
+        The ``join`` operation is related to ``bind`` and is defined as:
+        ``m.join() == m.bind(lambda x: x)``.
+
+        Returns:
+            A :class:`Maybe` instance with one level of nesting removed.
+
+        Examples::
+
+            >>> from deluxe.functional import Maybe
+            >>> nested = Maybe(Maybe(42))
+            >>> nested.join()
+            Maybe[int](42)
+        """
         return self.pure(self.unwrap())
 
     def unwrap(self) -> _T:
+        """Extract the wrapped value from the :class:`Maybe` context.
+
+        This method returns the plain value contained within the monadic
+        structure. If this :class:`Maybe` is empty, it returns
+        :class:`deluxe.types.Unset`.
+
+        Returns:
+            The plain value of type ``_T`` that was wrapped in the
+            :class:`Maybe` context, or :class:`deluxe.types.Unset` if empty.
+
+        Examples::
+
+            >>> from deluxe.functional import Maybe
+            >>> Maybe.pure(42).unwrap()
+            42
+            >>> Maybe().unwrap()
+            Unset
+        """
         return self._value
 
     def __call__(self) -> _T:
@@ -490,10 +625,6 @@ class Lazy(Generic[_T]):
         (``__objclass__`` and ``_name_``) when instances are assigned
         as class attributes. To access the value, explicitly call :meth:`unwrap`
         or use the callable syntax ``instance()``.
-
-    Type Parameters:
-        _T: The type of the value that will be produced when the lazy
-            computation is evaluated.
 
     Args:
         value: A callable (typically a function or lambda) that will be
@@ -584,8 +715,8 @@ class Lazy(Generic[_T]):
         chaining transformations in a lazy context.
 
         Args:
-            func: A function that takes a value of type ``_T`` and returns
-                a value of type ``_U``.
+            func: A callable that receives the unwrapped value and returns a
+                transformed value of a (potentially different) type.
             type: The type of the value that ``func`` will return.
 
         Returns:
@@ -615,8 +746,9 @@ class Lazy(Generic[_T]):
         computations where each step produces a new lazy context.
 
         Args:
-            func: A function that takes a value of type ``_T`` and returns a
-                :class:`Lazy` instance of type ``_U``.
+            func: A callable that receives the unwrapped value and returns a
+                :class:`Lazy` wrapping a value of a (potentially different)
+                type.
             type: The type of the value that the returned :class:`Lazy` will
                 produce.
 
@@ -809,13 +941,9 @@ class MaybeCallable(Generic[_T]):
         handle callable enum members. The ``@member`` decorator from
         :mod:`enum` is used to mark static methods as callable enum members.
 
-    Type Parameters:
-        _T: The type of the value that can be either a plain value or
-            a callable returning this same type.
-
     Args:
-        value: Either a plain value of type ``_T`` or a callable that
-            accepts no arguments and returns a value of type ``_T``.
+        value: Either a plain value or a callable that accepts no arguments
+            and returns a value of the same type.
 
     See Also:
         - :class:`Lazy`: A monad for lazy evaluation of computations.
@@ -845,29 +973,110 @@ class MaybeCallable(Generic[_T]):
 
     @classmethod
     def pure(cls, value: _T | Callable[[_T], _T]) -> Self:
-        """Returns a plain value wrapped into the monadic context."""
+        """Wrap a plain value or callable into the monadic context.
+
+        Creates a new :class:`MaybeCallable` instance containing the given
+        value. This is the primary way to enter the :class:`MaybeCallable`
+        context from a non-monadic value.
+
+        Args:
+            value: A plain value or a callable that returns a value.
+
+        Returns:
+            A new :class:`MaybeCallable` wrapping the given value.
+        """
         return cls(value)
 
     def map(self, func: Callable[[_T | Callable[[_T], _T]], _T]) -> Self:
-        """Returns the result of a functorial map."""
+        """Apply a function to the wrapped value (functorial map).
+
+        This method transforms the value inside the :class:`MaybeCallable`
+        context by applying the given function. It preserves the monadic
+        structure, returning a new :class:`MaybeCallable` containing the
+        transformed value.
+
+        Args:
+            func: A callable that receives the wrapped value and returns a
+                transformed value of a (potentially different) type.
+
+        Returns:
+            A new :class:`MaybeCallable` wrapping the result of ``func``,
+            whose type matches the return type of ``func``.
+        """
         return self.pure(func(self._value_))
 
     def bind(self, func: Callable[[_T | Callable[[_T], _T]], Self]) -> Self:
-        """Returns the result of a monadic bind."""
+        """Chain a function that returns a :class:`MaybeCallable` value.
+
+        This method allows for chaining computations that produce
+        :class:`MaybeCallable` results. It applies the function to the
+        wrapped value, which itself returns a :class:`MaybeCallable`, and
+        then flattens the result to avoid nested monads.
+
+        The ``bind`` operation (also known as ``flatMap`` or ``>>=`` in
+        other languages) is the fundamental operation that gives monads
+        their power for sequencing computations.
+
+        Args:
+            func: A callable that receives the wrapped value and returns a
+                :class:`MaybeCallable` wrapping a value of a (potentially
+                different) type.
+
+        Returns:
+            A new :class:`MaybeCallable` wrapping the result of ``func``,
+            whose type matches the return type of ``func``, with the
+            nested :class:`MaybeCallable` structure flattened.
+        """
         return func(self._value_)
 
     def join(self) -> Self:
+        """Flatten a nested :class:`MaybeCallable` into a single instance.
+
+        This method unwraps one level of monadic structure, which is useful
+        when dealing with nested :class:`MaybeCallable` contexts. It
+        extracts the value and re-wraps it in a fresh :class:`MaybeCallable`.
+
+        The ``join`` operation is related to ``bind`` and is defined as:
+        ``m.join() == m.bind(lambda x: x)``.
+
+        Returns:
+            A :class:`MaybeCallable` instance with one level of nesting
+            removed.
+        """
         return self.pure(self.unwrap())
 
     def unwrap(self) -> _T:
-        """Returns the plain wrapped value."""
+        """Extract the plain wrapped value from the monadic context.
+
+        This method returns the plain value contained within the monadic
+        structure. Raises an error if the wrapped value is a callable
+        rather than a plain value.
+
+        Returns:
+            The plain value that was wrapped in the :class:`MaybeCallable`
+            context.
+
+        Raises:
+            TypeError: If the wrapped value is a callable.
+        """
         if callable(self._value_):
             msg = "could only unwrap plain value"
             raise TypeError(msg)
         return self._value_
 
     def __call__(self, *args: _T) -> _T:
-        """Returns a call on the wrapped value."""
+        """Call the wrapped callable with the given arguments.
+
+        This method invokes the wrapped callable and returns its result.
+        If the wrapped value is not callable, a :class:`TypeError` is
+        raised.
+
+        Args:
+            *args: Arguments to pass to the wrapped callable.
+
+        Returns:
+            The result of calling the wrapped callable.
+        """
         return self._callable_(*args)
 
     def __repr__(self) -> str:
