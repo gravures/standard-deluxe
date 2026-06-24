@@ -1,0 +1,317 @@
+[tools]
+uv = "latest"
+
+[env]
+_.path = ".venv/bin"
+
+[settings]
+pipx.uvx = true
+python.uv_venv_auto = "create|source"
+python.uv_venv_create_args = []
+
+[tasks.python]
+description = "the venv python executable"
+usage = '''
+arg "[args]" var=#true help="any arguments to provide to python"
+'''
+quiet = true
+run = "python3 ${usage_args}"
+
+[tasks._setup]
+hide = true
+quiet = true
+depends = [
+  { task = "pc:init" },
+  { task = "sync", args = ["--all-groups"] },
+]
+run = [
+  { task = "python", args = ["./tools/traceback.py"]},
+  { task = "show"},
+]
+
+#
+# Project
+#
+[tasks."project:setup"]
+alias = "setup"
+description = "setup a developpment environment"
+quiet = true
+run = '''
+{% if not env.GITHUB_WORKFLOW %}
+  mise run _setup
+{% endif %}
+'''
+
+[tasks."project:lock"]
+alias = "lock"
+description = "resolve and lock dependencies"
+usage = '''
+arg "[args]" var=#true help="any arguments to provide to uv lock command"
+'''
+quiet = true
+run = "uv lock ${usage_args}"
+
+[tasks."project:sync"]
+alias = "sync"
+description = "synchronize the current working set with lock file"
+usage = '''
+arg "[args]" var=#true help="any arguments to provide to uv sync command"
+'''
+quiet = true
+run = "uv sync --reinstall-package standard-deluxe --locked --all-packages --no-python-downloads ${usage_args}"
+
+[tasks."project:install"]
+alias = "install"
+description = "Install project dependencies"
+usage = '''
+arg "[args]" var=#true help="any arguments to provide to uv sync command"
+'''
+quiet = true
+depends = ["lock", { task = "sync", args = ["{{usage.args}}"] }]
+
+[tasks."project:build"]
+alias = "build"
+description = "build artifacts for distribution"
+quiet = true
+run = "uv build --all-packages --no-python-downloads"
+
+[tasks."project:publish"]
+alias = "publish"
+description = "build and publish the project to PyPI"
+quiet = true
+run = "uv publish -v --no-python-downloads ./dists/*"
+
+#
+# info
+#
+[tasks."info:show"]
+alias = "show"
+description = "show project summary"
+quiet = true
+run = "./tools/show.py"
+
+[tasks."info:list"]
+alias = "list"
+description = "list packages installed in the current working set"
+quiet = true
+run = "uv tree --locked --depth 1 --no-dedupe --universal --all-groups --outdated --color always"
+
+[tasks."info:require"]
+alias = "require"
+description = "export lock file as requirements"
+quiet = true
+depends = [ "lock" ]
+run = "uv export --format requirements.txt --all-packages > requirements"
+
+[tasks.bump]
+quiet = true
+run = "cog bump --dry-run --auto --skip-untracked"
+
+#
+# Pre-commit
+#
+[tasks."pc:init"]
+description = "initialize pre-commit"
+tools."pipx:pre-commit" = "latest"
+quiet = true
+run = "pre-commit install --install-hooks"
+
+[tasks."pc:update"]
+description = "update pre-commit hooks"
+depends = ["pc:init"]
+quiet = true
+run = "pre-commit autoupdate"
+
+[tasks."pc:check"]
+description = "run pre-commit hooks"
+depends = ["pc:init"]
+quiet = true
+env = { SKIP="basedpyright" }
+run = "pre-commit run --all-files"
+
+[tasks."pc:clean"]
+description = "cleanup pre-commit hooks"
+depends = ["pc:init"]
+quiet = true
+run = ["pre-commit clean", "pre-commit gc"]
+
+[tasks."pc:safe"]
+description = "run pre-commit safety dependencices check"
+depends = ["pc:init", "require"]
+quiet = true
+run = "pre-commit run --hook-stage manual python-safety-dependencies-check"
+
+#
+# Tests
+#
+[tasks."test:all"]
+alias = "test"
+description = "run the tests suite"
+quiet = true
+usage = '''
+arg "[args]" var=#true help="any additional arguments to provide to pytest"
+'''
+run = "pytest --benchmark-skip --numprocesses auto --force-short-summary --tb=short  -k ${usage_args}"
+
+[tasks."test:cover"]
+alias = "cover"
+description = "run the tests suite with coverage"
+usage = '''
+arg "[args]" var=#true help="any additional arguments to provide to pytest"
+'''
+quiet = true
+run = "pytest --cov deluxe --benchmark-skip --numprocesses auto ${usage_args}"
+
+[tasks."test:report"]
+alias = "report"
+description = "report tests coverage"
+quiet = true
+run = "coverage report --no-skip-covered"
+
+[tasks."test:tox"]
+alias = "tox"
+description = "run tests suite with tox"
+quiet = true
+run = "tox --develop -r -e py"
+
+[tasks."test:benchmarks"]
+description = "run benchmarks tests suite"
+usage = '''
+arg "[args]" var=#true help="any additional arguments to provide to pytest"
+'''
+quiet = true
+run = "pytest --force-short-summary --benchmark-only  --benchmark-warmup=on --benchmark-warmup-iterations=1000 --benchmark-name=short --benchmark-columns=mean,stddev,iqr,ops -k ${usage_args}"
+
+#
+# Types
+#
+[tasks."types:typecheck"]
+alias = "typecheck"
+description = "check type annotations"
+usage = '''
+arg "[files]" {
+  help "files to typecheck, default to src/deluxe/**/*.py"
+  var #true
+}
+'''
+quiet = true
+run = '''
+{% if usage_files %}
+  basedpyright ${usage_files}
+{% else %}
+  basedpyright 'src/deluxe/**/*.py'
+{% endif %}
+'''
+
+[tasks."types:mypy"]
+alias = "mypy"
+description = "check type annotations with mypy"
+tools."pipx:mypy" = "latest"
+usage = '''
+arg "[files]" {
+  help "files to typecheck, default to src/deluxe/**/*.py"
+  var #true
+}
+'''
+quiet = true
+run = '''
+{% if usage_files %}
+  mypy --pretty ${usage_files}
+{% else %}
+  mypy --pretty 'src/deluxe'
+{% endif %}
+'''
+
+[tasks."types:typyness"]
+alias = "typyness"
+description = "check type annotations completness"
+usage = '''
+arg "[packages]" {
+  help "package name(s) to check, default to 'deluxe'"
+  var #true
+}
+'''
+quiet = true
+run = "./tools/typyness.py ${usage_packages}"
+
+#
+# Documentation
+#
+[tasks."docs:build"]
+alias = "docs"
+description = "build project documentation"
+quiet = true
+run = "sphinx-build -M html ./docs/sources ./docs/build"
+
+#
+# Lint
+#
+[tasks."lint:check"]
+alias = "lint"
+description = "check code syntax"
+usage = '''
+arg "[files]" {
+  help "files to check, default to src/deluxe/**/*.py"
+  var #true
+  default "src/deluxe"
+}
+'''
+quiet = true
+run = "ruff check --no-fix ${usage_files}"
+
+[tasks."lint:format"]
+description = "check code formatting"
+usage = '''
+arg "[files]" {
+  help "files to check, default to src/deluxe/**/*.py"
+  var #true
+  default "src/deluxe"
+}
+'''
+quiet = true
+run = "ruff format --check ${usage_files}"
+
+
+#
+# Codes
+#
+[tasks."code:format"]
+description = "format python code"
+alias = "format"
+usage = '''
+arg "[files]" {
+  help "files to format, default to src/deluxe/**/*.py"
+  var #true
+  default "src/deluxe"
+}
+'''
+quiet = true
+run = "ruff format ${usage_files}"
+
+[tasks."code:dead"]
+alias = "dead"
+description = "looks for dead code paths"
+tools."pipx:dead" = "latest"
+quiet = true
+dir = "{{ [config_root] | concat(with='src/deluxe') | join_path }}"
+run = "dead"
+
+[tasks."code:stats"]
+alias = "stats"
+description = "show code statistics"
+quiet = true
+run = "tokei --sort code"
+
+[tasks."code:reports"]
+alias = "reports"
+description = "show a full report for the project"
+quiet = true
+run = [
+  { task = "show" },
+  { task = "list" },
+  { task = "stats" },
+  # { task = "pc-check" },
+  { task = "typecheck" },
+  { task = "dead" },
+  { task = "cover" },
+]

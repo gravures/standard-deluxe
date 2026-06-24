@@ -26,9 +26,6 @@ dynamic = ["version"]
 requires-python = ">=3.11"
 dependencies = []
 
-[tool.uv.sources]
-furo = { git = "https://github.com/gravures/furo", rev = "gravures" }
-
 #####################################################
 # Build Settings
 #####################################################
@@ -51,7 +48,7 @@ write_to = "deluxe/_version.py"
 write_template = "__version__ = '{}'"
 
 #####################################################
-# Cython
+# Cython extensions modules
 #####################################################
 [tool.cython]
 enabled = true
@@ -91,37 +88,35 @@ embedsignature = true
 'warn.unused_result' = true
 'warn.multiple_declarators' = true
 
-
 #####################################################
 # Dev Dependencies
 #####################################################
 [dependency-groups]
 dev = [
-  "basedpyright>=1.28",
-  "ruff>=0.9",
-  "pre-commit>=4.1",
+  "basedpyright",
+  "ruff",
   "pretty-errors>=1.2.25",
   "cython>=3.2.0",
   "cython-lint",
   "pdm-backend",
   "setuptools",
-  "hypothesis>=6.150.0",
 ]
 test = [
   "pytest>=9.0",
+  "pytest-cov >= 7.0",
+  "pytest-xdist[psutil] >= 3.8",
   "pytest-benchmark",
-  "hypothesis",
+  "hypothesis>=6.150.0",
   "coverage[toml]>=7.13",
   "coverage-conditional-plugin",
   "covdefaults",
   "tox>=4.24",
   "tox-pdm>=0.7.2",
-  "dead>=2.1",
 ]
 docs = [
-  "sphinx",
-  "sphinx-autoapi",
-  "myst-parser",
+  "sphinx>=9.0",
+  "sphinx-autoapi>=3.6",
+  "myst-parser>=5.0",
   "sphinx-copybutton",
   "sphinx-immaterial",
 ]
@@ -144,49 +139,3 @@ buildCommand = [
   "${defaultBuildDir}",
 ]
 pythonCommand = ["uv", "run", "python"]
-
-#####################################################
-# PDM SCRIPTS
-#####################################################
-[tool.pdm.scripts]
-install-traceback = "_traceback.py"
-
-lock_ = "uv lock --no-python-downloads"
-sync_ = "uv sync --reinstall-package standard-deluxe --locked --all-packages --no-python-downloads {args}"
-build_ = "uv build --all-packages --no-python-downloads"
-publish_ = "uv publish -v --no-python-downloads ./dists/*"
-install_ = { composite = ["lock_", "sync_"] }
-list_ = "pdm list --fields name,groups,version,licenses,homepage --sort groups,name,licenses --exclude :sub"
-
-pc-init = { composite = ["pre-commit install --install-hooks", "pc-update"] }
-pc-update = "pre-commit autoupdate"
-pc-check = { env = { "SKIP" = "basedpyright" }, cmd = "pre-commit run --all-files" }
-pc-clean = "pre-commit clean && pre-commit gc"
-pc-safety = { composite = [
-  "export-require",
-  "pre-commit run python-safety-dependencies-check",
-
-] }
-
-test = "pytest --benchmark-skip --force-short-summary --tb=short  -k {args}"
-test-all = "coverage run -m pytest --benchmark-skip {args}"
-test-tox = "tox --develop -r -e py"
-test-types = "basedpyright --stats ./src/**"
-test-mypy = "mypy --pretty ./src/**"
-test-typyness = "typyness.py"
-test-cover = "coverage report --skip-covered"
-test-bench = "pytest --force-short-summary --benchmark-only  --benchmark-warmup=on --benchmark-warmup-iterations=1000 --benchmark-name=short --benchmark-columns=mean,stddev,iqr,ops -k {args}"
-test-dead = "dead"
-
-build-doc = "pdm run sphinx-build -M html ./docs/sources ./docs/build"
-export-require = "pdm export -f requirements -o requirements.txt"
-
-checkup = { composite = [
-  "pdm show",
-  "list_",
-  "tokei --sort code",
-  "pc-check",
-  "test-types",
-  "dead",
-  "test-cover",
-], keep_going = true }
