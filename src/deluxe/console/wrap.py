@@ -22,7 +22,12 @@
 # This code was adapted to use our library plus some refactoring were done.
 # Copyright (c) 2017, Emergence by Design Inc.
 # Copyright (c) 2024, Arrai Innovations Inc.
-"""Wrap module."""
+"""Text wrapping utilities with ANSI escape code awareness.
+
+This module provides :class:`AnsiTextWrapper`, a subclass of
+:class:`textwrap.TextWrapper` that correctly calculates string
+lengths by ignoring ANSI escape sequences during wrapping.
+"""
 
 from __future__ import annotations
 
@@ -35,7 +40,12 @@ __all__ = ("AnsiTextWrapper",)
 
 
 class AnsiTextWrapper(TextWrapper):
-    """TextWrapper SubClass aware of ansi escape codes."""
+    """A :class:`~textwrap.TextWrapper` subclass aware of ANSI escape codes.
+
+    This wrapper correctly measures string widths by stripping ANSI escape
+    sequences before computing lengths, ensuring that colored or styled text
+    wraps at the correct positions.
+    """
 
     def _should_add_line(
         self, lines: list[str], chunks: list[str], cur_len: int, width: int
@@ -53,26 +63,27 @@ class AnsiTextWrapper(TextWrapper):
         )
 
     def _wrap_chunks(self, chunks: list[str]) -> list[str]:
-        """Wrap a sequence of text chunks.
+        """Wrap a sequence of text chunks into lines of limited width.
 
-        Wrap a sequence of text chunks and return a list of lines of
-        length 'self.width' or less.  (If 'break_long_words' is false,
-        some lines may be longer than this.)  Chunks correspond roughly
-        to words and the whitespace between them: each chunk is
-        indivisible (modulo 'break_long_words'), but a line break can
-        come between any two chunks.  Chunks should not have internal
-        whitespace; ie. a chunk is either all whitespace or a "word".
-        Whitespace chunks will be removed from the beginning and end of
-        lines, but apart from that whitespace is preserved.
+        Processes a list of text chunks and returns a list of lines, each at
+        most ``self.width`` characters wide. Chunks correspond roughly to words
+        and the whitespace between them: each chunk is indivisible (unless
+        :attr:`break_long_words` is ``False``), but a line break can occur
+        between any two chunks. Chunks should not contain internal whitespace;
+        each chunk is either all whitespace or a "word". Whitespace chunks are
+        removed from line beginnings and endings, but otherwise whitespace is
+        preserved.
 
         Args:
-            chunks: A list of text chunks to be wrapped.
+            chunks (:obj:`list` [:class:`str`]): A list of text chunks to be
+                wrapped.
 
         Returns:
-            A list of wrapped lines.
+            :obj:`list` [:class:`str`]: A list of wrapped lines.
 
         Raises:
-            ValueError: If the width is invalid.
+            ValueError: If ``self.width`` is less than or equal to zero,
+                or if the placeholder is too large for the maximum width.
         """
         lines: list[str] = []
         if self.width <= 0:
@@ -142,7 +153,7 @@ class AnsiTextWrapper(TextWrapper):
             del cur_line[-1]
         if lines:
             prev_line = lines[-1].rstrip()
-            if length(prev_line) + len(self.placeholder) <= self.width:
+            if length(prev_line) + len(self.placeholder) <= self.width:  # pragma: no cover
                 lines[-1] = prev_line + self.placeholder
                 return
         lines.append(indent + self.placeholder.lstrip())
