@@ -62,6 +62,70 @@ class AnsiTextWrapper(TextWrapper):
             )
         )
 
+    @staticmethod
+    def _visible_break_pos(text: str, max_visible: int) -> int:
+        """Return the character index where visible length reaches *max_visible*.
+
+        ANSI escape sequences are treated as zero-width: the index returned
+        always falls *outside* any escape sequence so that slicing never
+        splits one in the middle.
+        """
+        visible = 0
+        i = 0
+        n = len(text)
+        while i < n and visible < max_visible:
+            if text[i] == "\x1b" and i + 1 < n:
+                next_ch = text[i + 1]
+                if next_ch == "[":
+                    # CSI: ESC [ <params> <command>
+                    i += 2
+                    while i < n and text[i] not in {"J", "K", "m"}:
+                        i += 1
+                    i += 1  # skip command character
+                elif next_ch == "]":
+                    # OSC: ESC ] <content> BEL
+                    i += 2
+                    while i < n and text[i] != "\a":
+                        i += 1
+                    i += 1  # skip BEL
+                else:
+                    # Unknown escape: count as visible characters
+                    visible += 2
+                    i += 2
+            else:
+                visible += 1
+                i += 1
+        return i
+
+    def _handle_long_word(
+        self, reversed_chunks: list[str], cur_line: list[str], cur_len: int, width: int
+    ) -> None:
+        """Break a long word respecting ANSI escape sequence boundaries.
+
+        Overrides the inherited :meth:`TextWrapper._handle_long_word` to
+        measure visible width via :func:`length` instead of :func:`len`,
+        preventing escape sequences from being split across lines.
+        """
+        space_left = width - cur_len
+
+        if self.break_long_words and space_left > 0:
+            chunk = reversed_chunks[-1]
+            end = self._visible_break_pos(chunk, space_left)
+
+            # Respect hyphen-breaking if the visible prefix contains a
+            # suitable hyphen position.
+            if self.break_on_hyphens and length(chunk) > space_left:
+                visible_prefix = strip_esc(chunk[:end])
+                hyphen = visible_prefix.rfind("-", 0, len(visible_prefix))
+                if hyphen > 0 and any(c != "-" for c in visible_prefix[:hyphen]):
+                    end = self._visible_break_pos(chunk, hyphen + 1)
+
+            cur_line.append(chunk[:end])
+            reversed_chunks[-1] = chunk[end:]
+
+        elif not cur_line:
+            cur_line.append(reversed_chunks.pop())
+
     def _wrap_chunks(self, chunks: list[str]) -> list[str]:
         """Wrap a sequence of text chunks into lines of limited width.
 

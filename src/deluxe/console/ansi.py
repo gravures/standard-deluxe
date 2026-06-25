@@ -43,7 +43,6 @@ import re
 import sys
 from abc import abstractmethod
 from typing import (
-    Any,
     ClassVar,
     Literal,
     Protocol,
@@ -76,8 +75,8 @@ __all__ = [
 
 
 if sys.platform in {"win32", "cygwin"} and importlib.util.find_spec("colorama"):
-    colorama = importlib.import_module("colorama")
-    colorama.just_fix_windows_console()
+    colorama = importlib.import_module("colorama")  # pragma: no cover
+    colorama.just_fix_windows_console()  # pragma: no cover
 
 
 class C0(Protocol):
@@ -328,11 +327,9 @@ def set_title(title: str) -> str:
 
 _STRIP_ESC = re.compile(
     r"""
-    (?:\x1b[\[\]])      # escape code
-    (?:\d+;)?           # |
-    (\.*)               # params
-    (?:;)?              # |
-    (?:(\d+[JKm])|(\a)) # command
+    \x1b\[(?:\d+;)*\d*[JKm]  # CSI: ESC [ <params> <command>
+    |
+    \x1b\].*?\a               # OSC: ESC ] <content> BEL
     """,
     flags=re.VERBOSE,
 )
@@ -344,11 +341,7 @@ def strip_esc(string: str) -> str:
     Returns:
         str: the given string with OSC/CSI escape sequences removed.
     """
-
-    def text(match: Any) -> str:
-        return match.groups()[0] if match else string
-
-    return re.sub(_STRIP_ESC, text, string)
+    return re.sub(_STRIP_ESC, "", string)
 
 
 def length(string: str) -> int:
