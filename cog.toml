@@ -2,12 +2,12 @@
 from_latest_tag = true
 ignore_merge_commits = true
 disable_changelog = false
-disable_bump_commit = true
+disable_bump_commit = false
 skip_ci = "[skip ci]"
 skip_untracked = true
 tag_prefix = "v"
 
-branch_whitelist = ["main"]
+# branch_whitelist = ["main"]
 
 pre_bump_hooks = []
 post_bump_hooks = []
@@ -21,6 +21,8 @@ post_package_bump_hooks = []
 # feat*, fix*,  security*, build, ci, revert, docs, test, style, chore, perf*
 security = { changelog_title = "Security", bump_minor = true }
 perf = { changelog_title = "Performance", bump_minor = true }
+refactor = { changelog_title = "Refactoring", bump_minor = true }
+docs = { changelog_title = "Documentation", bump_minor = true }
 # Omit commits from changelog
 chore = { changelog_title = "", omit_from_changelog = true }
 ci = { changelog_title = "", omit_from_changelog = true }
@@ -37,4 +39,3 @@ template = "changelog.tera"
 
 [bump_profiles]
 [git_hooks]
-[packages]
