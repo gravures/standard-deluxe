@@ -30,7 +30,8 @@ import importlib.util
 import re
 import sys
 import warnings
-from typing import IO, TYPE_CHECKING, Any, ClassVar, Final, TypeVar, cast
+from argparse import _MutuallyExclusiveGroup  # pyright: ignore[reportPrivateUsage]
+from typing import IO, TYPE_CHECKING, Any, ClassVar, Final, TypeVar, cast, no_type_check
 
 from deluxe.console import ansi
 from deluxe.console.wrap import AnsiTextWrapper
@@ -41,7 +42,7 @@ try:
         gettext as _,
         ngettext,  # pyright:ignore[reportAssignmentType]
     )
-except ImportError:
+except ImportError:  # pragma: no cover
 
     def _(message: str) -> str:
         return message
@@ -238,7 +239,8 @@ class AnsiHelpFormatter(argparse.HelpFormatter):
                 help_lines = self._split_lines(help_text, help_width)
                 parts.append("%*s%s\n" % (indent_first, "", help_lines[0]))
                 parts.extend("%*s%s\n" % (help_position, "", line) for line in help_lines[1:])
-        elif not action_header.endswith("\n"):
+        elif not action_header.endswith("\n"):  # pragma: no cover
+            # seems to be dead branch
             parts.append("\n")
 
         # if there are any sub-actions, add their help as well
@@ -265,6 +267,7 @@ class AnsiHelpFormatter(argparse.HelpFormatter):
         elif usage is None and not actions:
             usage = f"{self._prog}"
         elif usage is None:
+            # XXX: this branch seems to be dead code
             prog = f"{self._prog}"
             # split optionals from positionals
             optionals: list[argparse.Action] = []
@@ -276,7 +279,18 @@ class AnsiHelpFormatter(argparse.HelpFormatter):
                     positionals.append(action)
 
             # build full usage string
-            format_ = self._format_actions_usage
+            @no_type_check
+            def format_(
+                actions: Iterable[argparse.Action],
+                groups: Iterable[_MutuallyExclusiveGroup],
+            ) -> str:
+                # Python 3.14 removed _format_actions_usage in favor of
+                # _get_actions_usage_parts which returns (parts, pos_start).
+                if hasattr(self, "_get_actions_usage_parts"):  # pragma >=3.14 cover
+                    parts, _pos_start = self._get_actions_usage_parts(actions, groups)
+                    return " ".join(parts)
+                return self._format_actions_usage(actions, groups)  # pragma <3.14 cover
+
             action_usage = format_(optionals + positionals, groups)
             usage = " ".join([s for s in [prog, action_usage] if s])
 
@@ -323,7 +337,7 @@ class AnsiHelpFormatter(argparse.HelpFormatter):
                         lines.extend(get_lines(pos_parts, indent))
                     elif pos_parts:
                         lines = get_lines([prog, *pos_parts], indent, prefix)
-                    else:
+                    else:  # pragma: no cover
                         lines = [prog]
                 else:
                     # if prog is long, put it on its own line
@@ -444,9 +458,7 @@ class AnsiHelpFormatter(argparse.HelpFormatter):
         if not (help_string := self._get_help_string(action)):
             raise ValueError
 
-        help_string % params  # pyright: ignore[reportUnusedExpression]
-
-        return help_string
+        return help_string % params
 
 
 class RawAnsiHelpFormatter(argparse.RawTextHelpFormatter, AnsiHelpFormatter):
@@ -565,13 +577,49 @@ class PrettyParser(argparse.ArgumentParser):
     experience with colored and styled help output, automatic shell completion,
     and improved error handling for better library integration.
 
-    Unlike the standard parser, this class lets you embed ANSI escape codes
-    directly in help text, descriptions, and usage strings without breaking
-    layout calculations. The default :class:`PrettyHelpFormatter` takes care
-    of proper padding and wrapping of ANSI-formatted text. It also combines
-    the behaviours of :class:`~argparse.RawDescriptionHelpFormatter` and
+    Color Support
+    _____________
+
+    This class lets you embed ANSI escape codes directly in help text,
+    descriptions, and usage strings without breaking layout calculations.
+    The default :class:`PrettyHelpFormatter` takes care of proper padding
+    and wrapping of ANSI-formatted text. It also combines the behaviors
+    of :class:`~argparse.RawDescriptionHelpFormatter` and
     :class:`~argparse.ArgumentDefaultsHelpFormatter`, so you get both raw
     description preservation and automatic default display out of the box.
+
+    Two independent colouring mechanisms coexist and do not conflict:
+
+    1. **Deluxe ANSI styles** (:attr:`AnsiHelpFormatter.styles`): the
+       default :class:`PrettyHelpFormatter` embeds ANSI escape codes
+       directly into help text, descriptions, and usage strings via the
+       :meth:`AnsiHelpFormatter._ansi_style` helper.  The style palette
+       is controlled through the :attr:`AnsiHelpFormatter.styles` class
+       dictionary (see :class:`AnsiHelpFormatter` for the full list of
+       keys).  This mechanism is always active regardless of the
+       ``color`` parameter.
+
+    2. **Python 3.14+ stdlib colour** (``color`` parameter): starting
+       with Python 3.14, the standard library gained built-in colour
+       support through the ``color`` keyword on
+       :class:`~argparse.ArgumentParser` and
+       :class:`~argparse.HelpFormatter`.  The stdlib uses the
+       ``_colorize`` module to query terminal capabilities and applies
+       its own theme (``self._theme``) to the *usage line* only (via
+       :meth:`~argparse.HelpFormatter._get_actions_usage_parts`).  This
+       is completely separate from the deluxe ``styles`` dictionary and
+       does not alter how descriptions, group headings, or argument help
+       are coloured.  On Python versions prior to 3.14 the ``color``
+       parameter is accepted but silently ignored.
+
+    The two systems are orthogonal: deluxe styles always emit ANSI codes
+    for the full help output, while the stdlib ``color`` flag controls
+    terminal-aware colour in the usage line on Python 3.14+.  Setting
+    ``color=False`` disables only the stdlib portion; deluxe styles
+    remain active and can be customized through :attr:`AnsiHelpFormatter.styles`.
+
+    Errors Handling
+    _______________
 
     When ``exit_on_error`` is ``True`` (the default), argument errors raise
     :exc:`~argparse.ArgumentError` instead of calling ``sys.exit()``. This
@@ -582,13 +630,23 @@ class PrettyParser(argparse.ArgumentParser):
     You can also override the :meth:`error` method to implement fully custom
     error handling logic.
 
+    Setting Version
+    _______________
+
     A ``-v``/``--version`` option is added automatically when a ``version``
     string is provided to the constructor. Running the program with this
     option prints the program name followed by the version string and exits.
+
+    Prefix
+    ______
+
     The default ``"usage: "`` prefix that appears at the beginning of the
     usage line can be replaced with any custom string through the ``prefix``
     parameter, which is useful for programmes that need a different label
     in their usage output.
+
+    Shell Completion
+    ________________
 
     Optional shell completion is available through `argcomplete
     <https://github.com/kislyuk/argcomplete>`_ for bash, zsh, fish, and
@@ -599,6 +657,7 @@ class PrettyParser(argparse.ArgumentParser):
     script to stdout and exits. The ``argcomplete`` package must be
     installed; if it is not found, an :exc:`ImportWarning` is emitted
     and shell completion is silently disabled for the rest of the session.
+
 
     For full documentation of the base parser API, see
     :class:`~argparse.ArgumentParser`.
@@ -643,6 +702,15 @@ class PrettyParser(argparse.ArgumentParser):
             option is added. If ``argcomplete`` is not installed, a
             warning is emitted and completion is disabled.
             Default: ``False``.
+        color (:obj:`bool`): If ``True``, allow color output in help
+            messages.  Forwarded to the base parser on Python 3.14+;
+            ignored on older versions where the stdlib does not support
+            this parameter. Default: ``True``.
+        suggest_on_error (:obj:`bool`): If ``True``, suggest closest
+            matches when a subcommand or argument is mistyped.
+            Forwarded to the base parser on Python 3.14+; ignored on
+            older versions where the stdlib does not support this
+            parameter. Default: ``False``.
 
     Attributes:
         exit_on_error: Whether to raise :exc:`~argparse.ArgumentError` on errors.
@@ -674,25 +742,37 @@ class PrettyParser(argparse.ArgumentParser):
         allow_abbrev: bool = True,
         exit_on_error: bool = True,
         shell_completion: bool = False,
+        color: bool = True,
+        suggest_on_error: bool = False,
+        **_extra: Any,
     ) -> None:
         if parents is None:
             parents = []
 
-        super().__init__(
-            prog=prog,
-            usage=usage,
-            description=description,
-            epilog=epilog,
-            parents=parents,
-            formatter_class=formatter_class,
-            prefix_chars=prefix_chars,
-            fromfile_prefix_chars=fromfile_prefix_chars,
-            argument_default=argument_default,
-            conflict_handler=conflict_handler,
-            add_help=add_help,
-            allow_abbrev=allow_abbrev,
-            exit_on_error=exit_on_error,
-        )
+        # Forward version-specific kwargs to the base parser.
+        # Python 3.14+ added 'color' and 'suggest_on_error' to
+        # ArgumentParser.__init__; earlier versions do not accept them.
+        base_kwargs: dict[str, Any] = {
+            "prog": prog,
+            "usage": usage,
+            "description": description,
+            "epilog": epilog,
+            "parents": parents,
+            "formatter_class": formatter_class,
+            "prefix_chars": prefix_chars,
+            "fromfile_prefix_chars": fromfile_prefix_chars,
+            "argument_default": argument_default,
+            "conflict_handler": conflict_handler,
+            "add_help": add_help,
+            "allow_abbrev": allow_abbrev,
+            "exit_on_error": exit_on_error,
+        }
+        if (sys.version_info.major, sys.version_info.minor) >= (3, 14):  # pragma: >=3.14 cover
+            base_kwargs["color"] = color
+            base_kwargs["suggest_on_error"] = suggest_on_error
+        base_kwargs.update(_extra)
+
+        super().__init__(**base_kwargs)
         self.exit_on_error: bool = exit_on_error
         self.prefix: str = prefix or ""
         self.version: str = version or ""
