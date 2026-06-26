@@ -74,6 +74,7 @@ import io
 import json
 import logging
 import multiprocessing
+import os
 import shutil
 import subprocess as sp
 import sys
@@ -108,6 +109,9 @@ if __name__ == "_local":
 
 
 logger = logging.getLogger("pdm-build-cython")
+
+
+POSIX: bool = os.name == "posix"
 
 
 def color(color: int) -> str:  # noqa: D103
@@ -270,7 +274,6 @@ class CythonExtensionParams(ExtensionParams, _Extension):
 
 
 def path_from_str(path: str):  # noqa: D103
-    # TODO: do we want to handle `./src` location here?
     return Path(path)
 
 
@@ -341,12 +344,13 @@ def get_distutils_extensions(context: Context) -> list[Extension]:
     and each extensions item itself.
     """
     data = context.config.data
+    default: dict[str, Any] = {}
     return [
         Extension(
             **(
                 asdict(
                     ExtensionParams(
-                        **lookup("tool.cython.build", data, {}),
+                        **lookup("tool.cython.build", data, default),
                     )
                 )
                 | asdict(ext)
@@ -371,8 +375,9 @@ def cythonize_extensions(context: Context) -> list[Extension]:
     tool: dict[str, object] = lookup("tool", context.config.data, {})
 
     # copy the cythonize table to not mutate the context
+    default: dict[str, Any] = {}
     settings = deepcopy(
-        lookup("tool.cython.cythonize", context.config.data, {}),
+        lookup("tool.cython.cythonize", context.config.data, default),
     )
 
     # return fast if no extensions were defined
@@ -389,11 +394,11 @@ def cythonize_extensions(context: Context) -> list[Extension]:
 
     # compiler directives
     settings.pop("compiler_directives", None)
-    directives = lookup("cython.compiler.directives", tool, {})
+    directives = lookup("cython.compiler.directives", tool, default)
     logger.debug("Compiler Directives: %s", json.dumps(directives, indent=2))
 
     # setup cython.Options
-    for key, value in lookup("options", tool, {}).items():
+    for key, value in lookup("options", tool, default).items():
         setattr(Options, key, value)
 
     # Optional redirection of cython compilation errors in file
@@ -480,7 +485,8 @@ def pdm_build_update_files(context: Context, _files: dict[str, Path]) -> None:
     src = Path(
         context.config.build_config["editable_root"], context.config.build_config.package_dir
     )
-    objects = list(Path(context.build_dir).glob("**/*.so"))
+    pattern = "**/*.so" if POSIX else "**/*.pyd"
+    objects = list(Path(context.build_dir).glob(pattern))
 
     for obj in objects:
         dest = src / obj.relative_to(context.build_dir)
