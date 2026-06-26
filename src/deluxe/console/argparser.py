@@ -14,7 +14,14 @@
 # You should have received a copy of the GNU General Public License
 # along with standard-deluxe. If not, see <https://www.gnu.org/licenses/>
 # ruff: noqa: PYI019, PYI066, UP031
-"""Argument parser module."""
+"""Argument parser module with ANSI markup support.
+
+This module extends Python's argparse module to provide enhanced command-line
+argument parsing with ANSI escape code support for colored and styled output.
+It includes custom help formatters that can display colored help text.
+The :class:`PrettyParser` class is the main entry to look at in this module,
+it adds shell completion capabilities and improved error handling.
+"""
 
 from __future__ import annotations
 
@@ -23,15 +30,17 @@ import importlib.util
 import re
 import sys
 import warnings
-from typing import IO, TYPE_CHECKING, Any, ClassVar, TypeVar, cast
+from typing import IO, TYPE_CHECKING, Any, ClassVar, Final, TypeVar, cast
 
 from deluxe.console import ansi
 from deluxe.console.wrap import AnsiTextWrapper
 
 
 try:
-    from gettext import gettext as _
-    from gettext import ngettext  # pyright:ignore[reportAssignmentType]
+    from gettext import (
+        gettext as _,
+        ngettext,  # pyright:ignore[reportAssignmentType]
+    )
 except ImportError:
 
     def _(message: str) -> str:
@@ -57,7 +66,13 @@ __all__ = (
 )
 
 
-SHELL_COMPLETION = {"bash", "zsh", "fish", "powershell"}
+SHELL_COMPLETION: Final[frozenset[str]] = frozenset(("bash", "zsh", "fish", "powershell"))
+"""Supported shell names for **completion** feature of :class:`PrettyParser`.
+
+This :class:`frozenset` includes 'bash', 'zsh', 'fish' and 'powershell'. Each entry
+corresponds to a shell for which `argcomplete <https://github.com/kislyuk/argcomplete>`_
+can generate an integration script.
+"""
 
 
 _S = TypeVar("_S", bound="AnsiHelpFormatter._Section")  # pyright:ignore[reportPrivateUsage]
@@ -67,14 +82,14 @@ class AnsiHelpFormatter(argparse.HelpFormatter):
     """An argparse.HelpFormatter with ansi markup text support."""
 
     styles: ClassVar[dict[str, str]] = {
-        "argparse.args": ansi.style(ansi.FG.LIGHT_CYAN),
-        "argparse.groups": ansi.style(ansi.FG.LIGHT_MAGENTA),
-        "argparse.help": ansi.style(ansi.MOD.RESET_ALL),
-        "argparse.metavar": ansi.style(ansi.FG.YELLOW),
-        "argparse.syntax": ansi.style(ansi.MOD.BRIGHT),
-        "argparse.text": ansi.style(ansi.MOD.RESET_ALL),
-        "argparse.prog": ansi.style(ansi.FG.LIGHT_WHITE),
-        "argparse.default": ansi.style(ansi.MOD.ITALIC),
+        "argparse.args": ansi.style(ansi.Fg.LIGHT_CYAN),
+        "argparse.groups": ansi.style(ansi.Fg.LIGHT_MAGENTA),
+        "argparse.help": ansi.style(ansi.Mode.RESET_ALL),
+        "argparse.metavar": ansi.style(ansi.Fg.YELLOW),
+        "argparse.syntax": ansi.style(ansi.Mode.BRIGHT),
+        "argparse.text": ansi.style(ansi.Mode.RESET_ALL),
+        "argparse.prog": ansi.style(ansi.Fg.LIGHT_WHITE),
+        "argparse.default": ansi.style(ansi.Mode.ITALIC),
     }
     """A dict of ansi styles to control the formatter.
 
@@ -101,7 +116,7 @@ class AnsiHelpFormatter(argparse.HelpFormatter):
 
     @staticmethod
     def _ansi_style(text: str, style: str) -> str:
-        return f"{AnsiHelpFormatter.styles[style]}{text}{ansi.style(ansi.MOD.RESET_ALL)}"
+        return f"{AnsiHelpFormatter.styles[style]}{text}{ansi.style(ansi.Mode.RESET_ALL)}"
 
     @staticmethod
     def _ansi_aware_pad(text: str, width: int, char: str = " ") -> str:
@@ -435,7 +450,7 @@ class AnsiHelpFormatter(argparse.HelpFormatter):
 
 
 class RawAnsiHelpFormatter(argparse.RawTextHelpFormatter, AnsiHelpFormatter):
-    """An argparse.RawHelpFormatter with ansi markup text support."""
+    """An argparse.RawTextHelpFormatter with ansi markup text support."""
 
 
 class RawDescriptionAnsiHelpFormatter(argparse.RawDescriptionHelpFormatter, AnsiHelpFormatter):
@@ -451,10 +466,23 @@ class PrettyHelpFormatter(  # pyright:ignore[reportIncompatibleVariableOverride]
     argparse.ArgumentDefaultsHelpFormatter,
     AnsiHelpFormatter,
 ):
-    """PrettyHelpFormatter.
+    """AnsiHelpFormatter with combined raw description and argument defaults support.
 
-    An AnsiHelpFormatter with RawDescriptionHelpFormatter and ArgumentDefaultsHelpFormatter
-    behaviours. Also implements the MetavarTypeHelpFormatter on demand.
+    Combines the behaviours of :class:`~argparse.RawDescriptionHelpFormatter`
+    and :class:`~argparse.ArgumentDefaultsHelpFormatter` with
+    :class:`AnsiHelpFormatter`. Also implements the
+    :class:`~argparse.MetavarTypeHelpFormatter` on demand via the
+    ``metavar_typed`` class variable.
+
+    Args:
+        prog (:obj:`str`): The name of the program.
+        indent_increment (:obj:`int`): The number of characters to indent
+            each nesting level. Default: ``2``.
+        max_help_position (:obj:`int`): The maximum starting column for
+            help messages. Default: ``24``.
+        width (:obj:`int` | ``None``): The total width of the help output.
+            If ``None``, the width is determined by the terminal.
+            Default: ``None``.
     """
 
     metavar_typed: ClassVar[bool] = False
@@ -531,13 +559,101 @@ class _ShellCompletion(argparse.Action):
 
 
 class PrettyParser(argparse.ArgumentParser):
-    """Class for parsing command line strings into Python objects.
+    """Enhanced argument parser with ANSI output and shell completion support.
 
-    Overrides argparse print_usage(), print_help(), and error() methods to allow
-    for explicit control over the format of a calling utility's description
-    and usage strings.
+    Extends :class:`~argparse.ArgumentParser` to provide a richer command-line
+    experience with colored and styled help output, automatic shell completion,
+    and improved error handling for better library integration.
 
-    However, the description and usage_str fields are required.
+    Unlike the standard parser, this class lets you embed ANSI escape codes
+    directly in help text, descriptions, and usage strings without breaking
+    layout calculations. The default :class:`PrettyHelpFormatter` takes care
+    of proper padding and wrapping of ANSI-formatted text. It also combines
+    the behaviours of :class:`~argparse.RawDescriptionHelpFormatter` and
+    :class:`~argparse.ArgumentDefaultsHelpFormatter`, so you get both raw
+    description preservation and automatic default display out of the box.
+
+    When ``exit_on_error`` is ``True`` (the default), argument errors raise
+    :exc:`~argparse.ArgumentError` instead of calling ``sys.exit()``. This
+    makes the parser suitable for library use where errors should be caught
+    and handled programmatically rather than terminating the host application.
+    If you set ``exit_on_error`` to ``False``, the parser falls back to the
+    standard behaviour of printing an error message and exiting the process.
+    You can also override the :meth:`error` method to implement fully custom
+    error handling logic.
+
+    A ``-v``/``--version`` option is added automatically when a ``version``
+    string is provided to the constructor. Running the program with this
+    option prints the program name followed by the version string and exits.
+    The default ``"usage: "`` prefix that appears at the beginning of the
+    usage line can be replaced with any custom string through the ``prefix``
+    parameter, which is useful for programmes that need a different label
+    in their usage output.
+
+    Optional shell completion is available through `argcomplete
+    <https://github.com/kislyuk/argcomplete>`_ for bash, zsh, fish, and
+    powershell. When enabled with ``shell_completion=True``, a hidden
+    ``--completion`` option is registered. Invoking the program with
+    ``--completion SHELL`` (where *SHELL* is one of ``bash``, ``zsh``,
+    ``fish``, or ``powershell``) prints the corresponding shell integration
+    script to stdout and exits. The ``argcomplete`` package must be
+    installed; if it is not found, an :exc:`ImportWarning` is emitted
+    and shell completion is silently disabled for the rest of the session.
+
+    For full documentation of the base parser API, see
+    :class:`~argparse.ArgumentParser`.
+
+    Args:
+        prog (:obj:`str`): The name of the program (used in usage messages).
+        version (:obj:`str` | ``None``): If provided, a ``-v``/``--version``
+            option is added automatically. Default: ``None``.
+        description (:obj:`str` | ``None``): Text to display before the
+            argument help. Default: ``None``.
+        usage (:obj:`str` | ``None``): Custom usage string. If ``None``,
+            it is generated from the added arguments. Default: ``None``.
+        prefix (:obj:`str` | ``None``): Custom prefix for the usage message
+            (replaces the default ``"usage: "``). Default: ``None``.
+        epilog (:obj:`str` | ``None``): Text to display after the
+            argument help. Default: ``None``.
+        parents (:obj:`Sequence` [:class:`~argparse.ArgumentParser`] | ``None``):
+            A list of :class:`~argparse.ArgumentParser` objects whose
+            arguments will be added to this parser. Default: ``None``.
+        formatter_class (:obj:`type` [:class:`~argparse.HelpFormatter`]):
+            A class for customizing the help output. Defaults to
+            :class:`PrettyHelpFormatter`.
+        prefix_chars (:obj:`str`): The set of characters that prefix
+            optional arguments. Default: ``"-"``.
+        fromfile_prefix_chars (:obj:`str` | ``None``): The set of characters
+            that prefix files from which additional arguments are read.
+            Default: ``None``.
+        argument_default (:obj:`object`): The default value for all
+            arguments. Default: ``None``.
+        conflict_handler (:obj:`str`): Determines how conflicts between
+            existing and added arguments are handled (``"error"`` or
+            ``"resolve"``). Default: ``"error"``.
+        add_help (:obj:`bool`): If ``True``, a ``-h``/``--help`` option
+            is added. Default: ``True``.
+        allow_abbrev (:obj:`bool`): If ``True``, allow long options to
+            be abbreviated uniquely. Default: ``True``.
+        exit_on_error (:obj:`bool`): If ``True``, raises
+            :exc:`~argparse.ArgumentError` on errors instead of calling
+            :func:`sys.exit`. Default: ``True``.
+        shell_completion (:obj:`bool`): If ``True``, attempts to enable
+            shell auto-completion via ``argcomplete``. A ``--completion``
+            option is added. If ``argcomplete`` is not installed, a
+            warning is emitted and completion is disabled.
+            Default: ``False``.
+
+    Attributes:
+        exit_on_error: Whether to raise :exc:`~argparse.ArgumentError` on errors.
+        prefix: Custom prefix for usage messages.
+        version: Version string for the ``--version`` option.
+        shell_completion: Whether shell completion support is enabled.
+
+    .. warning::
+        When ``shell_completion=True`` and ``argcomplete`` is not installed,
+        an :exc:`ImportWarning` is emitted and shell completion is
+        silently disabled.
     """
 
     def __init__(  # noqa: PLR0917
