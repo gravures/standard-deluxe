@@ -4,7 +4,7 @@ import string
 from textwrap import TextWrapper
 
 import pytest
-from deluxe.console.ansi import Foreground, Mode, SGR_Params, length, strip_esc, style
+from deluxe.console.ansi import Foreground, Mode, SGR_PARAMS, length, strip_esc, style
 from deluxe.console.wrap import AnsiTextWrapper
 from hypothesis import given
 from hypothesis import strategies as st
@@ -213,7 +213,7 @@ def test_ansi_escape_sequence_handling():
         max_size=5,
     ),
 )
-def test_ansi_escape_sequence_handling_property(text: str, width: int, colors: list[SGR_Params]):
+def test_ansi_escape_sequence_handling_property(text: str, width: int, colors: list[SGR_PARAMS]):
     """Property-based test for ANSI escape sequence handling."""
     wrapper = AnsiTextWrapper(width=width)
     standard_wrapper = TextWrapper(width=width)
