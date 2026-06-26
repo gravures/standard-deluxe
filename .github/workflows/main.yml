@@ -13,7 +13,7 @@ jobs:
   testing:
     strategy:
       matrix:
-        python-version: ['3.10', '3.11', '3.12', '3.13']
+        python-version: ['3.11', '3.12', '3.13', '3.14']
         os: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
 
@@ -21,28 +21,24 @@ jobs:
       - name: checkout repo
         uses: actions/checkout@v4
 
-      - name: install uv 0.6.12
-        uses: astral-sh/setup-uv@v5
+      - name: install mise with Python ${{ matrix.python-version }}
+        uses: jdx/mise-action@v4
         with:
-          version: "0.6.4"
-          enable-cache: true
-          cache-dependency-glob: "pdm.lock"
-
-      - name: setup pdm to Python ${{ matrix.python-version }}
-        uses: pdm-project/setup-pdm@v4
-        with:
-          python-version: ${{ matrix.python-version }}
+          version: latest
+          install: true
+          cache: true
+          tool_versions: python ${{ matrix.python-version }}
 
       - name: install testing dependencies
         run: |
-          pdm sync -G test
+          mise run project:sync -G test
 
-      - name: execute tests with tox
+      - name: run tests suite with coverage
         env:
           COVERAGE_FILE: ".coverage.${{ matrix.python-version }}.${{ matrix.os }}"
         run: |
-          pdm run tox --version
-          pdm run tox --develop -r -e py
+          mise run typecheck
+          mise run test:cover
 
       - name: store coverage file
         if: ${{ matrix.os }} == 'ubuntu-latest'

@@ -1,7 +1,10 @@
 [tools]
+python = "{{ get_env(name='PYTHON_VERSION', default='3.14') }}"
 uv = "latest"
+cocogitto = "latest"
 
 [env]
+UV_PYTHON = { value = "{{ tools.python.path }}", tools = true }
 _.path = ".venv/bin"
 
 [settings]
@@ -73,13 +76,46 @@ depends = ["lock", { task = "sync", args = ["{{usage.args}}"] }]
 alias = "build"
 description = "build artifacts for distribution"
 quiet = true
-run = "uv build --all-packages --no-python-downloads"
+run = '''
+{% if not env.GITHUB_WORKFLOW %}
+  mise run version:changelog
+{% endif %}
+uv build --all-packages --no-python-downloads
+'''
 
 [tasks."project:publish"]
 alias = "publish"
 description = "build and publish the project to PyPI"
+hide = true
 quiet = true
-run = "uv publish -v --no-python-downloads ./dists/*"
+wait_for = [ "project:build" ]
+run = "uv publish -v ./dists/*"
+
+#
+# Version
+#
+[tasks."version:bump"]
+description = "make CHANELOG.md, bump version and commit if in CI"
+env = { "GITHUB_WORKFLOW" = { required = "version bump only allowed in CI workflow" } }
+hide = true
+quiet = true
+run = "cog bump --auto"
+
+[tasks."version:suggest"]
+description = "suggest next version tag"
+silent = "stderr"
+quiet = true
+run = "cog bump --dry-run --auto --skip-untracked --disable-bump-commit"
+
+[tasks."version:get"]
+description = "output actual version tag"
+quiet = true
+run = "cog -v get-version --include-prereleases --tag"
+
+[tasks."version:changelog"]
+description = "write CHANELOG.md file"
+quiet = true
+run = "cog --quiet changelog > CHANGELOG.md"
 
 #
 # info
@@ -102,10 +138,6 @@ description = "export lock file as requirements"
 quiet = true
 depends = [ "lock" ]
 run = "uv export --format requirements.txt --all-packages > requirements"
-
-[tasks.bump]
-quiet = true
-run = "cog bump --dry-run --auto --skip-untracked"
 
 #
 # Pre-commit
@@ -144,14 +176,14 @@ run = "pre-commit run --hook-stage manual python-safety-dependencies-check"
 #
 # Tests
 #
-[tasks."test:all"]
+[tasks."test:this"]
 alias = "test"
-description = "run the tests suite"
+description = "run tests for given keywords"
 quiet = true
 usage = '''
-arg "[args]" var=#true help="any additional arguments to provide to pytest"
+arg "<keys>" var=#true help="keyword(s) to test"
 '''
-run = "pytest --benchmark-skip --numprocesses auto --force-short-summary --tb=short  -k ${usage_args}"
+run = "pytest --benchmark-skip --numprocesses auto --force-short-summary --tb=short  -k ${usage_keys}"
 
 [tasks."test:cover"]
 alias = "cover"
@@ -167,12 +199,6 @@ alias = "report"
 description = "report tests coverage"
 quiet = true
 run = "coverage report --no-skip-covered"
-
-[tasks."test:tox"]
-alias = "tox"
-description = "run tests suite with tox"
-quiet = true
-run = "tox --develop -r -e py"
 
 [tasks."test:benchmarks"]
 description = "run benchmarks tests suite"

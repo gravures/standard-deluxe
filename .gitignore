@@ -167,3 +167,6 @@ builddir/
 # Helpers
 AGENTS.md
 .grepai/
+
+# Misc
+CHANGELOG.md
