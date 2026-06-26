@@ -8,13 +8,12 @@ from unittest.mock import patch
 import pytest
 from deluxe.console.ansi import (
     BELL,
-    BG,
-    FG,
-    MOD,
+    Bg,
+    Fg,
     Background,
     Foreground,
     Mode,
-    SGR_Params,
+    SGR_PARAMS,
     clear_line,
     clear_line_after,
     clear_line_before,
@@ -83,7 +82,7 @@ def test_bell_returns_correct_sequence():
     ]),
 )
 def test_style_with_random_parameters(
-    foreground: SGR_Params, background: SGR_Params, mode: SGR_Params
+    foreground: SGR_PARAMS, background: SGR_PARAMS, mode: SGR_PARAMS
 ):
     """Test style function with randomly selected parameters."""
     result = style(mode, background, foreground)
@@ -153,7 +152,7 @@ def test_handles_maximum_number_of_sgr_parameters():
 
 def test_style_performance_with_large_parameter_count():
     # Create a large list of parameters
-    params: list[SGR_Params] = []
+    params: list[SGR_PARAMS] = []
     for _ in range(100):
         params.extend([
             Foreground.RED,
@@ -229,11 +228,11 @@ def test_style_application_to_text(content: str, fg: str, bg: str):
     text=st.text(min_size=1, max_size=100),
     ansi_sequences=st.lists(
         st.sampled_from([
-            style(FG.RED),
-            style(BG.BLUE),
-            style(MOD.BRIGHT),
-            style(FG.GREEN, BG.YELLOW),
-            style(MOD.UNDERLINE, FG.CYAN),
+            style(Fg.RED),
+            style(Bg.BLUE),
+            style(Mode.BRIGHT),
+            style(Fg.GREEN, Bg.YELLOW),
+            style(Mode.UNDERLINE, Fg.CYAN),
             clear_line(),
             clear_screen(),
             clear_line_after(),
@@ -277,12 +276,12 @@ def test_strip_esc_removes_ansi_sequences(text: str, ansi_sequences: list[str]):
     text=st.text(min_size=1, max_size=100),
     ansi_sequences=st.lists(
         st.sampled_from([
-            style(FG.RED),
-            style(BG.BLUE),
-            style(MOD.BRIGHT),
-            style(FG.GREEN, BG.YELLOW),
-            style(MOD.UNDERLINE, FG.CYAN),
-            style(MOD.RESET_ALL),
+            style(Fg.RED),
+            style(Bg.BLUE),
+            style(Mode.BRIGHT),
+            style(Fg.GREEN, Bg.YELLOW),
+            style(Mode.UNDERLINE, Fg.CYAN),
+            style(Mode.RESET_ALL),
         ]),
         min_size=0,
         max_size=10,
@@ -392,14 +391,14 @@ def test_strip_esc_with_complex_nested_sequences():
     """Test that strip_esc correctly handles complex nested escape sequences."""
     # Create a complex string with multiple nested and overlapping escape sequences
     complex_string = (
-        f"{style(FG.RED)}Red text "
-        f"{style(BG.BLUE)}Red on blue "
-        f"{style(MOD.BRIGHT)}Bright red on blue "
-        f"{style(FG.GREEN)}Bright green on blue "
-        f"{style(MOD.UNDERLINE)}Underlined bright green on blue "
-        f"{style(BG.YELLOW, FG.BLACK)}Underlined black on yellow "
-        f"{style(MOD.RESET_ALL, FG.CYAN, BG.MAGENTA)}Cyan on magenta "
-        f"{style(MOD.ITALIC, FG.WHITE)}Italic white on magenta "
+        f"{style(Fg.RED)}Red text "
+        f"{style(Bg.BLUE)}Red on blue "
+        f"{style(Mode.BRIGHT)}Bright red on blue "
+        f"{style(Fg.GREEN)}Bright green on blue "
+        f"{style(Mode.UNDERLINE)}Underlined bright green on blue "
+        f"{style(Bg.YELLOW, Fg.BLACK)}Underlined black on yellow "
+        f"{style(Mode.RESET_ALL, Fg.CYAN, Bg.MAGENTA)}Cyan on magenta "
+        f"{style(Mode.ITALIC, Fg.WHITE)}Italic white on magenta "
         f"Normal text"
     )
 
@@ -430,21 +429,21 @@ def test_strip_esc_with_complex_nested_sequences():
 
     # Test with deeply nested sequences
     deeply_nested = (
-        f"{style(FG.RED)}{style(BG.GREEN)}{style(MOD.BRIGHT)}{style(MOD.UNDERLINE)}"
+        f"{style(Fg.RED)}{style(Bg.GREEN)}{style(Mode.BRIGHT)}{style(Mode.UNDERLINE)}"
         f"Deeply nested text"
-        f"{style(MOD.RESET_ALL)}"
+        f"{style(Mode.RESET_ALL)}"
     )
 
     assert strip_esc(deeply_nested) == "Deeply nested text"
 
     # Test with escape sequences at the beginning, middle, and end
-    mixed_placement = f"{style(FG.BLUE)}Start Middle{style(BG.RED)} End{style(MOD.RESET_ALL)}"
+    mixed_placement = f"{style(Fg.BLUE)}Start Middle{style(Bg.RED)} End{style(Mode.RESET_ALL)}"
 
     assert strip_esc(mixed_placement) == "Start Middle End"
 
     # Test with consecutive escape sequences without text in between
     consecutive_sequences = (
-        f"{style(FG.RED)}{style(BG.GREEN)}{style(MOD.BRIGHT)}Text with consecutive sequences"
+        f"{style(Fg.RED)}{style(Bg.GREEN)}{style(Mode.BRIGHT)}Text with consecutive sequences"
     )
 
     assert strip_esc(consecutive_sequences) == "Text with consecutive sequences"
@@ -482,7 +481,7 @@ def test_strip_esc_does_not_leak_non_ansi_control_chars():
     """
     # \x1f (Unit Separator) is not an ANSI escape — should be preserved
     assert strip_esc("\x1b[31m\x1f") == "\x1f"
-    assert strip_esc(f"{style(FG.RED)}text\x1ftext{style(MOD.RESET_ALL)}") == "text\x1ftext"
+    assert strip_esc(f"{style(Fg.RED)}text\x1ftext{style(Mode.RESET_ALL)}") == "text\x1ftext"
 
     # \x00 (NULL) is not an ANSI escape — should be preserved
     assert strip_esc("before\x00after") == "before\x00after"
