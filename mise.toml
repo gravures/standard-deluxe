@@ -76,12 +76,7 @@ depends = ["lock", { task = "sync", args = ["{{usage.args}}"] }]
 alias = "build"
 description = "build artifacts for distribution"
 quiet = true
-run = '''
-{% if not env.GITHUB_WORKFLOW %}
-  mise run version:changelog
-{% endif %}
-uv build --all-packages --no-python-downloads
-'''
+run = "uv build --all-packages --no-python-downloads"
 
 [tasks."project:publish"]
 alias = "publish"
@@ -114,8 +109,27 @@ run = "cog -v get-version --include-prereleases --tag"
 
 [tasks."version:changelog"]
 description = "write CHANELOG.md file"
+hide = true
 quiet = true
-run = "cog --quiet changelog > CHANGELOG.md"
+run = '''#!.venv/bin/python3
+import subprocess as sp
+from pathlib import Path
+
+cp = sp.run(
+    ("cog", "--quiet", "changelog"),
+    shell=False,
+    text=True,
+    capture_output=True,
+    check=True,
+)
+log = f"""# Changelog
+
+All notable changes to this project will be documented in this file.
+
+{cp.stdout}
+"""
+Path("./CHANGELOG.md").write_text(log)
+'''
 
 #
 # info
