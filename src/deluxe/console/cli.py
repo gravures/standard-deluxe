@@ -479,7 +479,7 @@ class Cli(ABC):
             self._parser.parse_args(argv, namespace=self._namespace)
         except (argparse.ArgumentError, argparse.ArgumentTypeError) as e:
             raise CliError(msg=str(e), quiet=False) from None
-        except SystemExit as e:
+        except SystemExit as e:  # pragma: no cover
             raise CliError(msg=None, quiet=False) from e
 
     @staticmethod
