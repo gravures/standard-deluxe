@@ -13,10 +13,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with standard-deluxe. If not, see <https://www.gnu.org/licenses/>
-"""Process module.
-
-This module provides the Command class for working with system processes.
-"""
+"""Process utilities for working with system commands."""
 
 from __future__ import annotations
 
@@ -67,17 +64,17 @@ _USER_SUPPORT: bool = supported(only=("posix",), but=("wasi", "ios"))
 def get_real_users() -> set[str]:
     """Return a set of all real user accounts on the system.
 
-    This function retrieves a set of all user accounts on the system
-    that have a valid shell and a home directory starting with "/home".
-    It excludes system accounts with a UID less than the minimum UID
-    defined in the /etc/login.defs file.
+    Retrieves a set of all user accounts that have a valid shell and a home
+    directory starting with ``/home``. System accounts with a UID less than
+    the minimum UID defined in ``/etc/login.defs`` are excluded.
 
-    Availability: Unix, not WASI, not iOS
+    .. note:: Availability: Unix, not WASI, not iOS
 
     Returns:
-        set[str]: A list of usernames for all real user accounts on the system.
+        :obj:`set` [:obj:`str` ]: A set of usernames for all real user accounts
+        on the system.
     """
-    with Path("/etc/login.defs").open(
+    with Path("/etc/login.defs").open(  # noqa: FURB101
         "r",
         encoding=locale.getpreferredencoding(False),  # noqa: FBT003
     ) as lgn:
@@ -96,30 +93,47 @@ def get_real_users() -> set[str]:
 class Command:
     """System command class.
 
-    This class represents a system command and provides methods for running the command
+    Represents a system command and provides methods for running the command
     and handling the output.
 
     It also supports specifying the user to run the command as on POSIX systems.
     The actual implementation use the sudo command to eecute the command
     if user is specified.
 
-    Commands are never executed through a shell.
+    Commands are never executed through a shell. On POSIX systems, if a
+    ``user`` is specified, the command is executed via ``sudo -u <user>``.
 
-    This class supports asynchronous execution of the subprocess using asyncio.
+    This class supports both synchronous execution via :meth:`__call__` and
+    asynchronous execution via :meth:`async_call` using :mod:`asyncio`.
 
     Args:
-        name (str): The name of the command.
-        path (os.PathLike[str] | None): The path to the command executable.
-        user (str | None): The user to run the command as
+        name (:obj:`str`): The name of the command.
+        path (:obj:`os.PathLike` [:obj:`str` ] | ``None``): The path to the
+            command executable. Default: ``None``.
+        user (:obj:`str` | ``None``): The user to run the command as. Requires
+            ``sudo`` to be available on the system. Default: ``None``.
 
     Raises:
         Command.Error: If the command is not found on the system.
         NotmplementedError: if user is specified on non POSIX systems.
+
+    Examples::
+
+        >>> cmd = Command("ls")
+        >>> cmd("-la", "/tmp")
+
     """
 
     _SYS_USERS: set[str] = get_real_users()
 
     class Error(Exception):
+        """Exception raised when a system command fails.
+
+        Attributes:
+            msg (:obj:`str`): The error message.
+            returncode (:obj:`int`): The non-zero exit status code, if available.
+        """
+
         def __init__(
             self, msg: str | bytes | None, retcode: int = 0, cmd: tuple[str, ...] | None = None
         ) -> None:
@@ -158,12 +172,24 @@ class Command:
 
     @property
     def user(self) -> str | None:
-        """Returns the user associated with this command."""
+        """The user associated with this command.
+
+        Returns:
+            :obj:`str` | ``None``: The username, or ``None`` if not set.
+        """
         return self._user
 
     @user.setter
     @availability(only=("posix",), but=("wasi", "ios"))
     def user(self, user: str | None) -> None:
+        """Set the user to run the command as.
+
+        Args:
+            user (:obj:`str` | ``None``): The username, or ``None`` to clear.
+
+        Raises:
+            Command.Error: If the user is not found on the system.
+        """
         if user and (user not in Command._SYS_USERS or user != "root"):
             msg = f"User {user} not found on your system."
             raise Command.Error(msg)
@@ -181,7 +207,7 @@ class Command:
     def __call__(
         self,
         *args: str,
-        input: bytes | None = None,  # noqa: A002
+        input: bytes | None = None,
         capture: bool = True,
         text: Literal[False],
         encoding: str | None = "UTF-8",
@@ -193,7 +219,7 @@ class Command:
     def __call__(
         self,
         *args: str,
-        input: str | None = None,  # noqa: A002
+        input: str | None = None,
         capture: bool = True,
         text: Literal[True] = True,
         encoding: str | None = "UTF-8",
@@ -213,21 +239,30 @@ class Command:
     ) -> str | bytes:
         """Run this command.
 
+        Executes the command synchronously and returns its output.
+
         Args:
-            *args (str): The arguments to pass to the command.
-            input (str | bytes | None): The input to pass to the command.
-            capture (bool): Whether to capture the command output.
-            text (bool): Whether to return the output as text or bytes.
-            encoding (str | None): The encoding to use for text output.
-            cwd (StrOrBytesPath | None): The current working directory for the command.
-            env (Mapping[str, str] | None): The environment variables for the command.
+            *args (:obj:`str`): The arguments to pass to the command.
+            input (:obj:`str` | :obj:`bytes` | ``None``): The input to pass to
+                the command's stdin. Default: ``None``.
+            capture (:obj:`bool`): Whether to capture the command output.
+                Default: ``True``.
+            text (:obj:`bool`): Whether to return the output as text or bytes.
+                Default: ``True``.
+            encoding (:obj:`str` | ``None``): The encoding to use for text output.
+                Default: ``"UTF-8"``.
+            cwd (:class:`~deluxe.types.AnyFilePath` | ``None``): The current
+                working directory for the command. Default: ``None``.
+            env (:obj:`~collections.abc.Mapping` [:obj:`str`, :obj:`str` ] | ``None``):
+                The environment variables for the command. Default: ``None``.
 
         Returns:
-            str | bytes: The output of the command when command completes successfully.
+            :obj:`str` | :obj:`bytes`: The output of the command when it completes
+            successfully.
 
         Raises:
             Command.Error: If the command returns with a non-zero exit status.
-        """
+        """  # noqa: DOC502
         args_ = self._compose(*args)
         cp = subprocess.run(  # noqa: S603
             args_,
@@ -254,16 +289,29 @@ class Command:
     ) -> Task[Future[bytes]]:
         """Run this command asynchronously.
 
+        Executes the command as an :class:`asyncio.subprocess.Process` and
+        returns a :class:`asyncio.Task` wrapping a :class:`asyncio.Future`
+        that resolves to the command's stdout bytes.
+
         Args:
-            *args (str): The arguments to pass to the command.
-            input (bytes | None): The input to pass to the command.
-            capture (bool): Whether to capture the command output.
-            cwd (StrOrBytesPath | None): The current working directory for the command.
-            env (Mapping[str, str] | None): The environment variables for the command.
+            *args (:obj:`str`): The arguments to pass to the command.
+            input (:obj:`bytes` | ``None``): The input to pass to the command's
+                stdin. Default: ``None``.
+            capture (:obj:`bool`): Whether to capture the command output.
+                Default: ``True``.
+            cwd (:class:`~deluxe.types.AnyFilePath` | ``None``): The current
+                working directory for the command. Default: ``None``.
+            env (:obj:`~collections.abc.Mapping` [:obj:`str`, :obj:`str` ] | ``None``):
+                The environment variables for the command. Default: ``None``.
 
         Returns:
-            asyncio.Task: A task representing the command execution.
-        """
+            :class:`asyncio.Task` [:class:`asyncio.Future` [:obj:`bytes` ] ]: A task
+            that resolves to the command's stdout bytes.
+
+        Raises:
+            Command.Error: A dynamically created subclass if the process
+            exits due to a signal (negative return code).
+        """  # noqa: DOC502
         args_ = self._compose(*args)
 
         proc = await asyncio.subprocess.create_subprocess_exec(
@@ -311,7 +359,11 @@ class Command:
 
 
 class _RealDaemon:
-    """RealDaemon class."""
+    """Internal mixin that performs the Unix double-fork daemonization.
+
+    This class is used internally by :class:`_DaemonMeta` to create the actual
+    daemon process. It should not be instantiated directly.
+    """
 
     __workpath__: ClassVar[Path]
     __pidfile__: ClassVar[Path]
@@ -375,7 +427,12 @@ _T = TypeVar("_T")
 
 
 class _DaemonMeta(ABCMeta):
-    """Daemon metaclass."""
+    """Metaclass for the :class:`Daemon` abstract base class.
+
+    Controls the daemon lifecycle: manages pidfile creation, process forking
+    via :mod:`multiprocessing`, and the singleton pattern that prevents
+    multiple instances of the same daemon from running simultaneously.
+    """
 
     WORKPATH_VAR: str = "__workpath__"
     PIDFILE_VAR: str = "__pidfile__"
@@ -432,37 +489,36 @@ class Daemon(ABC, metaclass=_DaemonMeta):
     Make instance of this class execute in a daemonized process
     using an Unix double fork mechanism.
 
-    Availability:
-        - Unix, not WASI
+    .. note:: Availability: Unix, not WASI
 
-    Usage Details
-    -------------
+    Subclasses must implement the :meth:`run` method, which contains the
+    daemon's working logic. User-defined :class:`Daemon` instances should
+    not call :meth:`run` directly.
 
-    Subclass of the abstract Daemon class should implement the run()
-    method. It's where the working logic of the daemon begin. User
-    defined Daemon instances should not call this method directly.
-
-    The daemon will write a lock file on the system at its start process.
-    This will prevent multiple instances to be created at the same time.
-    As soon as the instance is daemonized its run method is called with
-    no parameter.
+    The daemon writes a pidfile at its start to prevent multiple instances
+    from running simultaneously. Once daemonized, the :meth:`run` method is
+    called with no parameters.
 
     The daemon executes in its own detached session with no tty attached,
     so it will not inherit the standard files from the python interpreter
     where it was instancied.
 
-    Code instancing the daemon, as any could expect will received
-    a functional instance of the class they defined. This instance
-    will act as a daemon controller with the help of its stop(), start()
-    and restart() methods.
+    Code instantiating the daemon will receive a functional instance of the
+    defined class. This instance acts as a daemon controller with
+    :meth:`stop`, :meth:`start`, and :meth:`restart` methods.
+
+    Keyword Args:
+        workpath (:class:`~pathlib.Path` | :obj:`str`): The working directory
+            for the daemon process. Must be an existing directory.
+            Default: ``"/"``.
 
     Interprocess Communication
     --------------------------
 
-    Daemon subclass will ends up with two instances, the 'controller'
-    living in the calling process and the 'worker' living in its own
-    detached session. This class make no prevention in regard of a specific
-    protocol for interprocess communication, it's up to the class
+    Daemon subclasses will end up with two instances: the *controller*
+    living in the calling process, and the *worker* living in its own
+    detached session. This class makes no provision for a specific
+    interprocess communication protocol; it is up to the class
     implementation.
 
     About The Unix Double Fork Mechanism
@@ -474,9 +530,9 @@ class Daemon(ABC, metaclass=_DaemonMeta):
     Every session can have one TTY associated with it and only a session
     leader can take control of a TTY.
 
-    Normally, when launching a daemon, setsid is called (from the child
-    process after calling fork) to dissociate the daemon from its controlling
-    terminal. However, calling setsid also means that the calling process
+    Normally, when launching a daemon, ``setsid`` is called (from the child
+    process after calling ``fork``) to dissociate the daemon from its controlling
+    terminal. However, calling ``setsid`` also means that the calling process
     will be the session leader of the new session, which leaves open
     the possibility that the daemon could reacquire a controlling terminal
     in the future.
@@ -494,10 +550,10 @@ class Daemon(ABC, metaclass=_DaemonMeta):
     @final
     @property
     def pid(self) -> int:
-        """The pid of this Daemon.
+        """The PID of this daemon.
 
         Returns:
-            int: pid of the daemon if running, 0 otherwise.
+            :obj:`int`: The PID of the daemon if running, ``0`` otherwise.
         """
         try:
             with self.__pidfile__.open("r") as file:
@@ -507,7 +563,16 @@ class Daemon(ABC, metaclass=_DaemonMeta):
 
     @final
     def stop(self) -> None:
-        """Stop the daemon."""
+        """Stop the daemon.
+
+        Sends ``SIGTERM`` to the daemon process and waits for it to terminate.
+        If the daemon is not running, a warning is issued and the pidfile is
+        cleaned up if present.
+
+        Raises:
+            OSError: If the daemon process could not be killed for a
+            reason other than it not existing.
+        """
         if not (pid := self.pid):
             msg: str = "Daemon is not running.\n"
             warn(msg, stacklevel=1)
@@ -525,12 +590,14 @@ class Daemon(ABC, metaclass=_DaemonMeta):
 
     @final
     def start(self) -> int:
-        """Starts the daemon.
+        """Start the daemon.
 
-        If the daemon is not already running daemonize it.
+        If the daemon is not already running, it is daemonized. If it is
+        already running, a warning is issued.
 
         Returns:
-            int: the pid of the daemon.
+            :obj:`int`: The PID of the already-running daemon, or ``0`` if
+            a new daemon was started.
         """
         if not (pid := self.pid):
             # FIXME: should cache *args and **kwds to passed it to the new daemon
@@ -542,25 +609,30 @@ class Daemon(ABC, metaclass=_DaemonMeta):
 
     @final
     def restart(self) -> None:
-        """Restart the daemon."""
+        """Restart the daemon.
+
+        Stops the daemon if running, then starts it again.
+        """
         self.stop()
         self.start()
 
     def atexit(self) -> None:  # noqa: PLR6301
-        """Call when the daemon terminate.
+        """Called when the daemon terminates.
 
-        You could overwrite this method to include your cleanup code.
-        This method will be executed upon normal interpreter termination.
+        Override this method to include cleanup code. This method is registered
+        via :func:`atexit.register` and will be executed upon normal interpreter
+        termination.
 
-        see: https://docs.python.org/3/library/atexit
+        See Also:
+            :func:`atexit.register`
         """
         return
 
     @abstractmethod
     def run(self) -> None:
-        """Daemon Worker method.
+        """Daemon worker method.
 
-        You should override this method when you subclass Daemon.
-        It will be called after the process has been daemonized
-        by start() or restart().
+        You must override this method when subclassing :class:`Daemon`.
+        It will be called after the process has been daemonized by
+        :meth:`start` or :meth:`restart`.
         """
