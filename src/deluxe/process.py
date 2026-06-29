@@ -150,8 +150,7 @@ class Command:
     ) -> None:
         if path and Path(path).is_file():
             command = str(path)
-
-        if not (command := shutil.which(name)):
+        elif not (command := shutil.which(name)):
             msg = f"Command {path or name} not found on your system."
             raise Command.Error(msg)
 
@@ -273,7 +272,7 @@ class Command:
         )
         if cp.returncode:
             raise self._create_exception()(cp.stderr, cp.returncode, args_)
-        return cp.stdout or "" if text else b""
+        return cp.stdout or ("" if text else b"")
 
     async def async_call(
         self,
