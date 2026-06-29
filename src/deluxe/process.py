@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import asyncio
 import atexit
+import contextlib
 import locale
 import multiprocessing as mp
 import os
@@ -353,7 +354,7 @@ class Command:
 # ruff: noqa: PTH123, SIM115
 
 
-class _RealDaemon:
+class _RealDaemon:  # pragma: no cover
     """Internal mixin that performs the Unix double-fork daemonization.
 
     This class is used internally by :class:`_DaemonMeta` to create the actual
@@ -413,6 +414,12 @@ class _RealDaemon:
         with self.__pidfile__.open("w+") as file:
             file.write(f"{pid_tmp}\n")
 
+        # signal handler
+        def _sigterm_handler(_signum: int, _frame: Any) -> None:
+            sys.exit(0)
+
+        signal.signal(signal.SIGTERM, _sigterm_handler)
+
     def atexit(self) -> None:
         self.daemonized.atexit()
         self.__pidfile__.unlink()
@@ -421,7 +428,29 @@ class _RealDaemon:
 _T = TypeVar("_T")
 
 
-class _DaemonMeta(ABCMeta):
+_STOP_TIMEOUT: float = 5.0
+
+
+def _is_process_alive(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+    except OSError:
+        return False
+
+    try:  # check for zombie via /proc (Linux only)
+        with open(f"/proc/{pid}/stat", encoding="utf-8") as f:  # noqa: FURB101
+            content = f.read()
+            close_paren = content.rfind(")")
+            if close_paren != -1:
+                state = content[close_paren + 2]  # +1 for ')', +1 for space
+                return state != "Z"
+    except (OSError, IndexError):
+        pass
+
+    return True
+
+
+class _DaemonMeta(ABCMeta):  # pragma: posix cover
     """Metaclass for the :class:`Daemon` abstract base class.
 
     Controls the daemon lifecycle: manages pidfile creation, process forking
@@ -465,7 +494,7 @@ class _DaemonMeta(ABCMeta):
         return type("Daemonized", (_RealDaemon, daemon), {})
 
     def __call__(cls: type[_T], *args: Any, **kwds: Any) -> _T:
-        if cls.__name__ == "Daemonized":
+        if cls.__name__ == "Daemonized":  # pragma: no cover
             # return a instance of the Daemon if not already running
             pidfile: Path = getattr(cls, _DaemonMeta.PIDFILE_VAR)
             if pidfile.exists():
@@ -478,7 +507,7 @@ class _DaemonMeta(ABCMeta):
 
 
 @availability(only="posix", but="wasi")
-class Daemon(ABC, metaclass=_DaemonMeta):
+class Daemon(ABC, metaclass=_DaemonMeta):  # pragma: posix cover
     """A generic Unix daemon abstract base class.
 
     Make instance of this class execute in a daemonized process
@@ -561,27 +590,42 @@ class Daemon(ABC, metaclass=_DaemonMeta):
         """Stop the daemon.
 
         Sends ``SIGTERM`` to the daemon process and waits for it to terminate.
-        If the daemon is not running, a warning is issued and the pidfile is
-        cleaned up if present.
+        If the daemon does not terminate within a timeout, ``SIGKILL`` is sent
+        as a last resort. If the daemon is not running, a warning is issued and
+        the pidfile is cleaned up if present.
 
         Raises:
-            :exc:`OSError`: If the daemon process could not be killed for a
-            reason other than it not existing.
+            OSError: If the daemon process could not be killed for a
+                     reason other than it not existing.
         """
         if not (pid := self.pid):
             msg: str = "Daemon is not running.\n"
             warn(msg, stacklevel=1)
-        else:  # Try killing the daemon process
-            try:
-                while 1:
-                    os.kill(pid, signal.SIGTERM)
-                    time.sleep(0.1)
-            except OSError as err:
-                if str(err.args).find("No such process") > 0:
-                    if self.__pidfile__.exists():
-                        self.__pidfile__.unlink()
-                else:
-                    raise OSError(err) from err
+            return
+
+        # Send SIGTERM once
+        try:
+            os.kill(pid, signal.SIGTERM)
+        except OSError as err:
+            if "No such process" in str(err):
+                if self.__pidfile__.exists():
+                    self.__pidfile__.unlink()
+                return
+            raise
+
+        # Wait for the process to terminate, with a timeout
+        deadline = time.monotonic() + _STOP_TIMEOUT
+        while time.monotonic() < deadline:
+            time.sleep(0.1)
+            if not _is_process_alive(pid):
+                break
+        else:
+            # Timeout: force-kill with SIGKILL
+            with contextlib.suppress(OSError):
+                os.kill(pid, signal.SIGKILL)
+
+        if self.__pidfile__.exists():
+            self.__pidfile__.unlink()
 
     @final
     def start(self) -> int:
@@ -621,7 +665,7 @@ class Daemon(ABC, metaclass=_DaemonMeta):
         See Also:
             :func:`atexit.register`
         """
-        return
+        return  # pragma: no cover
 
     @abstractmethod
     def run(self) -> None:
