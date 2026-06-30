@@ -134,20 +134,42 @@ def test_metaclass_rejects_invalid_workpath() -> None:
 
 @pytest.mark.skipif(not IS_POSIX, reason="Daemon is POSIX-only")
 def test_daemon_cannot_be_instantiated_directly() -> None:
-    """Daemon() raises TypeError because run() is abstract."""
-    with pytest.raises(TypeError):
-        Daemon()  # pyright: ignore[reportAbstractUsage]
+    """Daemon() raises TypeError because run() is abstract.
+
+    The metaclass __call__ forks a child process before calling super().__call__()
+    which raises the TypeError. The fork triggers a DeprecationWarning about
+    fork() in multi-threaded processes, which we suppress here.
+    """
+    with warnings.catch_warnings():
+        warnings.filterwarnings(
+            "ignore",
+            message=".*multi-threaded, use of fork.*",
+            category=DeprecationWarning,
+        )
+        with pytest.raises(TypeError):
+            Daemon()  # pyright: ignore[reportAbstractUsage]
 
 
 @pytest.mark.skipif(not IS_POSIX, reason="Daemon is POSIX-only")
 def test_subclass_without_run_cannot_be_instantiated() -> None:
-    """A subclass that doesn't implement run() raises TypeError."""
+    """A subclass that doesn't implement run() raises TypeError.
+
+    The metaclass __call__ forks a child process before calling super().__call__()
+    which raises the TypeError. The fork triggers a DeprecationWarning about
+    fork() in multi-threaded processes, which we suppress here.
+    """
 
     class Incomplete(Daemon):  # pyright: ignore[reportImplicitAbstractClass]
         pass
 
-    with pytest.raises(TypeError):
-        Incomplete()  # pyright: ignore[reportAbstractUsage]
+    with warnings.catch_warnings():
+        warnings.filterwarnings(
+            "ignore",
+            message=".*multi-threaded, use of fork.*",
+            category=DeprecationWarning,
+        )
+        with pytest.raises(TypeError):
+            Incomplete()  # pyright: ignore[reportAbstractUsage]
 
 
 # ============================================================================
