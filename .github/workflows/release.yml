@@ -1,0 +1,108 @@
+# This workflow will only run jobs after
+# the Test workflow completes with success on the main branch.
+name: Publish release
+on:
+  workflow_run:
+    workflows: [Test]
+    types: [completed]
+    branches: [main]
+
+jobs:
+  bump:
+    name: Bump version, make changelog
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    outputs:
+      changelog: ${{ steps.bump.outputs.changelog }}
+
+    steps:
+    - name: checkout repo
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: install mise with Python 3.14
+      uses: jdx/mise-action@v4
+      with:
+        version: 2026.6.14
+        install: false
+        cache: true
+
+    - name: bump version, make changelog and commit
+      run: |
+        mise run version:bump
+
+    - name: export changelog
+      uses: actions/upload-artifact@v4
+      with:
+        name: changelog
+        path: ${{ github.workspace }}/CHANGELOG.md
+
+  deploy:
+    name: Deploy wheel to pypi
+    needs: [ bump ]
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.12', '3.13', '3.14']
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - name: checkout repo
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: download changelog
+      uses: actions/download-artifact@v4
+      with:
+        name: changelog
+        path: ${{ github.workspace }}
+
+    - name: install mise with Python ${{ matrix.python-version }}
+      uses: jdx/mise-action@v4
+      with:
+        version: latest
+        install: true
+        cache: true
+        tool_versions: python ${{ matrix.python-version }}
+
+    - name: install project dependencies
+      run: |
+        mise run projet:sync --prod
+
+    - name: build all packages
+      run: |
+        mise run project:build
+
+    - name: publish on pypi
+      env:
+        UV_PUBLISH_TOKEN: ${{ secrets.PYPI_TOKEN }}
+      run: |
+        mise run project:publish
+
+  release:
+    name: Create GitHub Release
+    needs: [ deploy ]
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: checkout repo
+      uses: actions/checkout@v4
+
+    - name: download changelog
+      uses: actions/download-artifact@v4
+      with:
+        name: changelog
+        path: ${{ github.workspace }}
+
+    - name: create github release
+      id: create_release
+      uses: softprops/action-gh-release@v2
+      with:
+        body_path: ${{ github.workspace }}/CHANGELOG.md
+        prerelease: ${{ (startsWith(steps.tag_name.outputs.version, 'v0')) || (endsWith(steps.tag_name.outputs.version, '-pre')) || (endsWith(steps.tag_name.outputs.version, '-dev')) }}
+        draft: false
+        name: Release ${{ github.ref_name }}
+        tag_name: ${{ github.ref_name }}
+        token: ${{ secrets.GITHUB_TOKEN }}

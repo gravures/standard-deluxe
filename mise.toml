@@ -1,0 +1,357 @@
+[tools]
+python = "{{ get_env(name='PYTHON_VERSION', default='3.14') }}"
+uv = "latest"
+cocogitto = "latest"
+
+[env]
+UV_PYTHON = { value = "{{ tools.python.path }}", tools = true }
+_.path = ".venv/bin"
+
+[settings]
+pipx.uvx = true
+python.uv_venv_auto = "create|source"
+python.uv_venv_create_args = []
+
+[tasks.python]
+description = "the venv python executable"
+usage = '''
+arg "[args]" var=#true help="any arguments to provide to python"
+'''
+quiet = true
+run = "python3 {{ usage.args | join(sep=' ') }}"
+
+[tasks._setup]
+hide = true
+quiet = true
+depends = [
+  { task = "pc:init" },
+  { task = "sync", args = ["--all-groups"] },
+]
+run = [
+  { task = "python", args = ["./tools/traceback.py"]},
+  { task = "show"},
+]
+
+#
+# Project
+#
+[tasks."project:setup"]
+alias = "setup"
+description = "setup a developpment environment"
+quiet = true
+run = '''
+{% if not env.GITHUB_WORKFLOW %}
+  mise run _setup
+{% endif %}
+'''
+
+[tasks."project:lock"]
+alias = "lock"
+description = "resolve and lock dependencies"
+usage = '''
+arg "[args]" var=#true help="any arguments to provide to uv lock command"
+'''
+quiet = true
+run = "uv lock {{ usage.args | join(sep=' ') }}"
+
+[tasks."project:sync"]
+alias = "sync"
+description = "synchronize the current working set with lock file"
+usage = '''
+arg "[args]" var=#true help="any arguments to provide to uv sync command"
+'''
+quiet = true
+run = "uv sync --reinstall-package standard-deluxe --locked --all-packages --no-python-downloads {{ usage.args | join(sep=' ') }}"
+
+[tasks."project:install"]
+alias = "install"
+description = "Install project dependencies"
+usage = '''
+arg "[args]" var=#true help="any arguments to provide to uv sync command"
+'''
+quiet = true
+depends = ["lock", { task = "sync", args = ["{{usage.args}}"] }]
+
+[tasks."project:build"]
+alias = "build"
+description = "build artifacts for distribution"
+quiet = true
+run = "uv build --all-packages --no-python-downloads"
+
+[tasks."project:publish"]
+alias = "publish"
+description = "build and publish the project to PyPI"
+hide = true
+quiet = true
+wait_for = [ "project:build" ]
+run = "uv publish -v ./dists/*"
+
+#
+# Version
+#
+[tasks."version:bump"]
+description = "make CHANELOG.md, bump version and commit if in CI"
+env = { "GITHUB_WORKFLOW" = { required = "version bump only allowed in CI workflow" } }
+hide = true
+quiet = true
+run = "cog bump --auto"
+
+[tasks."version:suggest"]
+description = "suggest next version tag"
+silent = "stderr"
+quiet = true
+run = "cog bump --dry-run --auto --skip-untracked --disable-bump-commit"
+
+[tasks."version:get"]
+description = "output actual version tag"
+quiet = true
+run = "cog -v get-version --include-prereleases --tag"
+
+[tasks."version:changelog"]
+description = "write CHANELOG.md file"
+hide = true
+quiet = true
+run = '''#!.venv/bin/python3
+import subprocess as sp
+from pathlib import Path
+
+cp = sp.run(
+    ("cog", "--quiet", "changelog"),
+    shell=False,
+    text=True,
+    capture_output=True,
+    check=True,
+)
+log = f"""# Changelog
+
+All notable changes to this project will be documented in this file.
+
+{cp.stdout}
+"""
+Path("./CHANGELOG.md").write_text(log)
+'''
+
+#
+# info
+#
+[tasks."info:show"]
+alias = "show"
+description = "show project summary"
+quiet = true
+run = "./tools/show.py"
+
+[tasks."info:list"]
+alias = "list"
+description = "list packages installed in the current working set"
+quiet = true
+run = "uv tree --locked --depth 1 --no-dedupe --universal --all-groups --outdated --color always"
+
+[tasks."info:require"]
+alias = "require"
+description = "export lock file as requirements"
+quiet = true
+depends = [ "lock" ]
+run = "uv export --format requirements.txt --all-packages > requirements"
+
+#
+# Pre-commit
+#
+[tasks."pc:init"]
+description = "initialize pre-commit"
+tools."pipx:pre-commit" = "latest"
+quiet = true
+run = "pre-commit install --install-hooks"
+
+[tasks."pc:update"]
+description = "update pre-commit hooks"
+depends = ["pc:init"]
+quiet = true
+run = "pre-commit autoupdate"
+
+[tasks."pc:check"]
+description = "run pre-commit hooks"
+depends = ["pc:init"]
+quiet = true
+env = { SKIP="basedpyright" }
+run = "pre-commit run --all-files"
+
+[tasks."pc:clean"]
+description = "cleanup pre-commit hooks"
+depends = ["pc:init"]
+quiet = true
+run = ["pre-commit clean", "pre-commit gc"]
+
+[tasks."pc:safe"]
+description = "run pre-commit safety dependencices check"
+depends = ["pc:init", "require"]
+quiet = true
+run = "pre-commit run --hook-stage manual python-safety-dependencies-check"
+
+#
+# Tests
+#
+[tasks."test:this"]
+alias = "test"
+description = "run tests for given keywords"
+quiet = true
+usage = '''
+arg "<keys>" var=#true help="keyword(s) to test"
+'''
+run = "pytest --benchmark-skip --numprocesses auto --force-short-summary --tb=short  -k {{ usage.keys | join(sep=' ') }}"
+
+[tasks."test:cover"]
+alias = "cover"
+description = "run the tests suite with coverage"
+usage = '''
+arg "[args]" var=#true help="any additional arguments to provide to pytest"
+'''
+quiet = true
+run = [ "pytest --cov deluxe --benchmark-skip --numprocesses auto --dist load {{ usage.args | join(sep=' ') }}", "coverage xml", ]
+
+[tasks."test:report"]
+alias = "report"
+description = "report tests coverage"
+quiet = true
+run = "coverage report --no-skip-covered"
+
+[tasks."test:benchmarks"]
+description = "run benchmarks tests suite"
+usage = '''
+arg "[args]" var=#true help="any additional arguments to provide to pytest"
+'''
+quiet = true
+run = "pytest --force-short-summary --benchmark-only  --benchmark-warmup=on --benchmark-warmup-iterations=1000 --benchmark-name=short --benchmark-columns=mean,stddev,iqr,ops -k {{ usage.args | join(sep=' ') }}"
+
+#
+# Types
+#
+[tasks."types:typecheck"]
+alias = "typecheck"
+description = "check type annotations"
+usage = '''
+arg "[files]" {
+  help "files to typecheck, default to src/deluxe/**/*.py"
+  var #true
+}
+'''
+quiet = true
+run = '''
+{% if usage_files %}
+  basedpyright {{ usage.files | join(sep=" ") }}
+{% else %}
+  basedpyright 'src/deluxe/**/*.py'
+{% endif %}
+'''
+
+[tasks."types:mypy"]
+alias = "mypy"
+description = "check type annotations with mypy"
+tools."pipx:mypy" = "latest"
+usage = '''
+arg "[files]" {
+  help "files to typecheck, default to src/deluxe/**/*.py"
+  var #true
+}
+'''
+quiet = true
+run = '''
+{% if usage_files %}
+  mypy --pretty {{ usage.files | join(sep=" ") }}
+{% else %}
+  mypy --pretty 'src/deluxe'
+{% endif %}
+'''
+
+[tasks."types:typyness"]
+alias = "typyness"
+description = "check type annotations completness"
+usage = '''
+arg "[packages]" {
+  help "package name(s) to check, default to 'deluxe'"
+  var #true
+}
+'''
+quiet = true
+run = "./tools/typyness.py {{ usage.packages | join(sep=' ') }}"
+
+#
+# Documentation
+#
+[tasks."docs:build"]
+alias = "docs"
+description = "build project documentation"
+quiet = true
+run = "sphinx-build -M html ./docs/sources ./docs/build"
+
+#
+# Lint
+#
+[tasks."lint:check"]
+alias = "lint"
+description = "check code syntax"
+usage = '''
+arg "[files]" {
+  help "files to check, default to src/deluxe/**/*.py"
+  var #true
+  default "src/deluxe"
+}
+'''
+quiet = true
+run = "ruff check --no-fix {{ usage.files | join(sep=' ') }}"
+
+[tasks."lint:format"]
+description = "check code formatting"
+usage = '''
+arg "[files]" {
+  help "files to check, default to src/deluxe/**/*.py"
+  var #true
+  default "src/deluxe"
+}
+'''
+quiet = true
+run = "ruff format --check {{ usage.files | join(sep=' ') }}"
+
+
+#
+# Codes
+#
+[tasks."code:format"]
+description = "format python code"
+alias = "format"
+usage = '''
+arg "[files]" {
+  help "files to format, default to src/deluxe/**/*.py"
+  var #true
+  default "src/deluxe"
+}
+'''
+quiet = true
+run = "ruff format {{ usage.files | join(sep=' ') }}"
+
+[tasks."code:dead"]
+alias = "dead"
+description = "looks for dead code paths"
+tools."pipx:dead" = "latest"
+quiet = true
+dir = "{{ [config_root] | concat(with='src/deluxe') | join_path }}"
+run = "dead"
+
+[tasks."code:stats"]
+alias = "stats"
+description = "show code statistics"
+quiet = true
+run = "tokei --sort code"
+
+[tasks."code:reports"]
+alias = "reports"
+description = "show a full report for the project"
+quiet = true
+run = [
+  { task = "show" },
+  { task = "list" },
+  { task = "stats" },
+  # { task = "pc-check" },
+  { task = "typecheck" },
+  { task = "dead" },
+  { task = "cover" },
+]
