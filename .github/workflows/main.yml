@@ -31,7 +31,7 @@ jobs:
 
       - name: install testing dependencies
         run: |
-          mise run project:sync -G test
+          mise run project:sync --group test
 
       - name: run tests suite with coverage
         env:
