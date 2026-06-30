@@ -76,6 +76,9 @@ jobs:
         with:
           python-version: '3.14'
 
+      - name: Install setuptools
+        run: pip install setuptools
+
       - name: verify artifacts
         run: |
           echo "Artifacts dir listing (if present):"
