@@ -77,7 +77,7 @@ jobs:
           python-version: '3.13'
 
       - name: Install setuptools
-        run: pip install standard-pkg-resources
+        run: pip install standard-pkg-resources covdefaults coverage-conditional-plugin cython
 
       - name: verify artifacts
         run: |
