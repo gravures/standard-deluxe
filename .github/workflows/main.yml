@@ -39,7 +39,7 @@ jobs:
           mise run test:cover
 
       - name: store coverage file
-        if: ${{ matrix.os }} == 'ubuntu-latest' and ${{ matrix.python-version == '3.14' }}
+        if: ${{ matrix.os }} == 'ubuntu-latest' && ${{ matrix.python-version == '3.14' }}
         uses: actions/upload-artifact@v4
         with:
           name: coverage
