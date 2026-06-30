@@ -47,21 +47,32 @@ def dedup_list(iterable: Iterable[object], lifo: bool = False) -> list[object]:
 
 
 def dedup_value(value: Any) -> Any:
-    """Deduplicate a value if it's a list, matching Environment's behavior."""
+    """Deduplicate a value if it's a list, matching Environment's behavior.
+
+    Args:
+        value: The value to deduplicate.
+
+    Returns:
+        The deduplicated value if it's a list, otherwise the value as-is.
+    """
     if isinstance(value, list):
         return dedup_list(value)  # pyright: ignore[reportUnknownArgumentType]
     return value
 
 
 def dedup_items(items: list[tuple[str, Any]]) -> dict[str, Any]:
-    """Convert items to dict with list values deduplicated."""
-    result: dict[str, Any] = {}
-    for key, value in items:
-        if key in result and isinstance(result[key], list) and isinstance(value, list):
-            result[key] = dedup_list(result[key] + value)
-        else:
-            result[key] = dedup_value(value)
-    return result
+    """Convert items to dict with list values deduplicated.
+
+    Matches Environment behavior: last value wins for duplicate keys
+    (standard dict semantics), then list values are deduplicated.
+
+    Args:
+        items: List of key-value pairs.
+
+    Returns:
+        A dictionary with list values deduplicated.
+    """
+    return {k: dedup_value(v) for k, v in dict(items).items()}
 
 
 # ------------------------------------------------------------------------------
