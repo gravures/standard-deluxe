@@ -46,6 +46,7 @@ jobs:
         with:
           name: coverage-${{ matrix.python-version }}-${{ matrix.os }}
           path: .coverage.${{ matrix.python-version }}.${{ matrix.os }}
+          include-hidden-files: true
 
       - name: minimize uv cache
         run: uv cache prune --ci
@@ -72,24 +73,19 @@ jobs:
         id: download
         with:
           pattern: coverage-*-*
-          merge-multiple: true
+          merge-multiple: false
+          path: artifacts
 
       - name: inspect downloaded artifacts
         run: |
-          echo "Artifact directories (if any):"
-          ls -la ./coverage-* || true
-          echo "Coverage files found:"
-          find . -type f -name ".coverage.*" -print || true
+          echo "Artifacts dir listing (if present):"
+          ls -la artifacts || true
+          echo "Coverage files found under artifacts:"
+          find artifacts -type f -name ".coverage.*" -print || true
 
       - name: move coverage files to repository root
         run: |
-          files_found=$(find . -type f -name ".coverage.*" -print -quit)
-          if [ -z "$files_found" ]; then
-            echo "No coverage files found after download-artifact. Listing full workspace for debugging:"
-            ls -R .
-            exit 1
-          fi
-          find . -type f -name ".coverage.*" -exec mv -t . {} +
+          find artifacts -type f -name ".coverage.*" -exec mv -t . {} +
         shell: bash
 
       - name: create coverage comment
