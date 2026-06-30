@@ -55,44 +55,42 @@ jobs:
     needs: [testing]
     runs-on: ubuntu-latest
     permissions:
-      # Gives the action the necessary permissions
-      # for publishing new comments in pull requests.
       pull-requests: write
-      # Gives the action the necessary permissions for pushing data to the
-      # python-coverage-comment-action branch, and for editing existing
-      # comments (to avoid publishing multiple comments in the same PR)
       contents: write
       actions: read
 
     steps:
       - name: checkout repo
         uses: actions/checkout@v4
+        with:
+          persist-credentials: true
 
       - name: gets coverage db
         uses: actions/download-artifact@v4
         id: download
         with:
           pattern: coverage-*-*
-          merge-multiple: false
-          path: artifacts
+          merge-multiple: true
+          # path: artifacts
 
-      - name: inspect downloaded artifacts
-        run: |
-          echo "Artifacts dir listing (if present):"
-          ls -la artifacts || true
-          echo "Coverage files found under artifacts:"
-          find artifacts -type f -name ".coverage.*" -print || true
+      # - name: inspect downloaded artifacts
+      #   run: |
+      #     echo "Artifacts dir listing (if present):"
+      #     ls -la artifacts || true
+      #     echo "Coverage files found under artifacts:"
+      #     find artifacts -type f -name ".coverage.*" -print || true
 
-      - name: move coverage files to repository root
-        run: |
-          find artifacts -type f -name ".coverage.*" -exec mv -t . {} +
-        shell: bash
+      # - name: move coverage files to repository root
+      #   run: |
+      #     find artifacts -type f -name ".coverage.*" -exec mv -t . {} +
+      #   shell: bash
 
       - name: create coverage comment
         id: coverage_comment
         uses: py-cov-action/python-coverage-comment-action@v4.1
         with:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_PR_RUN_ID: ${{ github.event.workflow_run.id }}
           COVERAGE_DATA_BRANCH: python-coverage
           COMMENT_ARTIFACT_NAME: python-coverage
           COMMENT_FILENAME: python-coverage.txt
