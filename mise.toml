@@ -18,7 +18,7 @@ usage = '''
 arg "[args]" var=#true help="any arguments to provide to python"
 '''
 quiet = true
-run = "python3 ${usage_args}"
+run = "python3 {{ usage.args | join(sep=' ') }}"
 
 [tasks._setup]
 hide = true
@@ -52,7 +52,7 @@ usage = '''
 arg "[args]" var=#true help="any arguments to provide to uv lock command"
 '''
 quiet = true
-run = "uv lock ${usage_args}"
+run = "uv lock {{ usage.args | join(sep=' ') }}"
 
 [tasks."project:sync"]
 alias = "sync"
@@ -61,7 +61,7 @@ usage = '''
 arg "[args]" var=#true help="any arguments to provide to uv sync command"
 '''
 quiet = true
-run = "uv sync --reinstall-package standard-deluxe --locked --all-packages --no-python-downloads ${usage_args}"
+run = "uv sync --reinstall-package standard-deluxe --locked --all-packages --no-python-downloads {{ usage.args | join(sep=' ') }}"
 
 [tasks."project:install"]
 alias = "install"
@@ -197,7 +197,7 @@ quiet = true
 usage = '''
 arg "<keys>" var=#true help="keyword(s) to test"
 '''
-run = "pytest --benchmark-skip --numprocesses auto --force-short-summary --tb=short  -k ${usage_keys}"
+run = "pytest --benchmark-skip --numprocesses auto --force-short-summary --tb=short  -k {{ usage.keys | join(sep=' ') }}"
 
 [tasks."test:cover"]
 alias = "cover"
@@ -206,7 +206,7 @@ usage = '''
 arg "[args]" var=#true help="any additional arguments to provide to pytest"
 '''
 quiet = true
-run = "pytest --cov deluxe --benchmark-skip --numprocesses auto --dist load ${usage_args}"
+run = "pytest --cov deluxe --benchmark-skip --numprocesses auto --dist load {{ usage.args | join(sep=' ') }}"
 
 [tasks."test:report"]
 alias = "report"
@@ -220,7 +220,7 @@ usage = '''
 arg "[args]" var=#true help="any additional arguments to provide to pytest"
 '''
 quiet = true
-run = "pytest --force-short-summary --benchmark-only  --benchmark-warmup=on --benchmark-warmup-iterations=1000 --benchmark-name=short --benchmark-columns=mean,stddev,iqr,ops -k ${usage_args}"
+run = "pytest --force-short-summary --benchmark-only  --benchmark-warmup=on --benchmark-warmup-iterations=1000 --benchmark-name=short --benchmark-columns=mean,stddev,iqr,ops -k {{ usage.args | join(sep=' ') }}"
 
 #
 # Types
@@ -237,7 +237,7 @@ arg "[files]" {
 quiet = true
 run = '''
 {% if usage_files %}
-  basedpyright ${usage_files}
+  basedpyright {{ usage.files | join(sep=" ") }}
 {% else %}
   basedpyright 'src/deluxe/**/*.py'
 {% endif %}
@@ -256,7 +256,7 @@ arg "[files]" {
 quiet = true
 run = '''
 {% if usage_files %}
-  mypy --pretty ${usage_files}
+  mypy --pretty {{ usage.files | join(sep=" ") }}
 {% else %}
   mypy --pretty 'src/deluxe'
 {% endif %}
@@ -272,7 +272,7 @@ arg "[packages]" {
 }
 '''
 quiet = true
-run = "./tools/typyness.py ${usage_packages}"
+run = "./tools/typyness.py {{ usage.packages | join(sep=' ') }}"
 
 #
 # Documentation
@@ -297,7 +297,7 @@ arg "[files]" {
 }
 '''
 quiet = true
-run = "ruff check --no-fix ${usage_files}"
+run = "ruff check --no-fix {{ usage.files | join(sep=' ') }}"
 
 [tasks."lint:format"]
 description = "check code formatting"
@@ -309,7 +309,7 @@ arg "[files]" {
 }
 '''
 quiet = true
-run = "ruff format --check ${usage_files}"
+run = "ruff format --check {{ usage.files | join(sep=' ') }}"
 
 
 #
@@ -326,7 +326,7 @@ arg "[files]" {
 }
 '''
 quiet = true
-run = "ruff format ${usage_files}"
+run = "ruff format {{ usage.files | join(sep=' ') }}"
 
 [tasks."code:dead"]
 alias = "dead"
