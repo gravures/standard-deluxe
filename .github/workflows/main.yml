@@ -76,6 +76,7 @@ jobs:
         with:
           python-version: '3.14'
 
+      - name: verify artifacts
         run: |
           echo "Artifacts dir listing (if present):"
           ls -la artifacts || true
