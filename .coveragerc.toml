@@ -1,4 +1,5 @@
 [run]
+core = "ctrace"
 branch = true
 relative_files = true
 plugins = ["covdefaults", "coverage_conditional_plugin", "Cython.Coverage"]
