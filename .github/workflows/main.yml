@@ -73,7 +73,12 @@ jobs:
           merge-multiple: true
           # path: artifacts
 
-      # - name: inspect downloaded artifacts
+      - name: setup python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.14'
+        run: pip install covdefaults coverage-conditional-plugin cython
+
       #   run: |
       #     echo "Artifacts dir listing (if present):"
       #     ls -la artifacts || true
