@@ -77,7 +77,7 @@ jobs:
           python-version: '3.13'
 
       - name: Install setuptools
-        run: pip install setuptools
+        run: pip install standard-pkg-resources
 
       - name: verify artifacts
         run: |
