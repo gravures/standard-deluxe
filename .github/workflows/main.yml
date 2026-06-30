@@ -39,11 +39,11 @@ jobs:
           mise run test:cover
 
       - name: store coverage file
-        if: ${{ matrix.os }} == 'ubuntu-latest' && ${{ matrix.python-version == '3.14' }}
+        if: ${{ matrix.os == 'ubuntu-latest' }} && ${{ matrix.python-version == '3.14' }}
         uses: actions/upload-artifact@v4
         with:
           name: coverage
-          path: .coverage
+          path: coverage.xml
           include-hidden-files: true
 
       - name: minimize uv cache
@@ -71,28 +71,22 @@ jobs:
           merge-multiple: false
           path: artifacts
 
-      - name: setup python
-        uses: actions/setup-python@v6
-        with:
-          python-version: '3.13'
-
-      - name: Install setuptools
-        run: pip install standard-pkg-resources covdefaults coverage-conditional-plugin cython
-
       - name: verify artifacts
         run: |
           echo "Artifacts dir listing (if present):"
           ls -la artifacts || true
           echo "Coverage files found under artifacts:"
-          find artifacts -type f -name ".coverage" -print || true
+          find artifacts -type f -name "coverage.xml" -print || true
 
       - name: move coverage files to repository root
         run: |
-          find artifacts -type f -name ".coverage" -exec mv -t . {} +
+          find artifacts -type f -name "coverage.xml" -exec mv -t . {} +
         shell: bash
 
       - name: Coverage Badge
-        uses: tj-actions/coverage-badge-py@v2.0.4
+        run: |
+          pip install -U 'genbadge[coverage]'
+          genbadge coverage -i  coverage.xml -o coverage.svg
 
       - name: Verify Changed files
         uses: tj-actions/verify-changed-files@v20

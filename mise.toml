@@ -206,7 +206,7 @@ usage = '''
 arg "[args]" var=#true help="any additional arguments to provide to pytest"
 '''
 quiet = true
-run = "pytest --cov deluxe --benchmark-skip --numprocesses auto --dist load {{ usage.args | join(sep=' ') }}"
+run = [ "pytest --cov deluxe --benchmark-skip --numprocesses auto --dist load {{ usage.args | join(sep=' ') }}", "coverage xml", ]
 
 [tasks."test:report"]
 alias = "report"
