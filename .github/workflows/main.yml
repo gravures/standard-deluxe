@@ -1,77 +1,111 @@
-name: tests
+name: Test
 on:
-  workflow_dispatch:
   pull_request:
   push:
     branches: [main]
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - '*.lock'
+  workflow_dispatch:
 
 jobs:
   testing:
     strategy:
       matrix:
-        python-version: ['3.9', '3.10', '3.11', '3.12']
+        python-version: ['3.11', '3.12', '3.13', '3.14']
         os: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
 
     steps:
-      - uses: actions/checkout@v4
-      - name: Setup pdm to Python ${{ matrix.python-version }}
-        uses: pdm-project/setup-pdm@v4
+      - name: checkout repo
+        uses: actions/checkout@v4
+
+      - name: install mise with Python ${{ matrix.python-version }}
+        uses: jdx/mise-action@v4
         with:
-          python-version: ${{ matrix.python-version }}
+          version: 2026.6.14
+          install: true
+          cache: true
+          tool_versions: python ${{ matrix.python-version }}
 
-      - name: Install dependencies
+      - name: install testing dependencies
         run: |
-          pdm sync --dev -G test -G dev
+          mise run project:sync --group test
 
-      - name: Tests with tox
-        env:
-          COVERAGE_FILE: ".coverage.${{ matrix.python-version }}.${{ matrix.os }}"
+      - name: run tests suite with coverage
         run: |
-          pdm run tox --version
-          pdm run tox --develop -r -e py
+          mise run typecheck
+          mise run test:cover
 
-      - name: Store coverage file
-        if: ${{ matrix.os }} == 'ubuntu-latest'
+      - name: store coverage file
+        if: ${{ matrix.os == 'ubuntu-latest' }} && ${{ matrix.python-version == '3.14' }}
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-${{ matrix.python-version }}-${{ matrix.os }}
-          path: .coverage.${{ matrix.python-version }}.${{ matrix.os }}
+          name: coverage
+          path: coverage.xml
+          include-hidden-files: true
+
+      - name: minimize uv cache
+        run: uv cache prune --ci
 
   coverage:
-    name: Coverage
+    needs: [testing]
     runs-on: ubuntu-latest
-    needs: testing
     permissions:
-      # Gives the action the necessary permissions
-      # for publishing new comments in pull requests.
       pull-requests: write
-      # Gives the action the necessary permissions for pushing data to the
-      # python-coverage-comment-action branch, and for editing existing
-      # comments (to avoid publishing multiple comments in the same PR)
       contents: write
-    steps:
-      - uses: actions/checkout@v4
+      actions: read
 
-      - uses: actions/download-artifact@v4
+    steps:
+      - name: checkout repo
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+          fetch-depth: 0
+
+      - name: gets coverage db
+        uses: actions/download-artifact@v4
         id: download
         with:
-          pattern: coverage-*-*
-          merge-multiple: true
+          pattern: coverage
+          merge-multiple: false
+          path: artifacts
 
-      - name: Coverage comment
-        id: coverage_comment
-        uses: py-cov-action/python-coverage-comment-action@v3
-        with:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          COVERAGE_DATA_BRANCH: python-coverage
-          COMMENT_ARTIFACT_NAME: python-coverage
-          COMMENT_FILENAME: python-coverage.txt
-          MERGE_COVERAGE_FILES: true
+      - name: verify artifacts
+        run: |
+          echo "Artifacts dir listing (if present):"
+          ls -la artifacts || true
+          echo "Coverage files found under artifacts:"
+          find artifacts -type f -name "coverage.xml" -print || true
 
-      - name: Store Pull Request comment to be posted
-        uses: actions/upload-artifact@v4
-        if: steps.coverage_comment.outputs.COMMENT_FILE_WRITTEN == 'true'
+      - name: move coverage files to repository root
+        run: |
+          find artifacts -type f -name "coverage.xml" -exec mv -t . {} +
+        shell: bash
+
+      - name: Coverage Badge
+        run: |
+          pip install -U 'genbadge[coverage]'
+          genbadge coverage -i  coverage.xml -o coverage.svg
+
+      - name: Verify Changed files
+        uses: tj-actions/verify-changed-files@v20
+        id: verify-changed-files
         with:
-          name: python-coverage
-          path: python-coverage.txt
+          files: coverage.svg
+
+      - name: Commit coverage.svg
+        if: steps.verify-changed-files.outputs.files_changed == 'true'
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add coverage.svg
+          git commit -m "Updated coverage.svg"
+
+      - name: Push changes
+        if: steps.verify-changed-files.outputs.files_changed == 'true'
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.github_token }}
+          branch: ${{ github.head_ref || github.ref_name }}

@@ -1,4 +1,20 @@
-#!/usr/bin/env python  # noqa: CPY001
+#!/usr/bin/env python
+# Copyright (c) 2025 - Gilles Coissac
+# This file is part of standard-deluxe library.
+#
+# standard-deluxe is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published
+# by the Free Software Foundation, either version 3 of the License,
+# or (at your option) any later version.
+#
+# standard-deluxe is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty
+# of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with standard-deluxe. If not, see <https://www.gnu.org/licenses/>
+#
 """Install python traceback formatter in the current virtualenv."""
 
 from __future__ import annotations
@@ -29,17 +45,18 @@ pretty_errors.configure(
 """
 
 
-def main() -> int:
+def main() -> int:  # noqa: D103
     if sys.prefix == sys.base_prefix:
         sys.stderr.write("Should be run inside a virtual environment!")
         return 1
 
-    try:
-        if not hook.exists():
+    install = "--remove" not in sys.argv
+    try:  # noqa: PLW0717
+        if install and not hook.exists():
             with hook.open("w") as stream:
                 stream.write(activate)
                 sys.stdout.write(f"traceback hook installed at {hook}")
-        else:
+        elif not install and hook.exists():
             hook.unlink()
             sys.stdout.write("traceback hook uninstalled")
     except OSError as e:

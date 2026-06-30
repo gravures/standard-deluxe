@@ -5,20 +5,14 @@ default_language_version:
 repos:
   # Conventional commit
   - repo: https://github.com/compilerla/conventional-pre-commit
-    rev: v3.2.0
+    rev: v4.4.0
     hooks:
       - id: conventional-pre-commit
         stages: [commit-msg]
         args: []
-  # Words spelling
-  - repo: https://github.com/crate-ci/typos
-    rev: v1.21.0
-    hooks:
-      - id: typos
-        args: []
   # Pre-commit hooks
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.6.0
+    rev: v6.0.0
     hooks:
       # Generic checks
       - id: trailing-whitespace
@@ -44,7 +38,7 @@ repos:
       # Python
       - id: check-ast
       - id: check-builtin-literals
-      - id: check-docstring-first
+      # - id: check-docstring-first
       - id: debug-statements
       - id: name-tests-test
   # Bash
@@ -64,20 +58,20 @@ repos:
       - id: rst-directive-colons
       - id: rst-inline-touching-normal
   - repo: https://github.com/Lucas-C/pre-commit-hooks-safety
-    rev: v1.3.3
+    rev: v1.4.2
     hooks:
       - id: python-safety-dependencies-check
         stages: [manual]
         files: requirements
         args: ["--short-report"]
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.4.1
+    rev: v0.15.17
     hooks:
       - id: ruff
-        args: ["--ignore=PLR0912,RUF100,T20,D,TD,FIX"]
+        args: ["--ignore=PLR0912,RUF100,T20,D,TD,FIX,DOC"]
       - id: ruff-format
-  # PDM
-  - repo: https://github.com/pdm-project/pdm
-    rev: 2.15.0
+  # UV-lock
+  - repo: https://github.com/astral-sh/uv-pre-commit
+    rev: 0.11.21
     hooks:
-      - id: pdm-lock-check
+      - id: uv-lock

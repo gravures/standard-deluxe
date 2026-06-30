@@ -1,17 +1,17 @@
 # RUFF configuration file
 # see: https://docs.astral.sh/ruff/settings
 #      https://docs.astral.sh/ruff/rules
-line-length  = 99
+line-length = 99
 indent-width = 4
-src          = ["src", "tests"]            # ["."]
-exclude      = ['docs/conf.py', 'typings']
-builtins     = ["_i"]                      # ipython hidden variable
-fix          = false
+src = ["src", "tests"]                # ["."]
+exclude = ['docs/conf.py', 'typings']
+builtins = ["_i"]                     # ipython hidden variable
+fix = false
 
 [format]
-preview                   = true
-quote-style               = "double"
-indent-style              = "space"
+preview = true
+quote-style = "double"
+indent-style = "space"
 skip-magic-trailing-comma = false
 
 [lint]
@@ -44,22 +44,26 @@ ignore = [
 
 [lint.per-file-ignores]
 "tests/**.py" = [
-  "T20",    # Allow print statements in tests
-  "D",      # Ignore docstring rules in tests
-  "ANN",    # Ignore type annotations in tests
-  "S101",   # Yeah of course we assert in tests
-  "B009",   # Allow calling `getattr` in tests since it can be used to make the test clearer.
-  "CPY001", # missing copyright
+  "T20",  # Allow print statements in tests
+  "D",    # Ignore docstring rules in tests
+  "ANN",  # Ignore type annotations in tests
+  "S101", # Yeah of course we assert in tests
+  "B009", # Allow calling `getattr` in tests since it can be used to make the test clearer.
+  "CPY",  # missing copyright
+  "N801", # class name begin with cap
+  "I001", # unsorted import
 ]
+"**/*.pyi" = ["E3", "I", "PYI021", "CPY"]
 
 [lint.isort]
-lines-after-imports    = 2
-required-imports       = ["from __future__ import annotations"]
+lines-after-imports = 2
+required-imports = ["from __future__ import annotations"]
+combine-as-imports = true
 extra-standard-library = ["tomllib"]
 
 [lint.pydocstyle]
-convention          = "google"
-ignore-decorators   = ["typing.overload"]
+convention = "google"
+ignore-decorators = ["typing.overload"]
 property-decorators = ["gi.repository.GObject.Property"]
 
 [lint.pylint]

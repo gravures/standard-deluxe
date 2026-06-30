@@ -1,103 +1,158 @@
-#####################################################
-# Project Metadatas
-#####################################################
 [project]
 name = "standard-deluxe"
-description = "A handfull collection of python utilities."
+description = "A handfull collection of python modules."
 authors = [{ name = "Gilles Coissac", email = "gilles@ideographe.fr" }]
 license = { text = "GPL-3.0" }
 readme = "README.md"
 keywords = []
 classifiers = [
-  "Intended Audience :: Developers",
   "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+  "Intended Audience :: Developers",
   "Operating System :: OS Independent",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.9",
-  "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
   "Programming Language :: Python :: 3 :: Only",
   "Typing :: Typed",
 ]
 
-urls.homepage      = "https://github.com/gravures/standard-deluxe"
-urls.repository    = "https://github.com/gravures/standard-deluxe"
+urls.homepage = "https://github.com/gravures/standard-deluxe"
+urls.repository = "https://github.com/gravures/standard-deluxe"
 urls.documentation = "https://github.com/gravures/standard-deluxe"
-urls.issue         = "https://github.com/gravures/standard-deluxe/issues"
+urls.issue = "https://github.com/gravures/standard-deluxe/issues"
 
-dynamic         = ["version"]
-requires-python = ">=3.9"
-dependencies    = []
+dynamic = ["version"]
+requires-python = ">=3.11"
+dependencies = []
 
 #####################################################
-# PDM
+# Build Settings
 #####################################################
 [build-system]
-requires      = ["pdm-backend"]
 build-backend = "pdm.backend"
+requires = ["pdm-backend", "cython", "setuptools"]
 
 [tool.pdm]
 distribution = true
 
 [tool.pdm.build]
-package-dir      = "src"
-includes         = ["src/deluxe/"]
-editable-backend = "editables"
+package-dir = "src"
+source-includes = [
+  "docs/",
+  "licenses/",
+  "tests/",
+  "tools/",
+  "typings/",
+  "CHANGELOG.md",
+  ".coveragerc.toml",
+  "changelog.tera",
+  "cog.toml",
+  "mise.toml",
+  "pyrightconfig.json",
+  "ruff.toml",
+  "uv.lock",
+]
+excludes = [
+  "docs/build",
+  "src/deluxe/**/*.so",
+  "src/deluxe/**/*.pyd",
+  "src/deluxe/**/*.c",
+]
 
 [tool.pdm.version]
-source         = "scm"
-write_to       = "deluxe/_version.py"
+source = "scm"
+write_to = "deluxe/_version.py"
 write_template = "__version__ = '{}'"
 
-[tool.pdm.dev-dependencies]
+#####################################################
+# Cython extensions modules
+#####################################################
+[tool.cython]
+enabled = true
+log_errors = "./.cython_errors"
+
+[tool.cython.cythonize]
+nthreads = 0
+exclude_failures = false
+show_all_warnings = false
+
+
+[tool.cython.build]
+optional = false
+py_limited_api = false
+language = "c"
+
+[tool.cython.options]
+docstrings = true
+annotate = false
+
+[tool.cython.compiler.directives]
+language_level = 3
+binding = false
+boundscheck = true
+wraparound = true
+overflowcheck = true
+initializedcheck = true
+nonecheck = false
+embedsignature = true
+'optimize.use_switch' = false
+'optimize.unpack_method_calls' = true
+'warn.undeclared' = false
+'warn.unreachable' = true
+'warn.maybe_uninitialized' = true
+'warn.unused' = true
+'warn.unused_arg' = true
+'warn.unused_result' = true
+'warn.multiple_declarators' = true
+
+#####################################################
+# Dev Dependencies
+#####################################################
+[dependency-groups]
 dev = [
-  "ruff==0.4.1",
-  "basedpyright==1.10.3",
-  "pre-commit==3.7.0",
-  "tox-pdm>=0.7.2",
-  "dead>=1.5.2",
+  "basedpyright",
+  "ruff",
   "pretty-errors>=1.2.25",
+  "cython>=3.2.0",
+  "cython-lint",
+  "pdm-backend",
+  "setuptools",
 ]
-monorepo = ["pdm>=2.16.1", "pdm-backend>=2.3.1"]
-test = ["pytest", "hypothesis", "coverage[toml]", "tox>=4.0", "editables>=0.5"]
-
-#####################################################
-# PDM MONOREPO PACKAGES
-#####################################################
-
-#####################################################
-# PDM SCRIPTS
-#####################################################
-[tool.pdm.scripts]
-traceback   = "_traceback.py"
-xrequire    = "pdm export -f requirements -o requirements.txt"
-test        = "pytest -s -v -k {args}"
-test_all    = "coverage run -m pytest"
-test_typing = "pdm run basedpyright --stats ./src/deluxe"
-test_cover  = "coverage report"
-tox_testme  = "tox --develop -r -e py"
-pc_init     = "pre-commit install --install-hooks"
-pc_update   = "pre-commit autoupdate"
-pc_check    = { env = { "SKIP" = "basedpyright" }, cmd = "pre-commit run --all-files" }
-dead        = "dead"
-pc_clean    = "pre-commit clean && pre-commit gc"
-deps        = "pdm list --fields name,groups,version,licenses,homepage --sort groups,name,licenses --exclude :sub"
-
-[tool.pdm.scripts.pc_safety]
-composite = ["xrequire", "pre-commit run python-safety-dependencies-check"]
-
-[tool.pdm.scripts.suite]
-composite = [
-  "echo '\f'",
-  "pdm show",
-  "echo '\nDEPS'",
-  "deps",
-  "echo '\nPRE-COMMIT'",
-  "pc_check",
-  "echo '\nTYPING'",
-  "test_typing",
-  "echo '\nDEAD CODE'",
-  "dead",
-  "echo '\nCOVERAGE'",
-  "test_cover",
+test = [
+  "pytest>=9.0",
+  "pytest-cov >= 7.0",
+  "pytest-xdist[psutil] >= 3.8",
+  "pytest-benchmark",
+  "hypothesis>=6.150.0",
+  "coverage[toml]>=7.13",
+  "coverage-conditional-plugin",
+  "covdefaults",
 ]
+docs = [
+  "sphinx>=9.0",
+  "sphinx-autoapi>=3.6",
+  "myst-parser>=5.0",
+  "sphinx-copybutton",
+  "sphinx-immaterial",
+]
+
+#####################################################
+# PyTest
+#####################################################
+[tool.pytest]
+markers = ["slow: marks tests as slow (deselect with '-m \"not slow\"')"]
+
+#####################################################
+# Documentation
+#####################################################
+[tool.esbonio.sphinx]
+buildCommand = [
+  "sphinx-build",
+  "-M",
+  "dirhtml",
+  "./docs/sources/",
+  "${defaultBuildDir}",
+]
+pythonCommand = ["uv", "run", "python"]
