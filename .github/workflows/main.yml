@@ -61,6 +61,8 @@ jobs:
       # python-coverage-comment-action branch, and for editing existing
       # comments (to avoid publishing multiple comments in the same PR)
       contents: write
+      actions: read
+
     steps:
       - name: checkout repo
         uses: actions/checkout@v4
@@ -71,7 +73,6 @@ jobs:
         with:
           pattern: coverage-*-*
           merge-multiple: true
-          actions: read
 
       - name: create coverage comment
         id: coverage_comment
