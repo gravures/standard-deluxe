@@ -2,7 +2,7 @@
 
 <!-- rst content start -->
 
-[![pdm-managed](https://img.shields.io/badge/pdm-managed-blueviolet)](https://pdm-project.org) ![Python Version from PEP 621 TOML](https://img.shields.io/python/required-version-toml?tomlFilePath=https%3A%2F%2Fraw.githubusercontent.com%2Fgravures%2Fstandard-deluxe%2Fmain%2Fpyproject.toml) ![Tests](https://github.com/gravures/standard-deluxe/actions/workflows/main.yml/badge.svg)![Endpoint Badge](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/gravures/standard-deluxe/python-coverage/endpoint.json&logo=codecov&label=coverage) ![GitHub License](https://img.shields.io/github/license/gravures/standard-deluxe) <!-- rumdl-disable-line MD013 -->
+[![pdm-managed](https://img.shields.io/badge/pdm-managed-blueviolet)](https://pdm-project.org) ![Python Version from PEP 621 TOML](https://img.shields.io/python/required-version-toml?tomlFilePath=https%3A%2F%2Fraw.githubusercontent.com%2Fgravures%2Fstandard-deluxe%2Fmain%2Fpyproject.toml) ![Tests](https://github.com/gravures/standard-deluxe/actions/workflows/main.yml/badge.svg) ![coverage badge](./coverage.svg) ![GitHub License](https://img.shields.io/github/license/gravures/standard-deluxe) <!-- rumdl-disable-line MD013 -->
 
 ---
 
