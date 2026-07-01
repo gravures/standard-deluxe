@@ -84,7 +84,7 @@ description = "build and publish the project to PyPI"
 hide = true
 quiet = true
 wait_for = [ "project:build" ]
-run = "uv publish -v ./dists/*"
+run = "uv publish -v ./dist/*"
 
 #
 # Version
