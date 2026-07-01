@@ -1,0 +1,58 @@
+# Changelog
+All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
+
+- - -
+##  Changelog for release [v0.2.0]
+    
+    https://github.com/gravures/standard-deluxe/compare/373c0454049d02ed321a517fb30a86990f680496..v0.2.0
+    2026-07-01
+  
+### Bug Fixes
+
+  - **(cython)** prevent lookup errors if table tool.cython.cythonize.extension do not exist - ([cfbe782](https://github.com/gravures/standard-deluxe/commit/cfbe78282233a607437027112f922a2df4b27f6e)) - [@gravures](https://github.com/gravures)
+
+  - **(types)** fix allowed protocol instantiation in StaticType in some cases - ([cd78fcf](https://github.com/gravures/standard-deluxe/commit/cd78fcfb8e02aab44ebe9bc7fe567a23d984c835)) - [@gravures](https://github.com/gravures)
+
+
+### Build system
+
+  - **(cython)** adds support for windows extension modules - ([264cd08](https://github.com/gravures/standard-deluxe/commit/264cd0895ea0a5f5dd4b553180bedb7879efa732)) - [@gravures](https://github.com/gravures)
+  - **(cython)** add pdm_build hook to handle cython extension build - ([ddb1ded](https://github.com/gravures/standard-deluxe/commit/ddb1ded1ee08c7387b791ce04b18b0db77624a6c)) - [@gravures](https://github.com/gravures)
+
+  - **(deluxe)** [**breaking**] remove monorepo support, bump python version to 3.11, use uv behind pdm. - ([ce27e38](https://github.com/gravures/standard-deluxe/commit/ce27e386fe9f26aed4b72dbc61edeff2e059e9ae)) - [@gravures](https://github.com/gravures)
+  - **(deluxe)** [**breaking**] remove monorepo support, bump python version to 3.11, use uv behind pdm. - ([ef0106e](https://github.com/gravures/standard-deluxe/commit/ef0106ea2e07aad03bfbdff33e8049d3917ee118)) - [@gravures](https://github.com/gravures)
+
+  - **(pdm)** integration with cytohn build system - ([3a60c20](https://github.com/gravures/standard-deluxe/commit/3a60c20a388e75144c2fc6bfc6d1849f187c1c13)) - [@gravures](https://github.com/gravures)
+
+  - **update pyright config - ([3c564f1](https://github.com/gravures/standard-deluxe/commit/3c564f14fcb5221c88390af2b99f45bbcfc20c08)) - [@gravures](https://github.com/gravures)
+  - **Upgrade python requirement from 3.9 to 3.10 - ([11fcebf](https://github.com/gravures/standard-deluxe/commit/11fcebff8cf25efd79fde8a642667157d8283560)) - [@gravures](https://github.com/gravures)
+  - **update buid system and linting tools - ([c50b3bf](https://github.com/gravures/standard-deluxe/commit/c50b3bffa6088a5979074f30bc4d148110fa4216)) - [@gravures](https://github.com/gravures)
+  - **set editable backend to path - ([3e900fb](https://github.com/gravures/standard-deluxe/commit/3e900fb26c9bf23ee50239cb9cdbd3c95dc93e41)) - [@gravures](https://github.com/gravures)
+  - **put pyproject.toml and pdm.lock in a clean state - ([e737803](https://github.com/gravures/standard-deluxe/commit/e737803c54b9c1044c08fb679f6504fbbfa6ae25)) - [@gravures](https://github.com/gravures)
+  - **add editables package to test dependencies - ([e108172](https://github.com/gravures/standard-deluxe/commit/e1081720c371b806165e339fa76a8cebdacbd045)) - [@gravures](https://github.com/gravures)
+  - **regenerate pdm.lock file - ([873a997](https://github.com/gravures/standard-deluxe/commit/873a997ba5ff6ccb25afd564927338b20b483a2a)) - [@gravures](https://github.com/gravures)
+  - **Moves from Setuptools to PDM - ([373c045](https://github.com/gravures/standard-deluxe/commit/373c0454049d02ed321a517fb30a86990f680496)) - [@gravures](https://github.com/gravures)
+
+### Documentation
+
+  - **(deluxe)** adds python docs to interphinx mapping - ([22a8744](https://github.com/gravures/standard-deluxe/commit/22a874493dd8135c14a55a95667fa6dea52c1c1b)) - [@gravures](https://github.com/gravures)
+  - **(deluxe)** migrate sphinx html them from furo to sphinx-immaterial - ([924ea66](https://github.com/gravures/standard-deluxe/commit/924ea663e76e396c1b8c0f81ffbc4557a103b3bc)) - [@gravures](https://github.com/gravures)
+  - **(deluxe)** includes README.md, CONTRIBUTING.md LICENSE.md into sphinx doc - ([edb4f63](https://github.com/gravures/standard-deluxe/commit/edb4f633f64b342e9eaf0d83e1566ea7770666b2)) - [@gravures](https://github.com/gravures)
+
+
+### Features
+
+  - **(types)** [**breaking**] add types module and move into it Multiton class - ([4337160](https://github.com/gravures/standard-deluxe/commit/433716010321aa26d41211dc1236b03516c5930b)) - [@gravures](https://github.com/gravures)
+
+
+### Refactoring
+
+  - **(types)** types module refactoring - ([bd195de](https://github.com/gravures/standard-deluxe/commit/bd195decf7dd958b75a88a4d58eaa49eac80ee7a)) - [@gravures](https://github.com/gravures)
+  - **(types)** [**breaking**] split types module in several private one including a cython extension - ([157923f](https://github.com/gravures/standard-deluxe/commit/157923f90584778d8e60fe388fe2a4c72b63b935)) - [@gravures](https://github.com/gravures)
+
+  - **remove old collections module - ([c9d800f](https://github.com/gravures/standard-deluxe/commit/c9d800f17d2be3e4ddf4d8d2c8509c9117c77650)) - [@gravures](https://github.com/gravures)
+
+
+- - -
+
+Changelog generated by [cocogitto](https://github.com/cocogitto/cocogitto).
