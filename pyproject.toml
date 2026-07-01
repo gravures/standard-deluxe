@@ -78,6 +78,9 @@ nthreads = 0
 exclude_failures = false
 show_all_warnings = false
 
+[[tool.cython.cythonize.extensions]]
+name = "deluxe._types"
+sources = ["src/deluxe/_types.pyx"]
 
 [tool.cython.build]
 optional = false
