@@ -11,7 +11,7 @@ on:
 jobs:
   bump:
     name: Bump version, make changelog
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     outputs:
       changelog: ${{ steps.bump.outputs.changelog }}
@@ -28,6 +28,11 @@ jobs:
         version: 2026.6.14
         install: true
         cache: true
+
+    - name: configure git user
+      run: |
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
     - name: bump version, make changelog and commit
       run: |
