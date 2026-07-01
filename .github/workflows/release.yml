@@ -53,14 +53,16 @@ jobs:
         name: changelog
         path: ${{ github.workspace }}/CHANGELOG.md
 
-  deploy:
-    name: Deploy wheel to pypi
+  build:
+    name: Build wheels
     needs: [ bump ]
     strategy:
       matrix:
         python-version: ['3.11', '3.12', '3.13', '3.14']
         os: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
+    outputs:
+      wheels: ${{ steps.build.outputs.wheels }}
 
     steps:
     - name: checkout repo
@@ -82,11 +84,12 @@ jobs:
 
     - name: install mise with Python ${{ matrix.python-version }}
       uses: jdx/mise-action@v4
+      env:
+        PYTHON_VERSION: ${{ matrix.python-version }}
       with:
         version: 2026.6.14
         install: true
         cache: true
-        tool_versions: python ${{ matrix.python-version }}
 
     - name: install project dependencies
       run: |
@@ -95,6 +98,35 @@ jobs:
     - name: build all packages
       run: |
         mise run project:build
+
+    - name: upload wheels
+      uses: actions/upload-artifact@v4
+      with:
+        name: wheels-${{ matrix.os }}-${{ matrix.python-version }}
+        path: ${{ github.workspace }}/dist/*
+
+  deploy:
+    name: Deploy wheel to pypi
+    needs: [ build ]
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: checkout repo
+      uses: actions/checkout@v4
+
+    - name: install mise with Python 3.14
+      uses: jdx/mise-action@v4
+      with:
+        version: 2026.6.14
+        install: true
+        cache: true
+
+    - name: download wheels
+      uses: actions/download-artifact@v4
+      with:
+        pattern: wheels-*-*
+        merge-multiple: true
+        path: ${{ github.workspace }}/dist/*
 
     - name: publish on pypi
       env:
