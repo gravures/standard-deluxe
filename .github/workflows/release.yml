@@ -75,7 +75,7 @@ jobs:
 
     - name: install project dependencies
       run: |
-        mise run project:sync --prod
+        mise run project:sync --no-dev
 
     - name: build all packages
       run: |
