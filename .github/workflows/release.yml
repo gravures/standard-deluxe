@@ -68,6 +68,11 @@ jobs:
       with:
         fetch-depth: 0
 
+    - name: fetch all tags
+      run: |
+        git fetch --tags --force origin
+        git describe --tags --always
+
     - name: download changelog
       uses: actions/download-artifact@v4
       with:
