@@ -34,13 +34,15 @@ jobs:
         git config --global user.name "github-actions[bot]"
         git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
-    - name: bump version
-      uses: cocogitto/cocogitto-action@v3
+    - name: bump version, make changelog and commit
+      run: |
+        mise run version:bump
+
+    - name: Push changes
+      uses: ad-m/github-push-action@master
       with:
-        check: false
-        release: true
-        git-user: "github-actions[bot]"
-        git-user-email: "github-actions[bot]@users.noreply.github.com"
+        github_token: ${{ secrets.github_token }}
+        branch: ${{ github.head_ref || github.ref_name }}
 
     - name: export changelog
       uses: actions/upload-artifact@v4
