@@ -17,7 +17,6 @@ jobs:
       contents: write
     outputs:
       changelog: ${{ steps.bump.outputs.changelog }}
-      tag: ${{ steps.bump.outputs.tag }}
 
     steps:
     - name: checkout repo
@@ -68,7 +67,7 @@ jobs:
       uses: actions/checkout@v4
       with:
         fetch-depth: 0
-        ref: ${{ needs.bump.outputs.tag }}
+        ref: main
 
     - name: fetch all tags
       run: |
