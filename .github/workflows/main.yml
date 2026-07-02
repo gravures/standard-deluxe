@@ -15,6 +15,8 @@ jobs:
       matrix:
         python-version: ['3.11.15', '3.12.13', '3.13.14', '3.14.6']
         os: [ubuntu-latest, windows-latest, macos-latest]
+    env:
+      PYTHON_VERSION: ${{ matrix.python-version }}
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -23,8 +25,6 @@ jobs:
 
       - name: install mise with Python ${{ matrix.python-version }}
         uses: jdx/mise-action@v4
-        env:
-          PYTHON_VERSION: ${{ matrix.python-version }}
         with:
           version: 2026.6.14
           install: true
@@ -40,7 +40,7 @@ jobs:
           mise run test:cover
 
       - name: store coverage file
-        if: ${{ matrix.os == 'ubuntu-latest' }} && ${{ matrix.python-version == '3.14' }}
+        if: ${{ matrix.os == 'ubuntu-latest' && startsWith(matrix.python-version, '3.14') }}
         uses: actions/upload-artifact@v4
         with:
           name: coverage
