@@ -1,4 +1,4 @@
-from __future__ import annotations  # noqa: I001
+from __future__ import annotations
 
 
 import inspect
@@ -10,41 +10,40 @@ from hypothesis import strategies as st  # noqa: F401
 
 
 def test_hints_returns_correct_platform_hints(monkeypatch: pytest.MonkeyPatch):
+    impl = sys.implementation.name
+
     # Test Windows platform
     monkeypatch.setattr(sys, "platform", "win32")
-    monkeypatch.setattr(sys.implementation, "name", "cpython")
-    assert hints() == ("nt", "win32", "windows", "cpython")
+    assert hints() == ("nt", "win32", "windows", impl)
 
     # Test Darwin (macOS) platform
     monkeypatch.setattr(sys, "platform", "darwin")
-    assert hints() == ("posix", "darwin", "macos", "cpython")
+    assert hints() == ("posix", "darwin", "macos", impl)
 
     # Test Linux platform
     monkeypatch.setattr(sys, "platform", "linux")
-    # We can't easily mock platform.freedesktop_os_release() so we'll just check the first parts
-    linux_hints = hints()
-    assert linux_hints[:3] == ("posix", "unix", "linux")
-    assert linux_hints[-1] == "cpython"
+    monkeypatch.setattr("platform.freedesktop_os_release", lambda: {"ID": "ubuntu"})
+    assert hints() == ("posix", "unix", "linux", "ubuntu", impl)
 
     # Test iOS platform
     monkeypatch.setattr(sys, "platform", "ios")
-    assert hints() == ("posix", "darwin", "ios", "cpython", "mobile")
+    assert hints() == ("posix", "darwin", "ios", impl, "mobile")
 
     # Test Android platform
     monkeypatch.setattr(sys, "platform", "android")
-    assert hints() == ("posix", "linux", "android", "cpython", "mobile")
+    assert hints() == ("posix", "linux", "android", impl, "mobile")
 
     # Test WASI platform
     monkeypatch.setattr(sys, "platform", "wasi")
-    assert hints() == ("posix", "vm", "wasi", "wasi", "cpython")
+    assert hints() == ("posix", "vm", "wasi", "wasi", impl)
 
     # Test Cygwin platform
     monkeypatch.setattr(sys, "platform", "cygwin")
-    assert hints() == ("posix", "windows", "cygwin", "cpython")
+    assert hints() == ("posix", "windows", "cygwin", impl)
 
     # Test generic Unix platform
     monkeypatch.setattr(sys, "platform", "freebsd")
-    assert hints() == ("posix", "unix", "freebsd", "cpython")
+    assert hints() == ("posix", "unix", "freebsd", impl)
 
 
 def test_hints_handles_unknown_platforms(monkeypatch: pytest.MonkeyPatch):
@@ -72,7 +71,7 @@ def test_hints_handles_unknown_platforms(monkeypatch: pytest.MonkeyPatch):
     assert result[0] == "posix"
     assert result[1] == "unix"
     assert result[2] == "solaris"
-    assert sys.implementation.name.lower() in result
+    assert sys.implementation.name in result
 
 
 def test_supported_evaluates_platform_compatibility(monkeypatch: pytest.MonkeyPatch):
