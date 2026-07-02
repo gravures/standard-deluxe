@@ -18,6 +18,7 @@
 from __future__ import annotations
 
 import gc
+import sys
 from copy import copy, deepcopy
 from typing import Any, final
 
@@ -960,6 +961,10 @@ def test_slots_preserves_existing_weakref():
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.skipif(
+    sys.version_info < (3, 13),
+    reason="__static_attributes__ is only set by the compiler in Python 3.13+",
+)
 def test_match_args_defaults_to_static_attributes():
     """When __match_args__ is not defined, it defaults to __static_attributes__."""
 
