@@ -99,6 +99,7 @@ jobs:
         mise run project:sync --no-dev
 
     - name: build all packages
+      shell: bash
       run: |
         # pdm-backend messup with version on windows
         VERSION=$(git describe --tags --always)
