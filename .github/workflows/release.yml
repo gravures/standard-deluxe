@@ -12,6 +12,8 @@ jobs:
   bump:
     name: Bump version, make changelog
     if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+    env:
+      PYTHON_VERSION: "3.14"
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -58,6 +60,8 @@ jobs:
       matrix:
         python-version: ['3.11.15', '3.12.13', '3.13.14', '3.14.6']
         os: [ubuntu-latest, windows-latest, macos-latest]
+    env:
+      PYTHON_VERSION: ${{ matrix.python-version }}
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -80,8 +84,6 @@ jobs:
 
     - name: install mise with Python ${{ matrix.python-version }}
       uses: jdx/mise-action@v4
-      env:
-        PYTHON_VERSION: ${{ matrix.python-version }}
       with:
         version: 2026.6.14
         install: true
@@ -104,6 +106,8 @@ jobs:
   deploy:
     name: Deploy wheel to pypi
     needs: [ build ]
+    env:
+      PYTHON_VERSION: '3.14'
     runs-on: ubuntu-latest
 
     steps:
