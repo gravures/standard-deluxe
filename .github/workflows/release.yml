@@ -147,6 +147,8 @@ jobs:
     name: Create GitHub Release
     needs: [ deploy ]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
     - name: checkout repo
