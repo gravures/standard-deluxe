@@ -1,17 +1,16 @@
 [tools]
-python = "{{ get_env(name='PYTHON_VERSION', default='3.14') }}"
+python = "{{ env.PYTHON_VERSION }}"
 uv = "latest"
 cocogitto = "latest"
 
 [env]
-# UV_PYTHON = { value = "{{ tools.python.path }}", tools = true }
+PYTHON_VERSION = { default = '3.14.6' }
 UV_PYTHON = "{{ [xdg_data_home, 'mise', 'installs', 'python', env.PYTHON_VERSION | default(value='3.14') ] | join_path }}"
 _.path = ".venv/bin"
 
 [settings]
 pipx.uvx = true
 python.uv_venv_auto = "create|source"
-python.uv_venv_create_args = []
 
 [tasks.python]
 description = "the venv python executable"
