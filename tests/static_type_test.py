@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Protocol
+from typing import Any, Literal, Protocol, TYPE_CHECKING
 
 import pytest
 from deluxe.types import StaticType
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 class A: ...
@@ -133,3 +136,27 @@ def test_slots_merge():
         __slots__: set[str] = {"y"}
 
     assert _.__slots__ == {"x", "y"}
+
+
+def test_borrow_closure_function():
+    """Borrowing a class with a closure function should not raise TypeError.
+
+    Regression test: Python 3.11+ requires a proper closure tuple (not None)
+    when creating FunctionType from a code object with free variables.
+    """
+
+    def _make_closer() -> Callable[..., Literal[42]]:
+        value = 42
+
+        def closer(_self: Any):
+            return value
+
+        return closer
+
+    class Source(metaclass=StaticType):
+        method: Any = _make_closer()  # type: ignore[assignment]
+
+    class Derived(Source): ...
+
+    assert Derived().method() == 42
+    assert Source().method() == 42

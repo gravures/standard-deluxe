@@ -230,7 +230,7 @@ class StaticType(FrozenType, _ProtocolMeta):
                     co_qualname=qualname,
                 ),
                 globals=func.__globals__,
-                closure=(),
+                closure=func.__closure__,
             )
             func.__module__ = module
             if is_abstract:
