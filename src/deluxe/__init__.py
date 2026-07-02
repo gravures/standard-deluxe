@@ -1,4 +1,4 @@
-# Copyright (c) 2024 - Gilles Coissac
+# Copyright (c) 2024 - Gilles Coissac  # noqa: D104
 # This file is part of standard-deluxe library.
 #
 # standard-deluxe is free software: you can redistribute it and/or modify
@@ -18,4 +18,4 @@ from __future__ import annotations
 from ._version import __version__
 
 
-version = __version__
+__all__ = ["__version__"]

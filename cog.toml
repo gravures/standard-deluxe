@@ -39,3 +39,4 @@ template = "changelog.tera"
 
 [bump_profiles]
 [git_hooks]
+[packages]
