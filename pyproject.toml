@@ -20,7 +20,7 @@ classifiers = [
 
 urls.homepage = "https://github.com/gravures/standard-deluxe"
 urls.repository = "https://github.com/gravures/standard-deluxe"
-urls.documentation = "https://github.com/gravures/standard-deluxe"
+urls.documentation = "https://standard-deluxe.readthedocs.io"
 urls.issue = "https://github.com/gravures/standard-deluxe/issues"
 
 dynamic = ["version"]
