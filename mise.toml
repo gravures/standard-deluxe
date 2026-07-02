@@ -4,7 +4,8 @@ uv = "latest"
 cocogitto = "latest"
 
 [env]
-UV_PYTHON = { value = "{{ tools.python.path }}", tools = true }
+# UV_PYTHON = { value = "{{ tools.python.path }}", tools = true }
+UV_PYTHON = "{{ [xdg_data_home, 'mise', 'installs', 'python', env.PYTHON_VERSION | default(value='3.14') ] | join_path }}"
 _.path = ".venv/bin"
 
 [settings]
