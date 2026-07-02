@@ -3,9 +3,10 @@ build:
   os: ubuntu-lts-latest
   tools:
     python: "3.14"
-    apt_packages:
-      - gcc
-      - cmake
+  apt_packages:
+    - gcc
+    - cmake
+
 python:
    install:
       - method: uv
