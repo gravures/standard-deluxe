@@ -2,6 +2,31 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+##  Changelog for release [v0.3.0]
+    
+    https://github.com/gravures/standard-deluxe/compare/2b17b4d92826d18fe37e0a178e380c123f1c8320..v0.3.0
+    2026-07-02
+  
+### Bug Fixes
+
+  - **(avail)** availabality decorator work also on class now - ([d7e1859](https://github.com/gravures/standard-deluxe/commit/d7e18597044110329d1279427ffe61aa5b952a84)) - [@gravures](https://github.com/gravures)
+
+  - **(availability)** fix bug with supported function algorythm, add default parameters to the availability decorator, refine documentations - ([753b9dc](https://github.com/gravures/standard-deluxe/commit/753b9dc1dec546258c43a9a21d375295baba7188)) - [@gravures](https://github.com/gravures)
+  - **(availability)** minor type hint change - ([467340c](https://github.com/gravures/standard-deluxe/commit/467340cdbcba073a9491299fa8815b863d7a5cc4)) - [@gravures](https://github.com/gravures)
+
+
+### Build system
+
+  - **(deluxe)** [**breaking**] remove monorepo support, bump python version to 3.11, use uv behind pdm. - ([0b98534](https://github.com/gravures/standard-deluxe/commit/0b98534c9ed376775791c60a5e31b5b05b612500)) - [@gravures](https://github.com/gravures)
+
+
+### Features
+
+  - **adds the deluxe.availability module - ([e12c249](https://github.com/gravures/standard-deluxe/commit/e12c2493d92e44be5ad327e9a9b91ce3e767ae5c)) - [@gravures](https://github.com/gravures)
+
+
+- - -
+
 ##  Changelog for release [v0.2.0]
     
     https://github.com/gravures/standard-deluxe/compare/373c0454049d02ed321a517fb30a86990f680496..v0.2.0
