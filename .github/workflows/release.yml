@@ -100,6 +100,9 @@ jobs:
 
     - name: build all packages
       run: |
+        # pdm-backend messup with version on windows
+        VERSION=$(git describe --tags --always)
+        export PDM_BUILD_SCM_VERSION=${VERSION%+*}
         mise run project:build
 
     - name: upload wheels
