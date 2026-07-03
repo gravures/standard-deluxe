@@ -127,7 +127,7 @@ napoleon_use_param = True
 napoleon_use_keyword = False
 napoleon_use_rtype = False
 napoleon_preprocess_types = False
-napoleon_type_aliases = True
+napoleon_type_aliases = {}
 napoleon_attr_annotations = False
 napoleon_custom_sections = [
     ("Classes", "params_style"),

@@ -18,7 +18,52 @@ development.
 The name **Standard-Deluxe** draws inspiration from the argentic photography era's
 _Agfa Standard Deluxe_ cameras known for their high quality and craftsmanship.
 
-### Design Principles
+
+## Getting Started
+
+### Requirements
+
+- Python 3.11 or higher
+- No external dependencies required
+
+### Installation
+
+Add library to your `pyproject.toml` dependencies:
+
+```toml
+[project]
+dependencies = [ "standard-deluxe" ]
+```
+
+Using `uv` to add library to your `pyproject.toml`:
+
+```sh
+uv add standard-deluxe
+```
+
+Or to install in a dedicated virtual environment.
+
+```sh
+uv pip install standard-deluxe
+```
+
+Alternatively, you can install it with pip:
+
+```sh
+pip install standard-deluxe
+```
+
+## Usage
+
+Standard-Deluxe modules are designed to integrate seamlessly with your existing
+Python workflows, providing enhanced functionality. The python library name is
+just `deluxe`:
+
+```python
+from deluxe.types import Unset
+
+my_var: str = Unset
+```
 
 **Type Safety First**: Type safety is a foundational concern. Constant effort is
 dedicated to make accurate and meaningful type annotations that work seamlessly
@@ -36,32 +81,6 @@ of anti-patterns, following the principle that code should be both elegant and p
 
 **PEP 8 Compliance**: All APIs follow Python naming conventions and style guidelines
 for consistent, readable code.
-
-## Getting Started
-
-### Requirements
-
-- Python 3.11 or higher
-- No external dependencies required
-
-### Installation
-
-For the best development experience, we recommend using `uv`:
-
-```sh
-uv add standard-deluxe
-```
-
-Alternatively, you can install with pip:
-
-```sh
-pip install standard-deluxe
-```
-
-### Usage
-
-Standard-Deluxe modules are designed to integrate seamlessly with your existing
-Python workflows, providing enhanced functionality.
 
 <!-- rst content end -->
 

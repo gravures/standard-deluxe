@@ -165,5 +165,4 @@ builddir/
 .pdm-plugins
 
 # Helpers
-AGENTS.md
 .grepai/

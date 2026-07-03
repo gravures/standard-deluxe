@@ -15,6 +15,7 @@ Table of Contents
 
    Api documentation <api/index>
    contributing
+   changelog
    license
 
 Indices and tables
