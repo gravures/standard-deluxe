@@ -65,9 +65,13 @@ _USER_SUPPORT: bool = supported(only=("posix",), but=("wasi", "ios"))
 def get_real_users() -> set[str]:
     """Return a set of all real user accounts on the system.
 
-    Retrieves a set of all user accounts that have a valid shell and a home
-    directory starting with ``/home``. System accounts with a UID less than
-    the minimum UID defined in ``/etc/login.defs`` are excluded.
+    Retrieves a set of all user accounts that have a valid login shell.
+    On Linux, ``/etc/login.defs`` is parsed for the ``UID_MIN`` value.
+    On other POSIX systems (macOS, BSD), a default minimum UID of ``500``
+    is used, which correctly includes real users starting at ``501``.
+
+    System accounts with a UID below the minimum are excluded, as are
+    accounts with nologin-style shells.
 
     .. note:: Availability: Unix, not WASI, not iOS
 
@@ -75,19 +79,25 @@ def get_real_users() -> set[str]:
         :obj:`set` [:obj:`str` ]: A set of usernames for all real user accounts
         on the system.
     """
-    with Path("/etc/login.defs").open(  # noqa: FURB101
-        "r",
-        encoding=locale.getpreferredencoding(False),  # noqa: FBT003
-    ) as lgn:
-        min_uid = int(sch[1]) if (sch := re.search(r"^UID_MIN\s+(\d+)", lgn.read())) else 1000
+    # Determine min UID: parse /etc/login.defs on Linux if available,
+    # otherwise fall back to 500 (covers macOS/BSD real users starting at 501)
+    min_uid = 500
+    login_defs = Path("/etc/login.defs")
+    if login_defs.exists():
+        with login_defs.open(  # noqa: FURB101
+            "r",
+            encoding=locale.getpreferredencoding(False),  # noqa: FBT003
+        ) as f:
+            if sch := re.search(r"^UID_MIN\s+(\d+)", f.read()):
+                min_uid = int(sch[1])
+
+    # Shells that indicate "no login"
+    nologin_shells = {"/usr/sbin/nologin", "/bin/false", "/usr/bin/nologin", "/sbin/nologin"}
+
     return {
         p.pw_name
         for p in pwd.getpwall()
-        if (
-            p.pw_uid >= min_uid
-            and p.pw_shell not in {"/usr/sbin/nologin", "/bin/false"}
-            and p.pw_dir.startswith("/home")
-        )
+        if p.pw_uid >= min_uid and p.pw_shell not in nologin_shells
     }
 
 
@@ -190,7 +200,7 @@ class Command:
         Raises:
             Command.Error: If the user is not found on the system.
         """
-        if user and (user not in Command._SYS_USERS or user != "root"):
+        if user and user not in Command._SYS_USERS and user != "root":
             msg = f"User {user} not found on your system."
             raise Command.Error(msg)
         self._user = user
