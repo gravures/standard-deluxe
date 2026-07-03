@@ -2,6 +2,27 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+##  Changelog for release [v0.6.0]
+    
+    https://github.com/gravures/standard-deluxe/compare/00177bd894071896d225db0da1b0eb02f1e98a35..v0.6.0
+    2026-07-03
+  
+### Documentation
+
+  - **(deluxe)** fix uncommited .rst files - ([e6461dc](https://github.com/gravures/standard-deluxe/commit/e6461dc91feae0b00112bfe915e40816ef3e2e8b)) - [@gravures](https://github.com/gravures)
+  - **(deluxe)** fix wrong path to our custom autoapi templates and also upgrade templates to output all module members - ([00177bd](https://github.com/gravures/standard-deluxe/commit/00177bd894071896d225db0da1b0eb02f1e98a35)) - [@gravures](https://github.com/gravures)
+
+  - **(functional)** edit documentation - ([97d327c](https://github.com/gravures/standard-deluxe/commit/97d327c87f468a9d817eb7addac02ec0e932b745)) - [@gravures](https://github.com/gravures)
+
+
+### Features
+
+  - **(functional)** adds functional module - ([58fec1d](https://github.com/gravures/standard-deluxe/commit/58fec1d4874badc106f0d92c127e0aee171dd4b4)) - [@gravures](https://github.com/gravures)
+
+
+
+- - -
+
 ##  Changelog for release [v0.5.0]
     
     https://github.com/gravures/standard-deluxe/compare/c6b0f2e945dde41f7065ab8c752ece0185eb2ba2..v0.5.0
