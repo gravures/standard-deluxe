@@ -40,6 +40,7 @@ distribution = true
 [tool.pdm.build]
 package-dir = "src"
 source-includes = [
+  "assets/",
   "docs/",
   "licenses/",
   "tests/",
