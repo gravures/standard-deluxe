@@ -108,7 +108,7 @@ class Command:
     and handling the output.
 
     It also supports specifying the user to run the command as on POSIX systems.
-    The actual implementation use the sudo command to eecute the command
+    The actual implementation use the sudo command to execute the command
     if user is specified.
 
     Commands are never executed through a shell. On POSIX systems, if a
@@ -121,17 +121,93 @@ class Command:
         name (:obj:`str`): The name of the command.
         path (:obj:`os.PathLike` [:obj:`str` ] | ``None``): The path to the
             command executable. Default: ``None``.
-        user (:obj:`str` | ``None``): The user to run the command as. Requires
+        user (:obj:`str` | ``None`): The user to run the command as. Requires
             ``sudo`` to be available on the system. Default: ``None``.
 
     Raises:
         Command.Error: If the command is not found on the system.
-        NotmplementedError: if user is specified on non POSIX systems.
+        NotImplementedError: if user is specified on non POSIX systems.
 
     Examples::
 
         >>> cmd = Command("ls")
         >>> cmd("-la", "/tmp")
+
+    User Switching
+    ______________
+
+
+    The ``user`` parameter is only available on POSIX systems (Linux, macOS,
+    BSD). It is not supported on Windows. This section explains why and
+    provides guidance for cross-platform development.
+
+    **Why Windows is Different**
+
+    On POSIX systems, ``sudo -u <user>`` allows running a command as a
+    different user without knowing their password, provided the invoking
+    user has sudo privileges. This model assumes:
+
+    - A centralized authentication system (PAM, ``/etc/passwd``)
+    - Passwordless sudo configuration (``/etc/sudoers``)
+    - A flat UID-based user model (integer UIDs)
+
+    Windows uses a fundamentally different security model:
+
+    - **UAC (User Account Control)**: Elevation is per-process, not per-command.
+      The ``runas`` verb triggers a UAC prompt, but it elevates the *current
+      user* to Administrator — it does not switch to a different user account.
+
+    - **No passwordless elevation**: Unlike ``sudo``, Windows ``runas``
+      requires the user's password interactively. There is no equivalent of
+      ``/etc/sudoers`` for passwordless cross-user execution.
+
+    - **Separate security contexts**: An elevated process runs in a different
+      security token. Standard ``subprocess`` cannot capture stdout/stderr
+      from an elevated process because the pipes cannot cross the security
+      boundary.
+
+    - **SID-based identity**: Windows identifies users by SID (Security
+      Identifier), not integer UIDs. User enumeration requires Windows API
+      calls (``NetUserEnum``) rather than parsing ``/etc/passwd``.
+
+    **Cross-Platform Guidance**
+
+    If you need to run commands with elevated privileges across platforms,
+    use platform-specific branches:
+
+    .. code-block:: python
+
+        import sys
+        from deluxe.process import Command
+
+        if sys.platform == "win32":
+            # Windows: use PowerShell for elevation
+            pws = Command("powershell")
+            pws("-Command", "Start-Process regedit -Verb RunAs -Wait")
+        else:
+            # POSIX: use sudo
+            apt = Command("apt")
+            apt.user = "root"
+            apt("update")
+
+    **Summary of Platform Differences**
+
+    +---------------------+---------------------+---------------------------+
+    | Feature             | POSIX               | Windows                   |
+    +=====================+=====================+===========================+
+    | Run as different    | ``sudo -u <user>``  | Not possible without      |
+    | user                |                     | password (use ``runas``)  |
+    +---------------------+---------------------+---------------------------+
+    | Elevate same user   | ``sudo <cmd>``      | ``runas`` verb (UAC       |
+    |                     |                     | prompt)                   |
+    +---------------------+---------------------+---------------------------+
+    | Capture stdout      | ✅ Direct           | ❌ Separate security      |
+    |                     |                     | context                   |
+    +---------------------+---------------------+---------------------------+
+    | Pass stdin          | ✅ Direct           | ❌ Not possible           |
+    +---------------------+---------------------+---------------------------+
+    | Wait for exit code  | ✅ Direct           | ⚠️ Requires pywin32       |
+    +---------------------+---------------------+---------------------------+
 
     """
 
