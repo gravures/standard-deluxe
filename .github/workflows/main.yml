@@ -88,20 +88,20 @@ jobs:
       - name: Coverage Badge
         run: |
           pip install -U 'genbadge[coverage]'
-          genbadge coverage -i  coverage.xml -o coverage.svg
+          genbadge coverage -i  coverage.xml -o assets/coverage.svg
 
       - name: Verify Changed files
         uses: tj-actions/verify-changed-files@v20
         id: verify-changed-files
         with:
-          files: coverage.svg
+          files: assets/coverage.svg
 
       - name: Commit coverage.svg
         if: steps.verify-changed-files.outputs.files_changed == 'true'
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          git add coverage.svg
+          git add assets/coverage.svg
           git commit -m "Updated coverage.svg"
 
       - name: Push changes
