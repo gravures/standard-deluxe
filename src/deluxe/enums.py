@@ -15,8 +15,7 @@
 # along with standard-deluxe. If not, see <https://www.gnu.org/licenses/>
 #
 # ruff: noqa: B009
-'''
-Provides an extended `EnumMeta` type.
+'''Provides an extended `EnumMeta` type.
 
 Allows usage of inlined docstrings on `Enum`'s members::
 
@@ -28,6 +27,10 @@ Allows usage of inlined docstrings on `Enum`'s members::
 
         red = "#FF000"
         """Pure red color."""
+
+.. note:: Inlined docstrings require source code to be available at runtime.
+    They will not work in interactive Python sessions or code executed with
+    ``python -c``.
 
 
 Make the __set_name__() method of members to be called if present::
@@ -60,6 +63,7 @@ from __future__ import annotations
 
 import ast
 import inspect
+import sys
 from enum import (
     Enum as _Enum,
     EnumMeta,
@@ -69,6 +73,9 @@ from enum import (
 from functools import partial
 from operator import is_
 from typing import TYPE_CHECKING, TypeVar
+
+
+_PY313 = sys.version_info >= (3, 13)
 
 
 __all__ = ("Enum", "EnumType")
@@ -111,17 +118,29 @@ else:
             cls_: _E = EnumMeta.__new__(
                 cls, name, bases, classdict, boundary=boundary, _simple=_simple, **kwds
             )
+            # On Python < 3.13, _proto_member.__set_name__ does not delegate to
+            # EnumType._add_member_, so we must call __set_name__ on values
+            # manually after all members have been created.
+            if not _PY313:
+                for member_name in cls_._member_names_:
+                    member = cls_[member_name]
+                    value = member._value_
+                    if callable(getattr(value, "__set_name__", None)):
+                        value.__set_name__(cls_, member_name)
             return EnumType._docstrings(cls_)
 
-        def _add_member_(cls, name: str, member: object) -> None:
-            # this method is called by enum._proto_member descriptor class
-            value = getattr(member, "_value_")
+        if _PY313:
 
-            # makes __set_name__() working for enum members
-            if (set_name := getattr(value, "__set_name__", None)) and callable(set_name):
-                set_name(cls, name)
+            def _add_member_(cls, name: str, member: object) -> None:
+                # This method is called by enum._proto_member descriptor class
+                # starting from Python 3.13.
+                value = getattr(member, "_value_")
 
-            getattr(EnumMeta, "_add_member_")(cls, name, member)
+                # Makes __set_name__() working for enum members.
+                if (set_name := getattr(value, "__set_name__", None)) and callable(set_name):
+                    set_name(cls, name)
+
+                getattr(EnumMeta, "_add_member_")(cls, name, member)
 
         @staticmethod
         def _docstrings(enum: _E) -> _E:
