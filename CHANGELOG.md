@@ -2,6 +2,31 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+##  Changelog for release [v0.4.0]
+    
+    https://github.com/gravures/standard-deluxe/compare/b3af3fd8a2a005d5158b8635631f5793e714a2c7..v0.4.0
+    2026-07-03
+  
+### Bug Fixes
+
+  - **(MaybeCallable)** remove explicit Monad Protocol inheritance - ([c0f78ee](https://github.com/gravures/standard-deluxe/commit/c0f78ee7c8bc79f3fe4d17f7bb46b6e1b5e53f18)) - [@gravures](https://github.com/gravures)
+
+  - **(enums)** __set_name__ on enum member previously did not work on python < 3.13 - ([2fad8f5](https://github.com/gravures/standard-deluxe/commit/2fad8f5c3d157c16695a2e0388b873bed695b2f4)) - [@gravures](https://github.com/gravures)
+
+
+### Features
+
+  - **(enums)** adds the enums module - ([4389a70](https://github.com/gravures/standard-deluxe/commit/4389a70d21058579f6d016045d90da59152e6758)) - [@gravures](https://github.com/gravures)
+
+
+### Refactoring
+
+  - **(enums)** removes MaybeCallable from module, adds test file and update documentation - ([d107446](https://github.com/gravures/standard-deluxe/commit/d1074462385e82ed95121f2de64f5d02bfd87452)) - [@gravures](https://github.com/gravures)
+
+
+
+- - -
+
 ##  Changelog for release [v0.3.0]
     
     https://github.com/gravures/standard-deluxe/compare/2b17b4d92826d18fe37e0a178e380c123f1c8320..v0.3.0
