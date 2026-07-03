@@ -2,6 +2,33 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+##  Changelog for release [v0.5.0]
+    
+    https://github.com/gravures/standard-deluxe/compare/c6b0f2e945dde41f7065ab8c752ece0185eb2ba2..v0.5.0
+    2026-07-03
+  
+### Bug Fixes
+
+  - **(typing)** minor type hints fixes - ([0e0f3ab](https://github.com/gravures/standard-deluxe/commit/0e0f3aba19a720641c8b7421db1f6fd2a58b3fde)) - [@gravures](https://github.com/gravures)
+
+
+### Documentation
+
+  - **(importers)** include python license into sphinx docs - ([a85cce7](https://github.com/gravures/standard-deluxe/commit/a85cce797fb948a48d660f641319a454b9be1de0)) - [@gravures](https://github.com/gravures)
+
+
+### Features
+
+  - **adds importers module - ([f6f62b5](https://github.com/gravures/standard-deluxe/commit/f6f62b5d35deabfad966a1196e9ae643b2dbbdab)) - [@gravures](https://github.com/gravures)
+
+### Refactoring
+
+  - **(importers)** includes needed functions from python test.support.import_helper module - ([cde1abe](https://github.com/gravures/standard-deluxe/commit/cde1abe374692a8ffae7684411ece9854b24fe85)) - [@gravures](https://github.com/gravures)
+
+
+
+- - -
+
 ##  Changelog for release [v0.4.0]
     
     https://github.com/gravures/standard-deluxe/compare/b3af3fd8a2a005d5158b8635631f5793e714a2c7..v0.4.0
