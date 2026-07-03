@@ -1,0 +1,4 @@
+/* Left-align summary table captions */
+table.summarytable > caption {
+    text-align: left;
+}

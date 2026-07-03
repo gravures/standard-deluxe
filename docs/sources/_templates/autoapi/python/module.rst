@@ -4,7 +4,7 @@
 
 {% endif %}
 {# THE HEADER PART FOR MODULE #}
-:py:mod:`{{ obj.type + " " + obj.name }}`
+.. py:module:: {{ obj.name }}
 
 {% if obj.summary %}
 {{ obj.summary }}
@@ -74,10 +74,19 @@ Submodules
 {{ "-" * obj.type|length }}---------
 
 {# SUMMARY #}
+{% set visible_exceptions = visible_children|selectattr("type", "equalto", "exception")|list %}
 {% set visible_classes = visible_children|selectattr("type", "equalto", "class")|list %}
 {% set visible_functions = visible_children|selectattr("type", "equalto", "function")|list %}
 {% set visible_attributes = visible_children|selectattr("type", "equalto", "data")|list %}
 {% if "show-module-summary" in autoapi_options and (visible_classes or visible_functions) %}
+{% block exceptions scoped %}
+{% if visible_exceptions %}
+
+{{ macros.auto_summary(visible_exceptions, title="Exceptions") }}
+
+{% endif %}
+{% endblock %}
+
 {% block classes scoped %}
 {% if visible_classes %}
 

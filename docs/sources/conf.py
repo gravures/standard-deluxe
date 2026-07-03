@@ -97,7 +97,7 @@ autoapi_python_class_content = "both"
 autoapi_member_order = "bysource"
 autoapi_python_use_implicit_namespaces = True
 autoapi_file_patterns = ["*.py", "*.pyi"]
-autoapi_template_dir = "sources/_templates/autoapi"
+autoapi_template_dir = "_templates/autoapi"
 autodoc_typehints = "signature"
 autodoc_inherit_docstrings = False
 autoapi_options = [
@@ -166,6 +166,7 @@ inheritance_edge_attrs = {
 # see: https://jbms.github.io/sphinx-immaterial/customization.html#customization
 templates_path = ["_templates"]
 html_static_path = ["_static"]
+html_css_files = ["custom.css"]
 html_theme = "sphinx_immaterial"
 html_logo = None
 html_theme_options = {
