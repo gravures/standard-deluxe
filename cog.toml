@@ -12,7 +12,7 @@ tag_prefix = "v"
 pre_bump_hooks = []
 post_bump_hooks = []
 
-generate_mono_repository_global_tag = true
+generate_mono_repository_global_tag = false
 generate_mono_repository_package_tags = true
 pre_package_bump_hooks = []
 post_package_bump_hooks = []
