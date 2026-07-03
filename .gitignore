@@ -103,7 +103,6 @@ celerybeat.pid
 
 # Sphinx documentation
 docs/build/
-docs/sources/api/*rst
 
 # mkdocs documentation
 /site
