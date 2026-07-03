@@ -2,6 +2,42 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+##  Changelog for release [v0.7.0]
+    
+    https://github.com/gravures/standard-deluxe/compare/9b8b4c2da3eab7cd001cf771ebc9afbd42651f58..v0.7.0
+    2026-07-03
+  
+### Bug Fixes
+
+  - **(mappings)** [**breaking**] type hint work and refactor - ([8ad4c48](https://github.com/gravures/standard-deluxe/commit/8ad4c48763ac2e0b8ac0565bd939a25f10804929)) - [@gravures](https://github.com/gravures)
+
+
+### Documentation
+
+  - **Updates docs string of mappings.FilteredView - ([1259cb8](https://github.com/gravures/standard-deluxe/commit/1259cb8f5e26c44653052f2da8dedabeb7f04efc)) - [@gravures](https://github.com/gravures)
+
+### Features
+
+  - **(environ)** [**breaking**] add environ module and move inside it Mapping.Environment class - ([11c62a8](https://github.com/gravures/standard-deluxe/commit/11c62a86d83c98dc02119dada5ec45b39b70ecd9)) - [@gravures](https://github.com/gravures)
+
+  - **(seq)** add sequences module with OrderedSet types - ([8e58c34](https://github.com/gravures/standard-deluxe/commit/8e58c344480f2ec1d1deeeec6778e63d31328d08)) - [@gravures](https://github.com/gravures)
+
+  - **implements other=None in OrderableDict after and before methods - ([e2cc365](https://github.com/gravures/standard-deluxe/commit/e2cc36537ef4a94ef57b22b3acce615b8830c899)) - [@gravures](https://github.com/gravures)
+  - **adds Environment class and ulist function to mappings module - ([7c3d2ea](https://github.com/gravures/standard-deluxe/commit/7c3d2ea38e66509be22fe697861775766b314d3b)) - [@gravures](https://github.com/gravures)
+  - **adds mappings module - ([9b8b4c2](https://github.com/gravures/standard-deluxe/commit/9b8b4c2da3eab7cd001cf771ebc9afbd42651f58)) - [@gravures](https://github.com/gravures)
+
+### Refactoring
+
+  - **(envdict)** move ulist function in EnvDict class - ([0e72422](https://github.com/gravures/standard-deluxe/commit/0e72422f1f70637c2a44148f2d200a9e17325b88)) - [@gravures](https://github.com/gravures)
+
+  - **(mappings)** import from deluxe.importers instead of python test.support module - ([533c302](https://github.com/gravures/standard-deluxe/commit/533c3022332401619338dd05451c59e50855decb)) - [@gravures](https://github.com/gravures)
+
+  - **(ulist)** move ulist Environment static method to sequence module - ([592fa39](https://github.com/gravures/standard-deluxe/commit/592fa393c8425190015e080648abf4702437c2b1)) - [@gravures](https://github.com/gravures)
+
+
+
+- - -
+
 ##  Changelog for release [v0.6.0]
     
     https://github.com/gravures/standard-deluxe/compare/00177bd894071896d225db0da1b0eb02f1e98a35..v0.6.0
