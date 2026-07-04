@@ -23,7 +23,6 @@ import contextlib
 import locale
 import multiprocessing as mp
 import os
-import pwd
 import re
 import shutil
 import signal
@@ -45,8 +44,11 @@ from typing import (
 )
 from warnings import warn
 
-from deluxe.availability import availability, supported
+from deluxe.availability import availability, hints, supported
 
+
+if "posix" in hints():
+    import pwd
 
 if TYPE_CHECKING:
     from asyncio.subprocess import Process
@@ -96,7 +98,7 @@ def get_real_users() -> set[str]:
 
     return {
         p.pw_name
-        for p in pwd.getpwall()
+        for p in pwd.getpwall()  # pyright: ignore[reportPossiblyUnboundVariable]
         if p.pw_uid >= min_uid and p.pw_shell not in nologin_shells
     }
 
