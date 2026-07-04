@@ -521,25 +521,6 @@ _T = TypeVar("_T")
 _STOP_TIMEOUT: float = 5.0
 
 
-def _is_process_alive(pid: int) -> bool:
-    try:
-        os.kill(pid, 0)
-    except OSError:
-        return False
-
-    try:  # check for zombie via /proc (Linux only)
-        with open(f"/proc/{pid}/stat", encoding="utf-8") as f:  # noqa: FURB101
-            content = f.read()
-            close_paren = content.rfind(")")
-            if close_paren != -1:
-                state = content[close_paren + 2]  # +1 for ')', +1 for space
-                return state != "Z"
-    except (OSError, IndexError):
-        pass
-
-    return True
-
-
 class _DaemonMeta(ABCMeta):  # pragma: posix cover
     """Metaclass for the :class:`Daemon` abstract base class.
 
@@ -707,7 +688,9 @@ class Daemon(ABC, metaclass=_DaemonMeta):  # pragma: posix cover
         deadline = time.monotonic() + _STOP_TIMEOUT
         while time.monotonic() < deadline:
             time.sleep(0.1)
-            if not _is_process_alive(pid):
+            try:
+                os.kill(pid, 0)
+            except OSError:
                 break
         else:
             # Timeout: force-kill with SIGKILL

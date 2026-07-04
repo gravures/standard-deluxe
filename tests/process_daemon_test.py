@@ -24,7 +24,6 @@ import os
 import signal
 import subprocess
 import sys
-import threading
 import warnings
 from pathlib import Path
 from typing import Any
@@ -311,17 +310,7 @@ def test_stop_raises_on_permission_error(tmp_path: Path) -> None:
 
 @pytest.mark.skipif(not IS_POSIX, reason="Daemon is POSIX-only")
 def test_stop_removes_pidfile(tmp_path: Path) -> None:
-    """stop() removes the pidfile after the daemon process dies.
-
-    BUG: stop() loops calling os.kill(pid, SIGTERM) forever. A zombie process
-    does not raise OSError, so the loop never breaks. This test kills the
-    process but does NOT reap it (no proc.wait()), creating a zombie. If
-    stop() is buggy, the timeout will fire and the test fails — exposing the
-    bug without hanging the suite.
-
-    Raises:
-        AssertionError: If stop() hangs due to the infinite-loop zombie bug.
-    """
+    """stop() removes the pidfile after the daemon process dies."""
     # Use Python sleep instead of the `sleep` command for cross-platform compat
     proc = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(300)"])
 
@@ -332,19 +321,11 @@ def test_stop_removes_pidfile(tmp_path: Path) -> None:
     daemon = TestDaemon.__new__(TestDaemon)
     TestDaemon.__pidfile__.write_text(f"{proc.pid}\n")
     try:
-        # Kill but do NOT reap — leaves a zombie process.
-        proc.kill()
-        # stop() must handle this. If it loops forever, the timeout fires.
-        stop_thread = threading.Thread(target=daemon.stop)
-        stop_thread.daemon = True
-        stop_thread.start()
-        stop_thread.join(timeout=3)
-        if stop_thread.is_alive():
-            msg = (
-                "stop() hung for >3s — infinite-loop zombie bug: "
-                "os.kill() succeeds on zombies, so the while-loop never breaks."
-            )
-            raise AssertionError(msg)
+        # Send SIGTERM — process exits promptly.
+        # stop()'s wait loop detects the dead process via os.kill(pid, 0) failing
+        # and breaks out. Pidfile is cleaned up.
+        daemon.stop()
+        assert proc.wait(timeout=5) is not None  # process is dead
         assert not TestDaemon.__pidfile__.exists()
     finally:
         proc.wait()
@@ -375,7 +356,7 @@ def test_stop_timeout_sends_sigkill(tmp_path: Path) -> None:
     """stop() sends SIGKILL when the process doesn't terminate within timeout.
 
     Covers lines 619->617, 623-626, 628->exit: the while-loop times out
-    (all _is_process_alive calls return True), so SIGKILL is sent as a
+    (os.kill(pid, 0) keeps succeeding), so SIGKILL is sent as a
     last resort, then the pidfile is cleaned up.
     """
     # Start a long-running process
@@ -389,13 +370,20 @@ def test_stop_timeout_sends_sigkill(tmp_path: Path) -> None:
     TestDaemon.__pidfile__.write_text(f"{proc.pid}\n")
 
     try:
-        # Mock _is_process_alive to always return True so the while-loop
+        # Mock os.kill(pid, 0) to always succeed so the while-loop
         # never breaks, forcing the timeout/SIGKILL path.
         # Mock time.monotonic to accelerate the timeout (deadline = 0 + 5 = 5,
         # then monotonic returns 10 > 5, triggering the else branch).
         # Mock time.sleep to avoid actual delays.
+        orig_kill = os.kill
+
+        def _mock_kill(pid_: int, sig: int) -> None:
+            if sig == 0:
+                return  # pretend process is alive
+            orig_kill(pid_, sig)
+
         with (
-            patch("deluxe.process._is_process_alive", return_value=True),
+            patch("deluxe.process.os.kill", side_effect=_mock_kill),
             patch("deluxe.process.time.monotonic", side_effect=[0, 10]),
             patch("deluxe.process.time.sleep"),
         ):
@@ -413,9 +401,8 @@ def test_stop_timeout_sends_sigkill(tmp_path: Path) -> None:
 def test_stop_process_dies_during_wait(tmp_path: Path) -> None:
     """stop() breaks out of the wait loop when the process terminates.
 
-    Covers lines 434-437, 619->617: _is_process_alive(pid) returns False
-    because os.kill(pid, 0) raises OSError (process no longer exists),
-    so the while-loop breaks and the pidfile is cleaned up.
+    Covers lines 619->617: os.kill(pid, 0) raises OSError (process no longer
+    exists), so the while-loop breaks and the pidfile is cleaned up.
     """
     # Start a process that exits cleanly on SIGTERM (default Python behavior)
     proc = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(300)"])
@@ -429,61 +416,12 @@ def test_stop_process_dies_during_wait(tmp_path: Path) -> None:
 
     try:
         # SIGTERM is sent first. The process exits promptly.
-        # Then in the wait loop, _is_process_alive calls os.kill(pid, 0)
-        # which raises OSError → return False → loop breaks.
+        # Then in the wait loop, os.kill(pid, 0) raises OSError → loop breaks.
         daemon.stop()
         assert proc.wait(timeout=5) is not None  # process is dead
         assert not TestDaemon.__pidfile__.exists()
     finally:
         proc.wait()
-
-
-@pytest.mark.skipif(not IS_POSIX, reason="Daemon is POSIX-only")
-def test_is_process_alive_fallback_on_proc_read_error() -> None:
-    """_is_process_alive returns True when /proc/{pid}/stat is unreadable.
-
-    Covers lines 439-449: os.kill(pid, 0) succeeds but reading /proc/{pid}/stat
-    raises OSError, so the except branch is taken and True is returned.
-    """
-    from deluxe.process import _is_process_alive  # noqa: PLC0415  # pyright: ignore[reportPrivateUsage]
-
-    # Start a long-lived process so it stays alive
-    proc = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(300)"])
-    try:
-        # Mock builtins.open to raise OSError only for /proc reads
-        real_open = open
-
-        def _mock_open(path: str | Path, *args: Any, **kwds: Any) -> Any:
-            if str(path).startswith("/proc/"):
-                msg = "Permission denied"
-                raise OSError(msg)
-            return real_open(path, *args, **kwds)  # pyright: ignore[reportUnknownVariableType]
-
-        with patch("builtins.open", side_effect=_mock_open):
-            result = _is_process_alive(proc.pid)
-        # Process is alive (os.kill succeeds) but /proc is unreadable → True
-        assert result is True
-    finally:
-        proc.terminate()
-        proc.wait()
-
-
-@pytest.mark.skipif(not IS_POSIX, reason="Daemon is POSIX-only")
-def test_is_process_alive_returns_false_for_dead_process() -> None:
-    """_is_process_alive returns False when os.kill(pid, 0) raises OSError.
-
-    Covers lines 434-437: the process no longer exists, so os.kill(pid, 0)
-    raises OSError and the function returns False immediately.
-    """
-    from deluxe.process import _is_process_alive  # noqa: PLC0415  # pyright: ignore[reportPrivateUsage]
-
-    # Start a process and terminate it so the PID is dead
-    proc = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(300)"])
-    pid = proc.pid
-    proc.terminate()
-    proc.wait()
-
-    assert _is_process_alive(pid) is False
 
 
 @pytest.mark.skipif(not IS_POSIX, reason="Daemon is POSIX-only")
@@ -505,17 +443,18 @@ def test_stop_sigkill_failure_is_swallowed(tmp_path: Path) -> None:
     try:
         orig_kill = os.kill
 
-        def _mock_kill(pid: int, sig: int) -> None:
+        def _mock_kill(pid_: int, sig: int) -> None:
+            if sig == 0:
+                return  # pretend process is alive
             if sig == signal.SIGKILL:
                 msg = "Permission denied"
                 raise OSError(msg)
-            orig_kill(pid, sig)
+            orig_kill(pid_, sig)
 
         with (
-            patch("deluxe.process._is_process_alive", return_value=True),
+            patch("deluxe.process.os.kill", side_effect=_mock_kill),
             patch("deluxe.process.time.monotonic", side_effect=[0, 10]),
             patch("deluxe.process.time.sleep"),
-            patch("deluxe.process.os.kill", side_effect=_mock_kill),
         ):
             # Should not raise — OSError from SIGKILL is swallowed
             daemon.stop()
