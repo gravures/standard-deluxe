@@ -176,7 +176,7 @@ jobs:
       uses: softprops/action-gh-release@v2
       with:
         body_path: ${{ github.workspace }}/CHANGELOG.md
-        prerelease: ${{ (startsWith(needs.bump.outputs.version_tag, 'v0')) || (endsWith(needs.bump.outputs.version_tag, '-pre')) || (endsWith(needs.bump.outputs.version_tag, '-dev')) }}
+        prerelease: ${{ (endsWith(needs.bump.outputs.version_tag, '-pre')) || (endsWith(needs.bump.outputs.version_tag, '-dev')) }}
         draft: false
         name: Release ${{ needs.bump.outputs.version_tag }}
         tag_name: ${{ needs.bump.outputs.version_tag }}
