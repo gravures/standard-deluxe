@@ -2,6 +2,45 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+##  Changelog for release [v0.8.0]
+    
+    https://github.com/gravures/standard-deluxe/compare/01ccb9f2f62927a71a6eb4baaa23e9ff11df3cce..v0.8.0
+    2026-07-04
+  
+### Bug Fixes
+
+  - **(command)** fix exception raising removal in Command.__call__ method - ([5ddcfb6](https://github.com/gravures/standard-deluxe/commit/5ddcfb60aeba6a8c47cdbb0edf16d8bdc30f0c0a)) - [@gravures](https://github.com/gravures)
+
+  - **(daemon)** fix daemon restart by caching constructor argumentsStore daemon controller constructor args in a WeakKeyDictionaryso start() can replay them when relaunching the daemon. Addsdouble-check locking for concurrent start() calls and documentscontroller semantics (multiple controllers, system-level singleton). - ([d04e384](https://github.com/gravures/standard-deluxe/commit/d04e384f3b65ce0302a11bce0fcc218e67b5e8ca)) - [@gravures](https://github.com/gravures)
+
+  - **(process)** fix instantiating a Daemon on Windows do not raise AvailabilityError - ([8cf8549](https://github.com/gravures/standard-deluxe/commit/8cf85495e4189d86bd8319dd018da1b75ba8896b)) - [@gravures](https://github.com/gravures)
+  - **(process)** set process.user to None on windows - ([d1f1c7c](https://github.com/gravures/standard-deluxe/commit/d1f1c7c6dadf0d357a0492e6dd4e2847a543a0f1)) - [@gravures](https://github.com/gravures)
+  - **(process)** stop calling get_real_users on windows - ([4e68864](https://github.com/gravures/standard-deluxe/commit/4e688645e802d3cd50cf7cc38846f669ac4807f4)) - [@gravures](https://github.com/gravures)
+  - **(process)** stop importing pwd on windows - ([aa36f96](https://github.com/gravures/standard-deluxe/commit/aa36f96dd7feee524ce1f52a987bd528a8118d07)) - [@gravures](https://github.com/gravures)
+  - **(process)** remove custom _is_process_alive, inline os.kill in stop()The _is_process_alive() function used /proc/{pid}/stat parsing forzombie detection which only worked on Linux. On macOS it alwaysreturned True for zombies, causing stop() to hang until timeout.Remove the function entirely and inline os.kill(pid, 0) in the waitloop. The timeout + SIGKILL fallback already handles all edge cases. - ([372a432](https://github.com/gravures/standard-deluxe/commit/372a432c6b59b90ef0605378cba4b58399c427f0)) - [@gravures](https://github.com/gravures)
+  - **(process)** change get_real_users to wor on all posix platforms - ([8b6ad44](https://github.com/gravures/standard-deluxe/commit/8b6ad441759f8f8131173502312045e79d8c16ab)) - [@gravures](https://github.com/gravures)
+  - **(process)** fix dead loop in daemon stop method - ([773e854](https://github.com/gravures/standard-deluxe/commit/773e8548fed4d208586391465e882e3299a8d342)) - [@gravures](https://github.com/gravures)
+  - **(process)** fix inferred returned type in Command.__call__ - ([845ebf1](https://github.com/gravures/standard-deluxe/commit/845ebf1e728e17d4aeba7617899e25df3d19be35)) - [@gravures](https://github.com/gravures)
+  - **(process)** adds async call - ([03e21c0](https://github.com/gravures/standard-deluxe/commit/03e21c05b7eae228582d02f8adf4296be1700369)) - [@gravures](https://github.com/gravures)
+
+
+### Documentation
+
+  - **(process)** update doc for command elevation scenario - ([e7a2fd6](https://github.com/gravures/standard-deluxe/commit/e7a2fd641b98339a5d2fe095ce24250d73fd72e3)) - [@gravures](https://github.com/gravures)
+  - **(process)** update docstrings - ([6012a68](https://github.com/gravures/standard-deluxe/commit/6012a684746f4a90cd8e5d56dfafc6b152d5fc47)) - [@gravures](https://github.com/gravures)
+
+
+### Features
+
+  - **(daemon)** add SIGUSR1/SIGUSR2 user signal support to DaemonThis accurately captures all the changes made:src/deluxe/process.py: Added signal_user1()/signal_user2() controller methods and on_user1()/on_user2() daemon hooks, with SIGUSR1/SIGUSR2 signal handlers in _RealDaemon.daemonize()tests/process_daemon_test.py: Added 7 new tests (unit + integration) for the signal methods and hooksDocstrings: Rewrote IPC section with basic control overview, Python IPC options, and User Signals subsection with code example - ([33972de](https://github.com/gravures/standard-deluxe/commit/33972dea4dcce476cd0b8cb9d992aab4304a3e4f)) - [@gravures](https://github.com/gravures)
+
+  - **(process)** Adds the Daemon abstract bases class to the process module - ([1dd71f7](https://github.com/gravures/standard-deluxe/commit/1dd71f7c228c159d0fd3c2130a588a44cd27c605)) - [@gravures](https://github.com/gravures)
+
+  - **adds process module - ([01ccb9f](https://github.com/gravures/standard-deluxe/commit/01ccb9f2f62927a71a6eb4baaa23e9ff11df3cce)) - [@gravures](https://github.com/gravures)
+
+
+- - -
+
 ##  Changelog for release [v0.7.0]
     
     https://github.com/gravures/standard-deluxe/compare/9b8b4c2da3eab7cd001cf771ebc9afbd42651f58..v0.7.0
