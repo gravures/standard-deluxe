@@ -256,7 +256,7 @@ class Command:
             raise NotImplementedError(msg)
 
         self._user: str | None
-        self.user = user
+        self._user = user if _USER_SUPPORT else None
 
     @property
     def user(self) -> str | None:
