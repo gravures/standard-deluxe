@@ -2,6 +2,29 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+##  Changelog for release [v0.9.0]
+    
+    https://github.com/gravures/standard-deluxe/compare/5703036de1b832790d02b63868e4604faed54f22..v0.9.0
+    2026-07-04
+  
+### Bug Fixes
+
+  - **(mureq)** fix small type hint issues - ([352a0bf](https://github.com/gravures/standard-deluxe/commit/352a0bfa80b77982d3065b38f6a2a9f13227763f)) - [@gravures](https://github.com/gravures)
+
+
+### Documentation
+
+  - **(mureq)** include mureq license into sphinx docs - ([83afd3c](https://github.com/gravures/standard-deluxe/commit/83afd3c00068fc214e08d97c453a1046efde0016)) - [@gravures](https://github.com/gravures)
+
+
+### Features
+
+  - **(mureq)** embed the mureq library - ([e0a4e8e](https://github.com/gravures/standard-deluxe/commit/e0a4e8eccc2ebd92b3ac282bf0da1846757fd6c5)) - [@gravures](https://github.com/gravures)
+
+
+
+- - -
+
 ##  Changelog for release [v0.8.0]
     
     https://github.com/gravures/standard-deluxe/compare/01ccb9f2f62927a71a6eb4baaa23e9ff11df3cce..v0.8.0
