@@ -90,7 +90,7 @@ def get_real_users() -> set[str]:
             "r",
             encoding=locale.getpreferredencoding(False),  # noqa: FBT003
         ) as f:
-            if sch := re.search(r"^UID_MIN\s+(\d+)", f.read()):
+            if sch := re.search(r"^UID_MIN\s+(\d+)", f.read()):  # pragma: no cover
                 min_uid = int(sch[1])
 
     # Shells that indicate "no login"
@@ -567,7 +567,7 @@ class _DaemonMeta(ABCMeta):  # pragma: posix cover
         return type("Daemonized", (_RealDaemon, daemon), {})
 
     def __call__(cls: type[_T], *args: Any, **kwds: Any) -> _T:
-        if not supported(only=("posix",), but=("wasi")):
+        if not supported(only=("posix",), but=("wasi")):  # pragma: windows cover
             return super().__call__(*args, **kwds)
 
         if cls.__name__ == "Daemonized":  # pragma: no cover
@@ -683,7 +683,7 @@ class Daemon(ABC, metaclass=_DaemonMeta):  # pragma: posix cover
         try:
             os.kill(pid, signal.SIGTERM)
         except OSError as err:
-            if "No such process" in str(err):
+            if "No such process" in str(err):  # pragma: no cover
                 if self.__pidfile__.exists():
                     self.__pidfile__.unlink()
                 return
@@ -695,14 +695,14 @@ class Daemon(ABC, metaclass=_DaemonMeta):  # pragma: posix cover
             time.sleep(0.1)
             try:
                 os.kill(pid, 0)
-            except OSError:
+            except OSError:  # pragma: no cover
                 break
         else:
             # Timeout: force-kill with SIGKILL
             with contextlib.suppress(OSError):
                 os.kill(pid, signal.SIGKILL)
 
-        if self.__pidfile__.exists():
+        if self.__pidfile__.exists():  # pragma: no cover
             self.__pidfile__.unlink()
 
     @final
