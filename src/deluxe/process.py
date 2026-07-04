@@ -28,7 +28,9 @@ import shutil
 import signal
 import subprocess
 import sys
+import threading
 import time
+import weakref
 from abc import ABC, ABCMeta, abstractmethod
 from asyncio import Future, Task
 from pathlib import Path
@@ -61,6 +63,20 @@ if TYPE_CHECKING:
 
 
 __all__ = ("Command", "Daemon", "get_real_users")
+
+
+# Registry for daemon constructor arguments, keyed by controller instance.
+# Uses weak references so entries are automatically cleaned up when the
+# controller is garbage collected. This avoids setting attributes on the
+# controller instance (which would break __slots__ subclasses) and avoids
+# writing sensitive constructor arguments to disk.
+_daemon_args_registry: weakref.WeakKeyDictionary[
+    object, tuple[tuple[Any, ...], dict[str, Any]]
+] = weakref.WeakKeyDictionary()
+
+# Lock to prevent same-process fork races when multiple controllers
+# call start() concurrently (e.g. from different threads).
+_start_lock = threading.Lock()
 
 
 @availability(only="posix", but=("wasi", "ios"))
@@ -567,7 +583,7 @@ class _DaemonMeta(ABCMeta):  # pragma: posix cover
         return type("Daemonized", (_RealDaemon, daemon), {})
 
     def __call__(cls: type[_T], *args: Any, **kwds: Any) -> _T:
-        if not supported(only=("posix",), but=("wasi")):  # pragma: windows cover
+        if not supported(only=("posix",), but=("wasi")):  # pragma: win32 cover
             return super().__call__(*args, **kwds)
 
         if cls.__name__ == "Daemonized":  # pragma: no cover
@@ -579,7 +595,9 @@ class _DaemonMeta(ABCMeta):  # pragma: posix cover
 
         # return a Daemon controller kind instance
         _DaemonMeta.fork(_DaemonMeta.subclass(daemon=cls), *args, **kwds)
-        return super().__call__(*args, **kwds)
+        controller = super().__call__(*args, **kwds)
+        _daemon_args_registry[controller] = (args, kwds)
+        return controller
 
 
 @availability(only="posix", but="wasi")
@@ -620,6 +638,45 @@ class Daemon(ABC, metaclass=_DaemonMeta):  # pragma: posix cover
     detached session. This class makes no provision for a specific
     interprocess communication protocol; it is up to the class
     implementation.
+
+    Controller Semantics
+    --------------------
+
+    Instantiating a :class:`Daemon` subclass returns a *controller* — a
+    lightweight handle that manages the daemon's lifecycle. The controller
+    is not the daemon itself; it is a proxy that communicates with the
+    daemon through the pidfile and signals.
+
+    **Multiple controllers are allowed.** Several controller instances can
+    coexist for the same daemon class within a single process or across
+    processes. All controllers for a given class point to the same daemon
+    process. Calling :meth:`stop`, :meth:`start`, or :meth:`restart` on
+    *any* controller affects the shared daemon.
+
+    **The daemon is a system-level singleton.** Only one daemon process
+    runs at a time for a given class, enforced by the pidfile. When a new
+    controller is created while the daemon is already running, the
+    singleton guard prevents a duplicate daemon from starting. The new
+    controller simply becomes another handle to the existing daemon.
+
+    **Constructor arguments are preserved per controller.** Each controller
+    retains the ``*args`` and ``**kwds`` passed to its constructor. When
+    :meth:`start` is called to (re)launch the daemon, it uses the
+    calling controller's original arguments. This means different
+    controllers may hold different argument sets; the last controller to
+    call :meth:`start` determines the daemon's configuration.
+
+    .. warning::
+
+        Constructor arguments are stored in memory for the lifetime of
+        the controller and are never written to disk. If the controller
+        is garbage collected, its arguments are lost. If a daemon dies
+        and needs to be restarted, the controller calling :meth:`start`
+        must have been created with the intended arguments.
+
+    **Concurrency safety.** A process-level lock prevents two controllers
+    in the same process from racing through :meth:`start` concurrently.
+    Cross-process races are handled by the pidfile singleton guard.
 
     About The Unix Double Fork Mechanism
     ------------------------------------
@@ -717,8 +774,13 @@ class Daemon(ABC, metaclass=_DaemonMeta):  # pragma: posix cover
             a new daemon was started.
         """
         if not (pid := self.pid):
-            # FIXME: should cache *args and **kwds to passed it to the new daemon
-            self.__class__.__new__(self.__class__)
+            with _start_lock:
+                # Double-check after acquiring the lock to prevent race
+                # conditions when multiple controllers call start()
+                # concurrently from the same process.
+                if not (pid := self.pid):
+                    args, kwds = _daemon_args_registry.get(self, ((), {}))
+                    _DaemonMeta.fork(_DaemonMeta.subclass(daemon=self.__class__), *args, **kwds)
         else:
             msg: str = f"Daemon is already running with pid <{pid}>...\n"
             warn(msg, stacklevel=1)
