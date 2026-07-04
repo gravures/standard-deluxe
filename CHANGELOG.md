@@ -2,6 +2,24 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+##  Changelog for release [v0.10.0]
+    
+    https://github.com/gravures/standard-deluxe/compare/45867f39316db4cc1abfc5bcd6fa849bdfda643a..v0.10.0
+    2026-07-04
+  
+### Bug Fixes
+
+  - **(protocols)** fix protocol attribute detection for Python < 3.12 - ([660c2b7](https://github.com/gravures/standard-deluxe/commit/660c2b7ec5132c33f63aa17da32972ff7d66c0c7)) - [@gravures](https://github.com/gravures)
+
+
+### Features
+
+  - **(protocols)** adds protocols module - ([45867f3](https://github.com/gravures/standard-deluxe/commit/45867f39316db4cc1abfc5bcd6fa849bdfda643a)) - [@gravures](https://github.com/gravures)
+
+
+
+- - -
+
 ##  Changelog for release [v0.9.0]
     
     https://github.com/gravures/standard-deluxe/compare/5703036de1b832790d02b63868e4604faed54f22..v0.9.0
