@@ -153,6 +153,32 @@ class AsyncIterableClass:
 
 
 # ------------------------------------------------------------------------------
+# Helper Classes for Structural Check Testing (non-runtime-checkable)
+# ------------------------------------------------------------------------------
+class EmptyProtocol(Protocol):
+    """A non-runtime-checkable Protocol with no methods."""
+
+
+class StructuralProto(Protocol):
+    """A non-runtime-checkable Protocol with one required method."""
+
+    def structural_method(self) -> int: ...
+
+
+class ImplementsStructural:
+    """Structurally implements StructuralProto (not inheriting from it)."""
+
+    def structural_method(self) -> int:  # noqa: PLR6301
+        return 1
+
+
+class NoneAttributeClass:
+    """Has the method name in __dict__ but set to None (not implemented)."""
+
+    structural_method: None = None
+
+
+# ------------------------------------------------------------------------------
 # Test __protocols__ Set Content
 # ------------------------------------------------------------------------------
 def test_protocols_set_contains_collections_abc_protocols():
@@ -346,6 +372,30 @@ def test_get_protocols_with_maybe():
     maybe_protocols = list(get_protocols(Maybe))
     # Maybe is a concrete class, not a protocol
     assert Maybe not in maybe_protocols
+
+
+# ------------------------------------------------------------------------------
+# Structural Check Tests (non-runtime-checkable Protocols)
+# ------------------------------------------------------------------------------
+def test_implements_protocol_empty_attrs_returns_false():
+    """Non-runtime-checkable Protocol with no attrs should not match any class."""
+    register(EmptyProtocol)
+    protocols = list(get_protocols(ImplementsStructural))
+    assert EmptyProtocol not in protocols
+
+
+def test_implements_protocol_none_attribute_returns_false():
+    """Attribute found in __dict__ but set to None should return False."""
+    register(StructuralProto)
+    protocols = list(get_protocols(NoneAttributeClass))
+    assert StructuralProto not in protocols
+
+
+def test_implements_protocol_structural_match_returns_true():
+    """All attrs found and not None should return True (structural match)."""
+    register(StructuralProto)
+    protocols = list(get_protocols(ImplementsStructural))
+    assert StructuralProto in protocols
 
 
 # ------------------------------------------------------------------------------
