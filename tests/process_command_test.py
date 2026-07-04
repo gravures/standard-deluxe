@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import re
 import sys
 from pathlib import Path
 from types import SimpleNamespace
@@ -84,7 +85,8 @@ def test_command_init_with_nonexistent_path() -> None:
 
 def test_command_init_not_found_uses_path_in_message() -> None:
     """Test that the error message uses path when command is not found."""
-    with pytest.raises(Command.Error, match="/some/path"):
+    # Use re.escape because Path normalizes separators on Windows (/ → \\)
+    with pytest.raises(Command.Error, match=re.escape(str(Path("/some/path")))):
         Command("nonexistent", path=Path("/some/path"))
 
 
@@ -111,6 +113,7 @@ def test_command_user_property_default() -> None:
     assert cmd.user is None
 
 
+@pytest.mark.skipif(not IS_POSIX, reason="user setter is POSIX-only (availability guard)")
 def test_command_user_setter_invalid_user() -> None:
     """Test that setting user to a non-existent user raises Error."""
     cmd = Command(sys.executable)
@@ -118,6 +121,7 @@ def test_command_user_setter_invalid_user() -> None:
         cmd.user = "nonexistent_user_xyz_12345"
 
 
+@pytest.mark.skipif(not IS_POSIX, reason="user setter is POSIX-only (availability guard)")
 def test_command_user_set_to_none() -> None:
     """Test that setting user to None works."""
     cmd = Command(sys.executable)
@@ -363,7 +367,13 @@ def test_property_command_init_succeeds(name: str) -> None:
     assert cmd.command is not None
 
 
-@given(text=st.text(min_size=1, max_size=100))
+@given(
+    text=st.text(
+        alphabet=st.characters(min_codepoint=32, max_codepoint=126),
+        min_size=1,
+        max_size=100,
+    )
+)
 @settings(deadline=None, suppress_health_check=[HealthCheck.function_scoped_fixture])
 def test_property_echo_returns_input(text: str) -> None:
     """Property: echo command should return the input text."""
@@ -380,6 +390,7 @@ def test_property_echo_returns_input(text: str) -> None:
 # ============================================================================
 
 
+@pytest.mark.skipif(not IS_POSIX, reason="sudo user switching is POSIX-only")
 def test_command_call_with_user() -> None:
     """Test __call__ with user set goes through sudo path.
 
