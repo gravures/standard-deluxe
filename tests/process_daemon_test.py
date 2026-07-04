@@ -13,6 +13,12 @@ Properties tested:
 - stop() raises OSError on permission errors
 - restart() calls stop() then start()
 - atexit() is overridable by subclass
+- signal_user1() when not running warns
+- signal_user1() raises OSError on permission errors
+- signal_user2() when not running warns
+- signal_user2() raises OSError on permission errors
+- on_user1() is overridable by subclass
+- on_user2() is overridable by subclass
 - Daemon process runs detached (own session, / as cwd)
 - Double-fork produces a properly daemonized process
 - Constructor args are stored in _daemon_args_registry
@@ -625,6 +631,114 @@ def test_restart_calls_stop_then_start(tmp_path: Path) -> None:
 
 
 # ============================================================================
+# signal_user1() / signal_user2() methods
+# ============================================================================
+
+
+@pytest.mark.skipif(not IS_POSIX, reason="Daemon is POSIX-only")
+def test_signal_user1_when_not_running_warns(tmp_path: Path) -> None:
+    """signal_user1() when no daemon is running issues a warning."""
+
+    class TestDaemon(Daemon, workpath=str(tmp_path)):  # type: ignore[valid-type]
+        def run(self) -> None: ...
+
+    _redirect_pidfile(TestDaemon, tmp_path)
+    daemon = TestDaemon.__new__(TestDaemon)
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        daemon.signal_user1()
+
+    assert len(caught) == 1
+    assert "not running" in str(caught[0].message)
+
+
+@pytest.mark.skipif(not IS_POSIX, reason="Daemon is POSIX-only")
+def test_signal_user2_when_not_running_warns(tmp_path: Path) -> None:
+    """signal_user2() when no daemon is running issues a warning."""
+
+    class TestDaemon(Daemon, workpath=str(tmp_path)):  # type: ignore[valid-type]
+        def run(self) -> None: ...
+
+    _redirect_pidfile(TestDaemon, tmp_path)
+    daemon = TestDaemon.__new__(TestDaemon)
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        daemon.signal_user2()
+
+    assert len(caught) == 1
+    assert "not running" in str(caught[0].message)
+
+
+@pytest.mark.skipif(not IS_POSIX, reason="Daemon is POSIX-only")
+def test_signal_user1_raises_on_permission_error(tmp_path: Path) -> None:
+    """signal_user1() raises OSError when the kill fails for a reason other
+    than 'No such process' (e.g. permission denied on PID 1)."""
+
+    class TestDaemon(Daemon, workpath=str(tmp_path)):  # type: ignore[valid-type]
+        def run(self) -> None: ...
+
+    _redirect_pidfile(TestDaemon, tmp_path)
+    TestDaemon.__pidfile__.write_text("1\n")
+    daemon = TestDaemon.__new__(TestDaemon)
+
+    with pytest.raises(OSError, match="Operation not permitted"):
+        daemon.signal_user1()
+
+
+@pytest.mark.skipif(not IS_POSIX, reason="Daemon is POSIX-only")
+def test_signal_user2_raises_on_permission_error(tmp_path: Path) -> None:
+    """signal_user2() raises OSError when the kill fails for a reason other
+    than 'No such process' (e.g. permission denied on PID 1)."""
+
+    class TestDaemon(Daemon, workpath=str(tmp_path)):  # type: ignore[valid-type]
+        def run(self) -> None: ...
+
+    _redirect_pidfile(TestDaemon, tmp_path)
+    TestDaemon.__pidfile__.write_text("1\n")
+    daemon = TestDaemon.__new__(TestDaemon)
+
+    with pytest.raises(OSError, match="Operation not permitted"):
+        daemon.signal_user2()
+
+
+# ============================================================================
+# on_user1() / on_user2() override
+# ============================================================================
+
+
+@pytest.mark.skipif(not IS_POSIX, reason="Daemon is POSIX-only")
+def test_on_user1_is_overridable(tmp_path: Path) -> None:
+    """Subclass can override on_user1() for custom signal handling."""
+
+    class TestDaemon(Daemon, workpath=str(tmp_path)):  # type: ignore[valid-type]
+        def run(self) -> None: ...
+
+        def on_user1(self) -> None:  # noqa: PLR6301
+            (tmp_path / "user1_received").write_text("yes")
+
+    daemon = TestDaemon.__new__(TestDaemon)
+    daemon.on_user1()
+    assert (tmp_path / "user1_received").read_text() == "yes"
+
+
+@pytest.mark.skipif(not IS_POSIX, reason="Daemon is POSIX-only")
+def test_on_user2_is_overridable(tmp_path: Path) -> None:
+    """Subclass can override on_user2() for custom signal handling."""
+
+    class TestDaemon(Daemon, workpath=str(tmp_path)):  # type: ignore[valid-type]
+        def run(self) -> None: ...
+
+        def on_user2(self) -> None:  # noqa: PLR6301
+            (tmp_path / "user2_received").write_text("yes")
+
+    daemon = TestDaemon.__new__(TestDaemon)
+    daemon.on_user2()
+    assert (tmp_path / "user2_received").read_text() == "yes"
+
+
+# ============================================================================
 # atexit() override
 # ============================================================================
 
@@ -748,6 +862,68 @@ def main() -> None:
 
         print(json.dumps(result))
 
+    elif action == "signal":
+        ready = tmp / "ready"
+        user1_received = tmp / "user1"
+        user2_received = tmp / "user2"
+        stop_event = tmp / "stop"
+
+        from deluxe.process import Daemon, _DaemonMeta
+
+        def run(self) -> None:  # noqa: PLR6301
+            ready.write_text(str(os.getpid()))
+            while not stop_event.exists():
+                time.sleep(0.1)
+
+        def on_user1(self) -> None:  # noqa: PLR6301
+            user1_received.write_text("yes")
+
+        def on_user2(self) -> None:  # noqa: PLR6301
+            user2_received.write_text("yes")
+
+        TestDaemon = _DaemonMeta(  # noqa: N806
+            daemon_name,
+            (Daemon,),
+            {"run": run, "on_user1": on_user1, "on_user2": on_user2},
+            workpath=str(tmp),
+        )
+
+        controller = TestDaemon()
+        pidfile = TestDaemon.__pidfile__
+        for _ in range(50):
+            if ready.exists():
+                break
+            time.sleep(0.1)
+
+        daemon_pid = int(ready.read_text()) if ready.exists() else 0
+        result: dict[str, Any] = {
+            "ready": ready.exists(),
+            "daemon_pid": daemon_pid,
+            "controller_pid": controller.pid,
+        }
+        if daemon_pid:
+            # Send SIGUSR1 and wait for handler to fire
+            controller.signal_user1()
+            for _ in range(50):
+                if user1_received.exists():
+                    break
+                time.sleep(0.1)
+            result["user1_received"] = user1_received.exists()
+
+            # Send SIGUSR2 and wait for handler to fire
+            controller.signal_user2()
+            for _ in range(50):
+                if user2_received.exists():
+                    break
+                time.sleep(0.1)
+            result["user2_received"] = user2_received.exists()
+
+            stop_event.write_text("stop")
+            controller.stop()
+            result["pidfile_removed"] = not pidfile.exists()
+
+        print(json.dumps(result))
+
 
 if __name__ == "__main__":
     main()
@@ -810,4 +986,24 @@ def test_daemon_singleton_prevents_duplicate_start(tmp_path: Path) -> None:
     assert result["ready"] is True, "worker run() was never called"
     assert result["daemon_pid"] > 0
     assert result["controller_pid"] == result["daemon_pid"]
+    assert result["pidfile_removed"] is True
+
+
+@pytest.mark.skipif(not IS_POSIX, reason="Daemon double-fork is POSIX-only")
+def test_signal_user1_and_user2_integration(tmp_path: Path) -> None:
+    """Start a real daemon, send SIGUSR1 and SIGUSR2, verify hooks fire.
+
+    Verifies:
+    - controller.signal_user1() sends SIGUSR1 to the daemon
+    - Daemon's on_user1() is called when SIGUSR1 is received
+    - controller.signal_user2() sends SIGUSR2 to the daemon
+    - Daemon's on_user2() is called when SIGUSR2 is received
+    """
+    result = _run_daemon_script("signal", tmp_path, f"SignalDaemon_{id(tmp_path)}")
+
+    assert result["ready"] is True, "daemon run() was never called"
+    assert result["daemon_pid"] > 0
+    assert result["controller_pid"] == result["daemon_pid"]
+    assert result["user1_received"] is True, "on_user1() was never called"
+    assert result["user2_received"] is True, "on_user2() was never called"
     assert result["pidfile_removed"] is True

@@ -528,6 +528,16 @@ class _RealDaemon:  # pragma: no cover
 
         signal.signal(signal.SIGTERM, _sigterm_handler)
 
+        # user-defined signal handlers
+        def _sigusr1_handler(_signum: int, _frame: Any) -> None:
+            self.daemonized.on_user1()
+
+        def _sigusr2_handler(_signum: int, _frame: Any) -> None:
+            self.daemonized.on_user2()
+
+        signal.signal(signal.SIGUSR1, _sigusr1_handler)
+        signal.signal(signal.SIGUSR2, _sigusr2_handler)
+
     def atexit(self) -> None:
         self.daemonized.atexit()
         self.__pidfile__.unlink()
@@ -612,18 +622,14 @@ class Daemon(ABC, metaclass=_DaemonMeta):  # pragma: posix cover
     Subclasses must implement the :meth:`run` method, which contains the
     daemon's working logic. User-defined :class:`Daemon` instances should
     not call :meth:`run` directly.
-
     The daemon writes a pidfile at its start to prevent multiple instances
     from running simultaneously. Once daemonized, the :meth:`run` method is
     called with no parameters.
-
     The daemon executes in its own detached session with no tty attached,
     so it will not inherit the standard files from the python interpreter
     where it was instancied.
-
     Code instantiating the daemon will receive a functional instance of the
-    defined class. This instance acts as a daemon controller with
-    :meth:`stop`, :meth:`start`, and :meth:`restart` methods.
+    defined class. This instance acts as a daemon controller.
 
     Keyword Args:
         workpath (:class:`~pathlib.Path` | :obj:`str`): The working directory
@@ -635,9 +641,25 @@ class Daemon(ABC, metaclass=_DaemonMeta):  # pragma: posix cover
 
     Daemon subclasses will end up with two instances: the *controller*
     living in the calling process, and the *worker* living in its own
-    detached session. This class makes no provision for a specific
-    interprocess communication protocol; it is up to the class
-    implementation.
+    detached session.
+    The controller provides a built-in set of methods to manage the daemon's
+    life cycle: :meth:`start`, :meth:`stop`, :meth:`restart`, :meth:`signal_user1`,
+    and :meth:`signal_user2` (see next section for details).
+
+    For richer communication channels (bidirectional pipes, shared memory,
+    sockets, etc.), this class makes no provision for a specific protocol;
+    it is up to the subclass implementation. Common Python options include:
+
+    - :class:`multiprocessing.Queue` — thread-safe message passing between
+      the controller and the daemon worker.
+    - :class:`multiprocessing.connection.Connection` (via :func:`multiprocessing.Pipe`) —
+      lightweight bidirectional byte stream.
+    - :mod:`multiprocessing.shared_memory` — zero-copy shared data between
+      processes (Python 3.8+).
+    - :mod:`socket` — Unix domain sockets for structured protocols or
+      TCP sockets for network-accessible daemons.
+    - :mod:`asyncio` event loop with :class:`asyncio.Queue` — for daemons
+      built on asynchronous I/O.
 
     Controller Semantics
     --------------------
@@ -650,7 +672,8 @@ class Daemon(ABC, metaclass=_DaemonMeta):  # pragma: posix cover
     **Multiple controllers are allowed.** Several controller instances can
     coexist for the same daemon class within a single process or across
     processes. All controllers for a given class point to the same daemon
-    process. Calling :meth:`stop`, :meth:`start`, or :meth:`restart` on
+    process. Calling :meth:`stop`, :meth:`start`, :meth:`restart`,
+    :meth:`signal_user1`, or :meth:`signal_user2` on
     *any* controller affects the shared daemon.
 
     **The daemon is a system-level singleton.** Only one daemon process
@@ -677,6 +700,41 @@ class Daemon(ABC, metaclass=_DaemonMeta):  # pragma: posix cover
     **Concurrency safety.** A process-level lock prevents two controllers
     in the same process from racing through :meth:`start` concurrently.
     Cross-process races are handled by the pidfile singleton guard.
+
+    User Signals
+    ^^^^^^^^^^^^
+
+    The controller's :meth:`signal_user1` and :meth:`signal_user2` methods
+    send ``SIGUSR1`` and ``SIGUSR2`` to the daemon process. When the
+    daemon receives one of these signals, it calls the overridable hook
+    method :meth:`on_user1` or :meth:`on_user2`. The default
+    implementations are no-ops; override them in your subclass to define
+    custom behavior.
+
+    .. code-block:: python
+
+        import time
+        from deluxe.process import Daemon
+
+        class Worker(Daemon):
+            def run(self):
+                while True:
+                    time.sleep(1)
+
+            def on_user1(self):
+                # Called when controller sends SIGUSR1
+                self.reloading = True
+
+        daemon = Worker()
+        daemon.start()
+        daemon.signal_user1()  # sends SIGUSR1 -> on_user1()
+        daemon.stop()
+
+    .. note::
+
+        The ``on_user1`` / ``on_user2`` hooks run inside a signal
+        handler. Keep them lightweight: set a flag or event, and defer
+        heavy work to the main ``run()`` loop.
 
     About The Unix Double Fork Mechanism
     ------------------------------------
@@ -795,6 +853,38 @@ class Daemon(ABC, metaclass=_DaemonMeta):  # pragma: posix cover
         self.stop()
         self.start()
 
+    @final
+    def signal_user1(self) -> None:
+        """Send ``SIGUSR1`` to the daemon process.
+
+        The daemon's :meth:`on_user1` method is invoked when this
+        signal is received. Override :meth:`on_user1` in your subclass
+        to define the response.
+
+        If the daemon is not running, a warning is issued.
+        """
+        if not (pid := self.pid):
+            msg: str = "Daemon is not running.\n"
+            warn(msg, stacklevel=1)
+            return
+        os.kill(pid, signal.SIGUSR1)
+
+    @final
+    def signal_user2(self) -> None:
+        """Send ``SIGUSR2`` to the daemon process.
+
+        The daemon's :meth:`on_user2` method is invoked when this
+        signal is received. Override :meth:`on_user2` in your subclass
+        to define the response.
+
+        If the daemon is not running, a warning is issued.
+        """
+        if not (pid := self.pid):
+            msg: str = "Daemon is not running.\n"
+            warn(msg, stacklevel=1)
+            return
+        os.kill(pid, signal.SIGUSR2)
+
     def atexit(self) -> None:  # noqa: PLR6301
         """Called when the daemon terminates.
 
@@ -815,3 +905,35 @@ class Daemon(ABC, metaclass=_DaemonMeta):  # pragma: posix cover
         It will be called after the process has been daemonized by
         :meth:`start` or :meth:`restart`.
         """
+
+    def on_user1(self) -> None:  # noqa: PLR6301
+        """Handler for ``SIGUSR1`` received by the daemon.
+
+        Override this method in your subclass to define custom behavior
+        when the controller sends ``SIGUSR1`` via :meth:`signal_user1`.
+
+        The default implementation is a no-op.
+
+        .. note::
+
+            This method is called from a signal handler. Keep the
+            implementation lightweight and avoid blocking operations.
+            Use a flag or event to defer heavy work to the main loop.
+        """
+        return  # pragma: no cover
+
+    def on_user2(self) -> None:  # noqa: PLR6301
+        """Handler for ``SIGUSR2`` received by the daemon.
+
+        Override this method in your subclass to define custom behavior
+        when the controller sends ``SIGUSR2`` via :meth:`signal_user2`.
+
+        The default implementation is a no-op.
+
+        .. note::
+
+            This method is called from a signal handler. Keep the
+            implementation lightweight and avoid blocking operations.
+            Use a flag or event to defer heavy work to the main loop.
+        """
+        return  # pragma: no cover
