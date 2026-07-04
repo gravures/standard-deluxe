@@ -32,6 +32,7 @@ from unittest.mock import patch
 import pytest
 
 from deluxe.process import Daemon
+from deluxe.availability import AvailabilityError
 
 
 IS_POSIX = sys.platform != "win32"
@@ -49,12 +50,13 @@ IS_POSIX = sys.platform != "win32"
 @pytest.mark.skipif(IS_POSIX, reason="Daemon is POSIX-only; tested below on POSIX")
 def test_daemon_not_available_on_non_posix() -> None:
     """Test that Daemon raises AvailabilityError on non-POSIX."""
-    from deluxe.availability import AvailabilityError  # noqa: PLC0415
+
+    class TestDaemon(Daemon):
+        def run(self) -> None:
+            pass
 
     with pytest.raises(AvailabilityError):
-
-        class _TestDaemon(Daemon):  # type: ignore[valid-type]  # pyright: ignore[reportUnusedClass]
-            def run(self) -> None: ...
+        _daemon = TestDaemon()
 
 
 # ============================================================================

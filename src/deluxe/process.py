@@ -567,8 +567,11 @@ class _DaemonMeta(ABCMeta):  # pragma: posix cover
         return type("Daemonized", (_RealDaemon, daemon), {})
 
     def __call__(cls: type[_T], *args: Any, **kwds: Any) -> _T:
+        if not supported(only=("posix",), but=("wasi")):
+            return super().__call__(*args, **kwds)
+
         if cls.__name__ == "Daemonized":  # pragma: no cover
-            # return a instance of the Daemon if not already running
+            # return an instance of the Daemon if not already running
             pidfile: Path = getattr(cls, _DaemonMeta.PIDFILE_VAR)
             if pidfile.exists():
                 sys.exit()
