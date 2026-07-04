@@ -97,6 +97,7 @@ from __future__ import annotations  # noqa: I001
 
 from contextvars import Context, ContextVar, copy_context
 import sys
+import typing
 from collections.abc import AsyncGenerator as AsyncGenerator
 from collections.abc import AsyncIterable as AsyncIterable
 from collections.abc import AsyncIterator as AsyncIterator
@@ -309,11 +310,19 @@ def _implements_protocol(cls: type, protocol: Any) -> bool:
     # For non-runtime-checkable Protocols, do a structural check
     # similar to typing._proto_hook: verify each required attribute
     # exists in the class's MRO __dict__ (not inherited via __getattr__).
+    # On Python < 3.12, __protocol_attrs__ is not set as a class attribute,
+    # so we fall back to typing._get_protocol_attrs().
     protocol_attrs: frozenset[str] = getattr(
         protocol,
         "__protocol_attrs__",
         frozenset(),
     )
+    if not protocol_attrs and hasattr(typing, "_get_protocol_attrs"):  # pragma: <3.12 cover
+        get_protocol_attrs_fn = cast(
+            "Callable[[type], Iterable[str]]",
+            typing._get_protocol_attrs,  # pyright: ignore[reportAttributeAccessIssue]
+        )
+        protocol_attrs = frozenset(get_protocol_attrs_fn(protocol))
     if not protocol_attrs:
         return False
 
