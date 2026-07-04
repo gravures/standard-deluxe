@@ -17,6 +17,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    outputs:
+      version_tag: ${{ steps.get_version.outputs.tag }}
 
     steps:
     - name: checkout repo
@@ -54,6 +56,12 @@ jobs:
     - name: Push version tags
       run: |
         git push origin 'refs/tags/v*'
+
+    - name: get version tag
+      id: get_version
+      run: |
+        VERSION=$(git describe --tags --always)
+        echo "tag=${VERSION}" >> $GITHUB_OUTPUT
 
     - name: upload changelog
       uses: actions/upload-artifact@v4
@@ -148,7 +156,7 @@ jobs:
 
   release:
     name: Create GitHub Release
-    needs: [ deploy ]
+    needs: [ deploy, bump ]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -168,8 +176,8 @@ jobs:
       uses: softprops/action-gh-release@v2
       with:
         body_path: ${{ github.workspace }}/CHANGELOG.md
-        prerelease: ${{ (startsWith(steps.tag_name.outputs.version, 'v0')) || (endsWith(steps.tag_name.outputs.version, '-pre')) || (endsWith(steps.tag_name.outputs.version, '-dev')) }}
+        prerelease: ${{ (startsWith(needs.bump.outputs.version_tag, 'v0')) || (endsWith(needs.bump.outputs.version_tag, '-pre')) || (endsWith(needs.bump.outputs.version_tag, '-dev')) }}
         draft: false
-        name: Release ${{ github.ref_name }}
-        tag_name: ${{ github.ref_name }}
+        name: Release ${{ needs.bump.outputs.version_tag }}
+        tag_name: ${{ needs.bump.outputs.version_tag }}
         token: ${{ secrets.GITHUB_TOKEN }}
