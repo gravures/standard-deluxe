@@ -44,10 +44,13 @@ from typing import (
 )
 from warnings import warn
 
-from deluxe.availability import availability, hints, supported
+from deluxe.availability import availability, supported
+from deluxe.types import Unset
 
 
-if "posix" in hints():
+_USER_SUPPORT: bool = supported(only=("posix",), but=("wasi", "ios"))
+
+if _USER_SUPPORT:
     import pwd
 
 if TYPE_CHECKING:
@@ -58,9 +61,6 @@ if TYPE_CHECKING:
 
 
 __all__ = ("Command", "Daemon", "get_real_users")
-
-
-_USER_SUPPORT: bool = supported(only=("posix",), but=("wasi", "ios"))
 
 
 @availability(only="posix", but=("wasi", "ios"))
@@ -213,7 +213,7 @@ class Command:
 
     """
 
-    _SYS_USERS: set[str] = get_real_users()
+    _SYS_USERS: set[str] = get_real_users() if _USER_SUPPORT else Unset
 
     class Error(Exception):
         """Exception raised when a system command fails.
