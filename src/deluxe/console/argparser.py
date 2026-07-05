@@ -286,7 +286,9 @@ class AnsiHelpFormatter(argparse.HelpFormatter):
             ) -> str:
                 # Python 3.14 removed _format_actions_usage in favor of
                 # _get_actions_usage_parts which returns (parts, pos_start).
-                if hasattr(self, "_get_actions_usage_parts"):  # pragma >=3.14 cover
+                # Note: Python 3.13.14+ backported _get_actions_usage_parts
+                # but it returns a plain list, not a (parts, pos_start) tuple.
+                if sys.version_info >= (3, 14):  # pragma >=3.14 cover
                     parts, _pos_start = self._get_actions_usage_parts(actions, groups)
                     return " ".join(parts)
                 return self._format_actions_usage(actions, groups)  # pragma <3.14 cover
