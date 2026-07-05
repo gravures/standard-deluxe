@@ -2,6 +2,32 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+##  Changelog for release [v0.12.0]
+    
+    https://github.com/gravures/standard-deluxe/compare/3c10c2efa88e6578bdcd938bae4cc81dfac155a0..v0.12.0
+    2026-07-05
+  
+### Bug Fixes
+
+  - **(file)** improve cross-platform behavior of file module functions - ([4434845](https://github.com/gravures/standard-deluxe/commit/44348450b8c862dbf34b7d25a6db1a6596cc0dcd)) - [@gravures](https://github.com/gravures)
+  - **(file)** minor type hints fixes - ([31327ba](https://github.com/gravures/standard-deluxe/commit/31327bab5c1b7c04b2c0a4c84a22d983f3b8a19b)) - [@gravures](https://github.com/gravures)
+
+
+### Features
+
+  - **(file)** adds split_drive function to files module - ([7a4dd7d](https://github.com/gravures/standard-deluxe/commit/7a4dd7d0e4083880ca588ad7c90a205bfc21c8d6)) - [@gravures](https://github.com/gravures)
+  - **(file)** adds new functions to files module - ([904c865](https://github.com/gravures/standard-deluxe/commit/904c865984d1a29f1e4c3d4b193f88d00c00de09)) - [@gravures](https://github.com/gravures)
+  - **(file)** adds files module - ([3c10c2e](https://github.com/gravures/standard-deluxe/commit/3c10c2efa88e6578bdcd938bae4cc81dfac155a0)) - [@gravures](https://github.com/gravures)
+
+
+### Refactoring
+
+  - **(file)** rename module file - ([3409471](https://github.com/gravures/standard-deluxe/commit/3409471b225e55223cb67d29e58f8fd43121896a)) - [@gravures](https://github.com/gravures)
+
+
+
+- - -
+
 ##  Changelog for release [v0.11.0]
     
     https://github.com/gravures/standard-deluxe/compare/25a4283eb14980301bf9e995631371784a8ef73e..v0.11.0
