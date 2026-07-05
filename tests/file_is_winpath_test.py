@@ -91,11 +91,11 @@ def test_absolute_vs_relative_path_handling():
 
     # Test with absolute POSIX path
     absolute_posix_path = "/usr/local/bin"
-    assert is_winpath(absolute_posix_path) is False
+    assert is_winpath(absolute_posix_path) is not POSIX
 
     # Test with relative POSIX path
     relative_posix_path = "usr/local/bin"
-    assert is_winpath(relative_posix_path) is False
+    assert is_winpath(relative_posix_path) is not POSIX
 
 
 # Test case sensitivity of drive letters
