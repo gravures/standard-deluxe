@@ -2,6 +2,60 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+##  Changelog for release [v0.13.0]
+    
+    https://github.com/gravures/standard-deluxe/compare/798e5ab47c124d4600b73218faa550bbe5ddf045..v0.13.0
+    2026-07-05
+  
+### Bug Fixes
+
+  - **(ansi)** reduce sgr parameters list - ([99025b6](https://github.com/gravures/standard-deluxe/commit/99025b654e90e1dfc79f4b3f9c53dae88f7bd4f4)) - [@gravures](https://github.com/gravures)
+
+  - **(argparser)** add support for python 3.14 color feature - ([57143d0](https://github.com/gravures/standard-deluxe/commit/57143d03d3e0aacbe999ce3b8ded42c21312a4b1)) - [@gravures](https://github.com/gravures)
+
+  - **(cli)** resolve CliError.code winerror fallback on Windows - ([5d2f123](https://github.com/gravures/standard-deluxe/commit/5d2f12303528dc6e2dcc0a4506cbd55ada680f59)) - [@gravures](https://github.com/gravures)
+  - **(cli)** fix subcommand handling, add command decorator, upgrade docstrings - ([dd0d2e1](https://github.com/gravures/standard-deluxe/commit/dd0d2e1eeea015659267d6e09279b865fa450c6a)) - [@gravures](https://github.com/gravures)
+
+  - **(console)** fix argparse compatibility with Python 3.13.14+ backported method - ([54a5b62](https://github.com/gravures/standard-deluxe/commit/54a5b6255d1b18ec745e925559b3965068187db0)) - [@gravures](https://github.com/gravures)
+  - **(console)** repair ANSI escape handling in text wrapper and strip_escFix two bugs in ANSI text processing:- _STRIP_ESC regex used (\\.\*) instead of proper alternation, breaking  CSI sequence matching and completely failing on OSC sequences- _handle_long_word used len() instead of visible length, causing  escape sequences to be split across line breaksAdd _visible_break_pos() to AnsiTextWrapper for ANSI-aware breaking,override _handle_long_word to measure visible width, and clean updead code and commented-out blocks. - ([acfcb3b](https://github.com/gravures/standard-deluxe/commit/acfcb3b259a51c433fc6185ef34b8e7673b5862f)) - [@gravures](https://github.com/gravures)
+  - **(console)** update _all_ - ([756a0b5](https://github.com/gravures/standard-deluxe/commit/756a0b5b89130c680722e5ab0c020471bf5f4f9d)) - [@gravures](https://github.com/gravures)
+  - **(console)** minor type hints fixes - ([b9c4a4c](https://github.com/gravures/standard-deluxe/commit/b9c4a4cd4caae184c16a8bad5671170f6c595a47)) - [@gravures](https://github.com/gravures)
+
+  - **AnsiHelpFormatter - ([6e38c07](https://github.com/gravures/standard-deluxe/commit/6e38c070c1546c634b1ac5b657a0a97179c7c726)) - [@gravures](https://github.com/gravures)
+  - **ansi.strip_esc()  always returned empty string - ([78bd93a](https://github.com/gravures/standard-deluxe/commit/78bd93ab1bac5632047290ea019da2980b7c2a17)) - [@gravures](https://github.com/gravures)
+  - **AnsiTextWrapper class - ([d320e9d](https://github.com/gravures/standard-deluxe/commit/d320e9d7bcbbd0bb1faba631ee6e7abb152c7aee)) - [@gravures](https://github.com/gravures)
+  - **malfomatted string in ColorsHelpFormatter._ansi_metavar_parts() - ([989c164](https://github.com/gravures/standard-deluxe/commit/989c164623df6ade1d4a4038160c2f22548a0fe4)) - [@gravures](https://github.com/gravures)
+  - **ColorsHelpFormatter _format_action_invocation wasn't be called - ([3fd27cb](https://github.com/gravures/standard-deluxe/commit/3fd27cb071728f51e94df25e230ba09113850532)) - [@gravures](https://github.com/gravures)
+  - **fix __all_ ansi module variable named __ALL__ - ([7d0fb56](https://github.com/gravures/standard-deluxe/commit/7d0fb5678846f60696f0741835702b66c6f12052)) - [@gravures](https://github.com/gravures)
+
+### Documentation
+
+  - **(argparser)** rewrite module documentation - ([6758c9f](https://github.com/gravures/standard-deluxe/commit/6758c9f6f25d4897dc9526775f8ae594dcedaa93)) - [@gravures](https://github.com/gravures)
+
+
+### Features
+
+  - **adds markup for default arguments for AnsiHelpFromatter - ([87b52c6](https://github.com/gravures/standard-deluxe/commit/87b52c67b082c56e02d65bedb7086929b6975d1f)) - [@gravures](https://github.com/gravures)
+  - **Makes PrettyHelpFormatter inherit from ColorsHelpFormatter - ([0bee2c5](https://github.com/gravures/standard-deluxe/commit/0bee2c51835b0c9d74ea8996ebe69794c2f340fc)) - [@gravures](https://github.com/gravures)
+  - **adss ColorHelpFormatter to argparser module - ([23a3304](https://github.com/gravures/standard-deluxe/commit/23a330483e4603bea93e060b922432d12e20d77b)) - [@gravures](https://github.com/gravures)
+  - **adds cli module to console package - ([c71f57f](https://github.com/gravures/standard-deluxe/commit/c71f57ff6a4642f64d156f34f7e09f56f75db235)) - [@gravures](https://github.com/gravures)
+  - **Adds wrap.AnsiTextWrapper class to console package - ([1dc7261](https://github.com/gravures/standard-deluxe/commit/1dc7261c8f58e150152a6843c054fbff1306e3ea)) - [@gravures](https://github.com/gravures)
+  - **adds new functions to console.ansi module - ([3904d8a](https://github.com/gravures/standard-deluxe/commit/3904d8a2899e128b9c347ba1210d43857b25a3ea)) - [@gravures](https://github.com/gravures)
+  - **adds console.argpaser module - ([dca0a2d](https://github.com/gravures/standard-deluxe/commit/dca0a2d08c0b8d53950d81c2fb186a49710eba85)) - [@gravures](https://github.com/gravures)
+  - **adds new monorepo console package - ([798e5ab](https://github.com/gravures/standard-deluxe/commit/798e5ab47c124d4600b73218faa550bbe5ddf045)) - [@gravures](https://github.com/gravures)
+
+### Refactoring
+
+  - **(ansi)** [**breaking**] rename a few symbols for consistency, also complete docstrings - ([38d5d39](https://github.com/gravures/standard-deluxe/commit/38d5d396b6fa5c1cdf65369f89b2ec86ceef917d)) - [@gravures](https://github.com/gravures)
+
+  - **wrap.AnsiTextWrapper class - ([36a75a5](https://github.com/gravures/standard-deluxe/commit/36a75a5911621c6f74534a8341a58bc9e6c55e1c)) - [@gravures](https://github.com/gravures)
+  - **Merge AnsiHelpFormatter and ColorsHelpFormatter - ([78b3f7f](https://github.com/gravures/standard-deluxe/commit/78b3f7fbd7bdee76c1560068958fec1fd3f670b3)) - [@gravures](https://github.com/gravures)
+  - **Refactor HelpFormatters in argpaser module - ([0ce0d57](https://github.com/gravures/standard-deluxe/commit/0ce0d575b3a35a7ced737d6c0b24d73fffd00119)) - [@gravures](https://github.com/gravures)
+  - **Refactors console package - ([7848e03](https://github.com/gravures/standard-deluxe/commit/7848e034bb825f03b79e93784aaf6f41c6313c5b)) - [@gravures](https://github.com/gravures)
+
+
+- - -
+
 ##  Changelog for release [v0.12.0]
     
     https://github.com/gravures/standard-deluxe/compare/3c10c2efa88e6578bdcd938bae4cc81dfac155a0..v0.12.0
