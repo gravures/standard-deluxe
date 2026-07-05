@@ -786,7 +786,10 @@ def main() -> None:
         from deluxe.process import Daemon, _DaemonMeta
 
         def run(self) -> None:  # noqa: PLR6301
-            info_file.write_text(
+            # Atomic write: create a temp file then rename so the parent
+            # never observes an empty / partial file via exists()+read().
+            info_tmp = info_file.with_suffix(".tmp")
+            info_tmp.write_text(
                 json.dumps({
                     "pid": os.getpid(),
                     "ppid": os.getppid(),
@@ -794,7 +797,10 @@ def main() -> None:
                     "cwd": str(Path.cwd()),
                 })
             )
-            ready.write_text("ready")
+            info_tmp.rename(info_file)
+            ready_tmp = ready.with_suffix(".tmp")
+            ready_tmp.write_text("ready")
+            ready_tmp.rename(ready)
             while not stop_event.exists():
                 time.sleep(0.1)
 
@@ -834,7 +840,11 @@ def main() -> None:
         from deluxe.process import Daemon, _DaemonMeta
 
         def run(self) -> None:  # noqa: PLR6301
-            ready.write_text(str(os.getpid()))
+            # Atomic write: temp file + rename so the parent never sees
+            # an empty file created by open() before write() completes.
+            ready_tmp = ready.with_suffix(".tmp")
+            ready_tmp.write_text(str(os.getpid()))
+            ready_tmp.rename(ready)
             while not stop_event.exists():
                 time.sleep(0.1)
 
@@ -871,7 +881,11 @@ def main() -> None:
         from deluxe.process import Daemon, _DaemonMeta
 
         def run(self) -> None:  # noqa: PLR6301
-            ready.write_text(str(os.getpid()))
+            # Atomic write: temp file + rename so the parent never sees
+            # an empty file created by open() before write() completes.
+            ready_tmp = ready.with_suffix(".tmp")
+            ready_tmp.write_text(str(os.getpid()))
+            ready_tmp.rename(ready)
             while not stop_event.exists():
                 time.sleep(0.1)
 
