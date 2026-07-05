@@ -2,6 +2,19 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+##  Changelog for release [v0.11.0]
+    
+    https://github.com/gravures/standard-deluxe/compare/25a4283eb14980301bf9e995631371784a8ef73e..v0.11.0
+    2026-07-05
+  
+### Features
+
+  - **(version)** [**breaking**] add simple version string parsing with the version module - ([fdc9e4f](https://github.com/gravures/standard-deluxe/commit/fdc9e4fadc960c88384c1920e214482bb2467a73)) - [@gravures](https://github.com/gravures)
+
+
+
+- - -
+
 ##  Changelog for release [v0.10.0]
     
     https://github.com/gravures/standard-deluxe/compare/45867f39316db4cc1abfc5bcd6fa849bdfda643a..v0.10.0
