@@ -77,7 +77,8 @@ class CliError(Exception):
         ``raise ... from ...``) is available at access time.
         """
         if isinstance(self.__cause__, OSError):
-            return getattr(self.__cause__, "winerror", self.__cause__.errno) or 1
+            winerror = getattr(self.__cause__, "winerror", None)
+            return winerror or self.__cause__.errno or 1
         return self.get_code(type(self.__cause__))
 
     @classmethod

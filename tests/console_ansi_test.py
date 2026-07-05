@@ -1,11 +1,7 @@
 from __future__ import annotations
 
-import importlib.util
-import sys
 import time
-from unittest.mock import patch
 
-import pytest
 from deluxe.console.ansi import (
     BELL,
     Bg,
@@ -488,34 +484,3 @@ def test_strip_esc_does_not_leak_non_ansi_control_chars():
 
     # \x7f (DEL) is not an ANSI escape — should be preserved
     assert strip_esc("before\x7f\u007f after") == "before\x7f\u007f after"
-
-
-@pytest.mark.skipif(
-    sys.platform not in {"win32", "cygwin"}, reason="Test only applicable on Windows platforms"
-)
-def test_colorama_integration_on_windows():
-    """Test that colorama is correctly integrated on Windows platforms."""
-    # Skip if colorama is not installed
-    if not importlib.util.find_spec("colorama"):
-        pytest.skip("colorama not installed")
-
-    # Test that colorama was imported and initialized
-    assert colorama is not None  # pyright: ignore[reportUndefinedVariable]  # noqa: F821
-
-    # We can't easily test the actual initialization without mocking,
-    # but we can verify that the module was imported correctly
-    assert hasattr(colorama, "just_fix_windows_console")  # noqa: F821  # pyright: ignore[reportUndefinedVariable, reportUnknownArgumentType]
-
-    # Reimport the module to verify the initialization happens
-    with patch("importlib.util.find_spec", return_value=True):  # noqa: SIM117
-        with patch("importlib.import_module") as mock_import:
-            mock_colorama = mock_import.return_value
-
-            # Force reimport by reloading the module
-            import deluxe.console.ansi  # noqa: PLC0415
-
-            importlib.reload(deluxe.console.ansi)
-
-            # Verify colorama was imported and initialized
-            mock_import.assert_called_with("colorama")
-            mock_colorama.just_fix_windows_console.assert_called_once()

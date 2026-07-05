@@ -85,6 +85,7 @@ from typing import (
     TypeVar,
     final,
 )
+from warnings import warn
 
 
 __all__ = [
@@ -126,9 +127,16 @@ __all__ = [
 # TODO: cursor positioning
 
 
-if sys.platform in {"win32", "cygwin"} and importlib.util.find_spec("colorama"):
-    colorama = importlib.import_module("colorama")  # pragma: no cover
-    colorama.just_fix_windows_console()  # pragma: no cover
+if sys.platform in {"win32", "cygwin"}:  # pragma: win32 cover
+    if importlib.util.find_spec("colorama"):
+        colorama = importlib.import_module("colorama")
+        colorama.just_fix_windows_console()
+    else:
+        msg: str = (
+            "colorama module is required on windows platform"
+            "to make use of ansi escape sequences.\n"
+        )
+        warn(msg, stacklevel=1)
 
 
 class C0(Protocol):
