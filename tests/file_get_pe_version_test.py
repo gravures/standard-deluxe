@@ -20,7 +20,7 @@ from __future__ import annotations
 import struct
 from typing import TYPE_CHECKING
 
-from deluxe.files import get_pe_version
+from deluxe.file import get_pe_version
 
 if TYPE_CHECKING:
     from pathlib import Path

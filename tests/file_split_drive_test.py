@@ -20,7 +20,7 @@ from __future__ import annotations
 import re
 from pathlib import Path, PurePosixPath, PureWindowsPath
 
-from deluxe.files import split_drive
+from deluxe.file import split_drive
 from hypothesis import given, settings
 from hypothesis import strategies as st
 

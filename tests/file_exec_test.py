@@ -5,7 +5,7 @@ import stat
 from typing import TYPE_CHECKING
 
 # Assume the code under test is in 'deluxe.files'
-from deluxe.files import is_exec, is_winexec
+from deluxe.file import is_exec, is_winexec
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 

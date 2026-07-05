@@ -5,7 +5,7 @@ import os
 from pathlib import Path, PurePosixPath, PureWindowsPath
 
 import pytest  # noqa: F401
-from deluxe.files import is_winpath
+from deluxe.file import is_winpath
 
 
 POSIX: bool = os.name == "posix"

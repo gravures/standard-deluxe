@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 # Assume the code under test is in 'deluxe.files'
-from deluxe.files import is_binary
+from deluxe.file import is_binary
 from hypothesis import HealthCheck, assume, given, settings
 from hypothesis import strategies as st
 from typing import TYPE_CHECKING
