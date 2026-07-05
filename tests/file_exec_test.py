@@ -13,6 +13,13 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
+# On Windows, is_exec delegates to is_winexec (extension-based detection).
+# On POSIX, is_exec checks the execute permission bit.
+# Tests use filenames that are executable on both platforms.
+_EXEC_NAME = "executable_script.exe" if os.name == "nt" else "executable_script"
+_EXEC_EXT = ".exe" if os.name == "nt" else ".sh"
+
+
 # --- Tests for is_exec() ---
 
 
@@ -31,14 +38,13 @@ def test_property_is_exec_for_directory(tmp_path: Path):
     assert not is_exec(tmp_path)
 
 
-# @pytest.mark.skipif(os.name == "nt", reason="Permissions work differently on Windows")
 def test_property_is_exec_for_file_with_permission(tmp_path: Path):
     """
-    Property: is_exec must return True for a file with execute permissions (non-Windows).
+    Property: is_exec must return True for a file with execute permissions.
     """
-    executable_file = tmp_path / "executable_script"
+    executable_file = tmp_path / _EXEC_NAME
     executable_file.touch()
-    # Add execute permission for the owner
+    # Add execute permission for the owner (relevant on POSIX)
     current_mode = executable_file.stat().st_mode
     executable_file.chmod(current_mode | stat.S_IXUSR)
     assert is_exec(executable_file)
@@ -46,15 +52,14 @@ def test_property_is_exec_for_file_with_permission(tmp_path: Path):
 
 def test_property_is_exec_for_file_without_permission(tmp_path: Path):
     """
-    Property: is_exec must return False for a file without execute permissions.
+    Property: is_exec must return False for a file without execute permission
+    or without a recognized executable extension.
     """
     non_executable_file = tmp_path / "non_executable.txt"
     non_executable_file.touch()
-    # Ensure no execute permission is set (on POSIX)
-    if os.name != "nt":
-        current_mode = non_executable_file.stat().st_mode
-        # Remove all execute bits
-        non_executable_file.chmod(current_mode & ~stat.S_IXUSR & ~stat.S_IXGRP & ~stat.S_IXOTH)
+    # Remove all execute bits on POSIX (no-op on Windows, but harmless)
+    current_mode = non_executable_file.stat().st_mode
+    non_executable_file.chmod(current_mode & ~stat.S_IXUSR & ~stat.S_IXGRP & ~stat.S_IXOTH)
     assert not is_exec(non_executable_file)
 
 
@@ -62,7 +67,7 @@ def test_is_exec_with_string_path(tmp_path: Path):
     """
     Property: is_exec must accept a string path and return True for executable file.
     """
-    executable_file = tmp_path / "script.sh"
+    executable_file = tmp_path / f"script{_EXEC_EXT}"
     executable_file.touch()
     executable_file.chmod(executable_file.stat().st_mode | stat.S_IXUSR)
     # Pass as string, not Path object
@@ -73,10 +78,10 @@ def test_is_exec_with_symlink_to_executable(tmp_path: Path):
     """
     Property: is_exec must return True for a symlink pointing to an executable file.
     """
-    executable_file = tmp_path / "original.sh"
+    executable_file = tmp_path / f"original{_EXEC_EXT}"
     executable_file.touch()
     executable_file.chmod(executable_file.stat().st_mode | stat.S_IXUSR)
-    symlink = tmp_path / "link.sh"
+    symlink = tmp_path / f"link{_EXEC_EXT}"
     symlink.symlink_to(executable_file)
     assert is_exec(symlink)
 
@@ -87,9 +92,8 @@ def test_is_exec_with_symlink_to_non_executable(tmp_path: Path):
     """
     non_executable_file = tmp_path / "data.txt"
     non_executable_file.touch()
-    if os.name != "nt":
-        current_mode = non_executable_file.stat().st_mode
-        non_executable_file.chmod(current_mode & ~stat.S_IXUSR & ~stat.S_IXGRP & ~stat.S_IXOTH)
+    current_mode = non_executable_file.stat().st_mode
+    non_executable_file.chmod(current_mode & ~stat.S_IXUSR & ~stat.S_IXGRP & ~stat.S_IXOTH)
     symlink = tmp_path / "link.txt"
     symlink.symlink_to(non_executable_file)
     assert not is_exec(symlink)
@@ -110,9 +114,8 @@ def test_is_exec_with_empty_file(tmp_path: Path):
     """
     empty_file = tmp_path / "empty.txt"
     empty_file.touch()
-    if os.name != "nt":
-        current_mode = empty_file.stat().st_mode
-        empty_file.chmod(current_mode & ~stat.S_IXUSR & ~stat.S_IXGRP & ~stat.S_IXOTH)
+    current_mode = empty_file.stat().st_mode
+    empty_file.chmod(current_mode & ~stat.S_IXUSR & ~stat.S_IXGRP & ~stat.S_IXOTH)
     assert not is_exec(empty_file)
 
 
@@ -122,11 +125,11 @@ def test_is_exec_resolves_path(tmp_path: Path):
     """
     subdir = tmp_path / "subdir"
     subdir.mkdir()
-    executable_file = subdir / "script"
+    executable_file = subdir / f"script{_EXEC_EXT}"
     executable_file.touch()
     executable_file.chmod(executable_file.stat().st_mode | stat.S_IXUSR)
     # Use path with ".." component
-    path_with_dotdot = tmp_path / "subdir" / ".." / "subdir" / "script"
+    path_with_dotdot = tmp_path / "subdir" / ".." / "subdir" / f"script{_EXEC_EXT}"
     assert is_exec(path_with_dotdot)
 
 

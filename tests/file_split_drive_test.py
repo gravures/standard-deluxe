@@ -133,7 +133,9 @@ def test_split_drive_path_object_posix():
 def test_split_drive_path_object_relative():
     """Test splitting relative Path object."""
     path = Path("relative/path")
-    assert split_drive(path) == ("", "relative/path")
+    # Path normalizes separators to the platform default (backslash on Windows)
+    expected_path = str(path)
+    assert split_drive(path) == ("", expected_path)
 
 
 def test_split_drive_complex_windows_path():

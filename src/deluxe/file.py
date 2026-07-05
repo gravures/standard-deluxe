@@ -48,7 +48,12 @@ _POSIX: bool = os.name == "posix"
 
 
 def split_drive(path: FilePath[str]) -> tuple[str, str]:
-    """Split a filepath into its drive part and the rest of the path.
+    r"""Split a filepath into its drive part and the rest of the path.
+
+    When a :class:`~pathlib.PurePath` is passed, it is converted to a string
+    via :func:`str`, which normalizes path separators to the platform convention
+    (e.g., ``/`` on POSIX, ``\`` on Windows). To preserve the original
+    separators, pass a :obj:`str` directly instead of a :class:`~pathlib.Path`.
 
     Args:
         path (:class:`FilePath`): The filepath to split.
@@ -123,20 +128,38 @@ def is_binary(path: FilePath[str]) -> bool:
 
 
 def is_exec(path: FilePath[str]) -> bool:
-    """Check if a file has the executable permission set.
+    """Check if a file is executable on the current platform.
 
-    Checks if the path corresponds to an existing file
-    and if this file has the executable permission set.
+    On POSIX systems, checks if the file has the execute permission bit set
+    using :func:`os.access` with the ``X_OK`` flag. On Windows, where POSIX
+    permission bits do not exist, delegates to :func:`is_winexec` to check
+    whether the file has a recognized Windows executable extension.
 
     Args:
-        path (:class:`FilePath`): The path to check for executable permission.
+        path (:class:`FilePath`): The path to check for executable status.
 
     Returns:
-        bool: True if the file has the executable permission, False otherwise.
-              If the file does not exist or is not a regular file, the function
-              returns False.
+        :obj:`bool`: ``True`` if the file is executable, ``False`` otherwise.
+        Returns ``False`` if the file does not exist or is not a regular file.
+
+    .. note::
+        On Windows, :func:`os.access` with ``X_OK`` always returns ``True``
+        for any existing file, regardless of its type. This is because the
+        Windows implementation only checks the read-only file attribute and
+        does not evaluate the actual ACL or file extension. This behavior is
+        not documented in the official Python documentation but has been
+        observed in practice (see `CPython issue #46780
+        <https://github.com/python/cpython/issues/46780>`_ and `issue #2528
+        <https://bugs.python.org/issue2528>`_). To provide meaningful
+        cross-platform semantics, this function falls back to extension-based
+        detection on Windows via :func:`is_winexec`.
     """
-    return (path := Path(path).resolve()).is_file() and os.access(path, os.X_OK)
+    resolved = Path(path).resolve()
+    if not resolved.is_file():
+        return False
+    if _POSIX:
+        return os.access(resolved, os.X_OK)
+    return is_winexec(resolved)
 
 
 def is_winexec(path: FilePath[str]) -> bool:

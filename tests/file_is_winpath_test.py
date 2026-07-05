@@ -38,7 +38,8 @@ def test_pureposixpath():
 
 def test_relative_path():
     test_path = "relative/path/to/file"
-    assert is_winpath(test_path) is False
+    # On Windows, all non-PurePosixPath inputs are considered Windows paths
+    assert is_winpath(test_path) is not POSIX
 
 
 def test_mixed_slashes_path():
@@ -53,7 +54,8 @@ def test_unc_path():
 
 def test_file_protocol_path():
     test_path = "file://C:/Users/test"
-    assert is_winpath(test_path) is False
+    # On Windows, all non-PurePosixPath inputs are considered Windows paths
+    assert is_winpath(test_path) is not POSIX
 
 
 def test_path_objects_vs_string_inputs():
@@ -71,7 +73,8 @@ def test_path_objects_vs_string_inputs():
 
     # Test with a POSIX path string
     posix_path_str = "/home/user/test"
-    assert is_winpath(posix_path_str) is False
+    # On Windows, all non-PurePosixPath string inputs are considered Windows paths
+    assert is_winpath(posix_path_str) is not POSIX
 
 
 def test_absolute_vs_relative_path_handling():
@@ -82,7 +85,8 @@ def test_absolute_vs_relative_path_handling():
 
     # Test with relative Windows path
     relative_windows_path = "Program Files\\test"
-    assert is_winpath(relative_windows_path) is False
+    # On Windows, all non-PurePosixPath string inputs are considered Windows paths
+    assert is_winpath(relative_windows_path) is not POSIX
     assert is_winpath(PureWindowsPath(relative_windows_path)) is True
 
     # Test with absolute POSIX path
@@ -114,31 +118,31 @@ def test_unicode_windows_path():
 
 def test_edge_cases_path():
     test = is_winpath(Path("/project/code\\joli.py"))
-    assert test is False if POSIX else True
+    assert test is not POSIX
 
     test = is_winpath(Path("joli.py"))
-    assert test is False if POSIX else True
+    assert test is not POSIX
 
     test = is_winpath(Path(r"project\code\joli.py"))
-    assert test is False if POSIX else True
+    assert test is not POSIX
 
     test = is_winpath(Path(r"/project/code\ joli.py"))
-    assert test is False
+    assert test is not POSIX
 
     test = is_winpath(Path("joli.py"))
-    assert test is False
+    assert test is not POSIX
 
     test = is_winpath(Path("joli.py"))
-    assert test is False
+    assert test is not POSIX
 
     test = is_winpath(Path(r"/project/code\ joli.py"))
-    assert test is False
+    assert test is not POSIX
 
     test = is_winpath(Path(r"joli\ ouf.py"))
-    assert test is False
+    assert test is not POSIX
 
     test = is_winpath(Path(r"/joli\ ouf.py"))
-    assert test is False
+    assert test is not POSIX
 
 
 def test_edge_cases_strpath():
