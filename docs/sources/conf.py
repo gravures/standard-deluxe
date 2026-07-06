@@ -183,6 +183,7 @@ html_theme_options = {
         "content.tooltips",
         "search.highlight",
         "search.share",
+        "search.suggest",
         # "toc.sticky",
     ],
     "toc_title_is_page_title": True,

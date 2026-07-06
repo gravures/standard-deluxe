@@ -135,7 +135,7 @@ test = [
   "covdefaults",
 ]
 docs = [
-  "sphinx>=9.0",
+  "sphinx < 9.0",
   "sphinx-autoapi>=3.6",
   "myst-parser>=5.0",
   "sphinx-copybutton",

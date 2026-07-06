@@ -346,10 +346,8 @@ class Monad(Protocol[_T]):  # pragma: no cover
 class Maybe(Generic[_T]):
     """Maybe class.
 
-    Usage
-    -----
+    Usage::
 
-    .. code-block:: python
         import deluxe.types as types
 
         def parse_int(value: str) -> Maybe[int]:
