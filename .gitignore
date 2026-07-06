@@ -144,6 +144,7 @@ dmypy.json
 cython_debug/
 .cython_errors
 src/deluxe/**/*.c
+src/deluxe/**/*.cpp
 
 # distribution generated file
 src/**/_version.py

@@ -83,6 +83,10 @@ show_all_warnings = false
 name = "deluxe._types"
 sources = ["src/deluxe/_types.pyx"]
 
+[[tool.cython.cythonize.extensions]]
+name = "deluxe.tree"
+sources = ["src/deluxe/tree.pyx"]
+
 [tool.cython.build]
 optional = false
 py_limited_api = false
