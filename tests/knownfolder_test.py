@@ -79,46 +79,69 @@ skip_on_non_windows = pytest.mark.skipif(
     sys.platform != "win32", reason="Tests require Windows platform"
 )
 
+# Minimal set of KnownFolder IDs that must exist on every Windows installation.
+# Used to guarantee at least one successful .path call in property tests.
+GuaranteedFolders = [
+    KnownFolderID.Windows,
+    KnownFolderID.System,
+    KnownFolderID.ProgramFiles,
+    KnownFolderID.Desktop,
+    KnownFolderID.Documents,
+    KnownFolderID.Profile,
+]
+
 
 @skip_on_non_windows
 @given(member=st.sampled_from(KnownFolderID))
 def test_path_returns_string_on_windows(member: KnownFolderID):
     """KnownFolderID.path returns a string on Windows."""
-    try:
-        path = member.path
-    except OSError:
-        # Some known folders may not exist on all systems (e.g., CI runners).
-        return
-    assert isinstance(path, str)
-    assert len(path) > 0
+    tested = False
+    for attempt in [*GuaranteedFolders, member]:
+        try:
+            path = attempt.path
+        except OSError:
+            continue
+        assert isinstance(path, str)
+        assert len(path) > 0
+        tested = True
+        break
+    assert tested, "No accessible known folder found to test .path"
 
 
 @skip_on_non_windows
 @given(member=st.sampled_from(KnownFolderID))
 def test_path_is_absolute_on_windows(member: KnownFolderID):
     """KnownFolderID.path returns an absolute path on Windows."""
-    try:
-        path = member.path
-    except OSError:
-        # Some known folders may not exist on all systems (e.g., CI runners).
-        return
-    assert isinstance(path, str)
-    # Windows absolute paths start with a drive letter (e.g., "C:\\")
-    assert len(path) >= 2
-    assert path[1] == ":"
+    tested = False
+    for attempt in [*GuaranteedFolders, member]:
+        try:
+            path = attempt.path
+        except OSError:
+            continue
+        assert isinstance(path, str)
+        # Windows absolute paths start with a drive letter (e.g., "C:\\")
+        assert len(path) >= 2
+        assert path[1] == ":"
+        tested = True
+        break
+    assert tested, "No accessible known folder found to test .path"
 
 
 @skip_on_non_windows
 @given(member=st.sampled_from(KnownFolderID))
 def test_fspath_returns_path_value_on_windows(member: KnownFolderID):
     """KnownFolderID.__fspath__ returns the same value as path."""
-    try:
-        fspath = member.__fspath__()  # noqa: PLC2801
-        path = member.path
-    except OSError:
-        # Some known folders may not exist on all systems (e.g., CI runners).
-        return
-    assert fspath == path
+    tested = False
+    for attempt in [*GuaranteedFolders, member]:
+        try:
+            fspath = attempt.__fspath__()  # noqa: PLC2801
+            path = attempt.path
+        except OSError:
+            continue
+        assert fspath == path
+        tested = True
+        break
+    assert tested, "No accessible known folder found to test .__fspath__"
 
 
 @skip_on_non_windows
@@ -150,6 +173,7 @@ def test_well_known_folders_have_expected_paths():
         KnownFolderID.Videos: "Videos",
     }
 
+    tested_count = 0
     for folder_id, expected_suffix in expected_path_suffixes.items():
         try:
             path = folder_id.path
@@ -159,3 +183,5 @@ def test_well_known_folders_have_expected_paths():
         assert expected_suffix.lower() in path.lower(), (
             f"{folder_id.name} path should contain '{expected_suffix}', got: {path}"
         )
+        tested_count += 1
+    assert tested_count > 0, "No accessible known folder found to test expected paths"
