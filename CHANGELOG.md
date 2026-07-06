@@ -2,6 +2,25 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+##  Changelog for release [v0.14.0]
+    
+    https://github.com/gravures/standard-deluxe/compare/7fc410feb276475f4b6bff24f52246a3924e2ed1..v0.14.0
+    2026-07-06
+  
+### Bug Fixes
+
+  - **(knownfolder)** fix knownfolder HRESULT type and improve test robustness - ([e74315a](https://github.com/gravures/standard-deluxe/commit/e74315aff32a2aa09e3edfd6a423eddddd23372c)) - [@gravures](https://github.com/gravures)
+  - **(knownfolder)** Changed wintypes.HRESULT → ctypes.HRESULT (line 89). - ([1cf7edc](https://github.com/gravures/standard-deluxe/commit/1cf7edcd763defefc649336a7fad5cb6b2d4a6d5)) - [@gravures](https://github.com/gravures)
+
+
+### Features
+
+  - **(knownfolder)** add knownfolder module - ([7fc410f](https://github.com/gravures/standard-deluxe/commit/7fc410feb276475f4b6bff24f52246a3924e2ed1)) - [@gravures](https://github.com/gravures)
+
+
+
+- - -
+
 ##  Changelog for release [v0.13.0]
     
     https://github.com/gravures/standard-deluxe/compare/798e5ab47c124d4600b73218faa550bbe5ddf045..v0.13.0
