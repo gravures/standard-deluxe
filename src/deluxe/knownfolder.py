@@ -86,7 +86,7 @@ class GUID(ctypes.Structure):
 if supported("windows"):  # pragma: posix no cover
     # HRESULT is a common return type in COM and Win32 API,
     # indicating success/failure. S_OK (0) indicates success.
-    HRESULT = wintypes.HRESULT  # pyright: ignore[reportUnknownVariableType, reportUnknownMemberType, reportAttributeAccessIssue]
+    HRESULT = ctypes.HRESULT
     PWSTR = ctypes.c_wchar_p  # pointer to a wide-character (Unicode) string.
 
     try:
