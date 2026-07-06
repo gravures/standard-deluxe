@@ -19,10 +19,11 @@ post_package_bump_hooks = []
 
 [commit_types]
 # feat*, fix*,  security*, build, ci, revert, docs, test, style, chore, perf*
-security = { changelog_title = "Security", bump_minor = true }
-perf = { changelog_title = "Performance", bump_minor = true }
-refactor = { changelog_title = "Refactoring", bump_minor = true }
-docs = { changelog_title = "Documentation", bump_minor = true }
+fix = { changelog_title = "Fixes", bump_patch = true }
+security = { changelog_title = "Security", bump_patch = true }
+perf = { changelog_title = "Performance", bump_patch = true }
+refactor = { changelog_title = "Refactoring", bump_patch = true }
+docs = { changelog_title = "Documentation", bump_patch = true }
 # Omit commits from changelog
 chore = { changelog_title = "", omit_from_changelog = true }
 ci = { changelog_title = "", omit_from_changelog = true }
