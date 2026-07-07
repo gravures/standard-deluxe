@@ -9,12 +9,14 @@ classifiers = [
   "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
   "Intended Audience :: Developers",
   "Operating System :: OS Independent",
+  "Programming Language :: Python",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3.14",
   "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: Implementation :: CPython",
   "Typing :: Typed",
 ]
 
@@ -22,6 +24,7 @@ urls.homepage = "https://github.com/gravures/standard-deluxe"
 urls.repository = "https://github.com/gravures/standard-deluxe"
 urls.documentation = "https://standard-deluxe.readthedocs.io"
 urls.issue = "https://github.com/gravures/standard-deluxe/issues"
+urls.Changelog = "https://github.com/gravures/standard-deluxe/releases"
 
 dynamic = ["version"]
 requires-python = ">=3.11"
