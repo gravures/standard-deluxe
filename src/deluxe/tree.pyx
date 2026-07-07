@@ -25,7 +25,14 @@ from cpython.tuple cimport (
     PyTuple_GET_ITEM,
     PyTuple_Pack,
 )
-from cpython.dict cimport PyDict_Next, PyDict_GetItem, PyDict_Size
+from cpython.dict cimport (
+    PyDict_Next,
+    PyDict_GetItem,
+    PyDict_Size,
+    PyDict_DelItem,
+    PyDict_SetItem,
+    PyDict_Contains,
+)
 from cpython.ref cimport PyObject
 from libcpp.deque cimport deque as Stack
 cimport cython
@@ -199,12 +206,12 @@ cdef class _BFS(_iterator):
                 self.stack.insert(self.stack.begin(), self.nodes.begin(), self.nodes.end())
                 self.nodes.clear()
             if self.node.depth >= self.start and self.kind is not Nodes.Leaves:
-                return self.node.value
+                return self.node._value
             else:
                 self.__next__()
 
         if self.node._depth() >= self.start and self.kind is not Nodes.Branches:
-            return self.node.value
+            return self.node._value
         self.__next__()
 
     # def _bfs(self, Nodes kind, object depth = None):
@@ -230,11 +237,11 @@ cdef class _BFS(_iterator):
     #                     nodes.push_front(value)
     #                 stack.insert(stack.begin(), nodes.begin(), nodes.end())
     #             if node.depth >= start and kind is not Nodes.Leaves:
-    #                 yield node.value
+    #                 yield node._value
     #             continue
 
     #         if node._depth() >= start and kind is not Nodes.Branches:
-    #             yield node.value
+    #             yield node._value
 
 
 @cython.freelist(2)
@@ -291,7 +298,7 @@ cdef class _DFS((_iterator)):
                 stack.push_front(<PyObject*> node)
                 node = <Tree> stack.back()
                 stack.pop_back()
-            yield node.value  # leaf node
+            yield node._value  # leaf node
 
             peek = <Tree> stack.back()
             if peek is tree:
@@ -301,7 +308,7 @@ cdef class _DFS((_iterator)):
                     peek = <Tree> stack.front()
                     if peek is not tree:
                         stack.pop_front()
-                        yield peek.value
+                        yield peek._value
                     continue
                 break
 
@@ -332,7 +339,7 @@ cdef class _DFS((_iterator)):
                 stack.push_front(<PyObject*> node)
                 node = <Tree> stack.back()
                 stack.pop_back()
-            yield node.value  # leaf node
+            yield node._value  # leaf node
 
             peek = <Tree> stack.back()
             if peek is tree:
@@ -342,7 +349,7 @@ cdef class _DFS((_iterator)):
                         peek = <Tree> stack.front()
                         if peek._depth() < (<Tree> r_stack.back())._depth():
                             break
-                        yield peek.value
+                        yield peek._value
                         stack.pop_front()
                     node = <Tree> r_stack.back()
                     r_stack.pop_back()
@@ -352,7 +359,7 @@ cdef class _DFS((_iterator)):
                     peek = <Tree> stack.front()
                     if peek is tree:
                         break
-                    yield peek.value
+                    yield peek._value
                     stack.pop_front()
                 break
 
@@ -378,7 +385,7 @@ cdef class _DFS((_iterator)):
         while not stack.empty():
             node = <Tree> stack.back()
             stack.pop_back()
-            yield node.value
+            yield node._value
             if PyDict_Size(node._children) == 0:
                 continue
 
@@ -398,7 +405,7 @@ cdef class Tree:
     cdef dict _children
     cdef tuple _parents
     cdef readonly Tree parent
-    cdef readonly object value
+    cdef readonly object _value
     cdef PyObject* _empty_ptr
 
     Cursor: ClassVar[type] = Cursor
@@ -418,7 +425,7 @@ cdef class Tree:
         return Tree
 
     def __cinit__(self, *args, **kwds):
-        self.value = None
+        self._value = None
         self.parent = None
         self._parents = None
 
@@ -434,13 +441,13 @@ cdef class Tree:
     @staticmethod
     cdef Tree _new_node(object value, Tree parent):
         if parent is None:
-            raise TypeError("Tree internal error!")
+            raise RuntimeError("Tree internal error (Tree node without parent)!")
 
         if value.__hash__ is None:
             raise TypeError("Tree node value should be hashable")
 
         cdef Tree node = Tree.__new__(Tree)
-        node.value = value
+        node._value = value
         node.parent = parent
         return node
 
@@ -449,7 +456,13 @@ cdef class Tree:
         if <PyObject*> self._children is self._empty_ptr:
             self._children = {}
 
-    cdef tuple parents(self):
+    @property
+    def value(self):
+        if self.parent is not None:
+            return self._value
+        raise AttributeError("Tree base container has no value")
+
+    cpdef tuple parents(self):
         if self._parents is not None:
             return self._parents
 
@@ -477,7 +490,7 @@ cdef class Tree:
         cdef Tree node = self
 
         while node.parent is not None:
-            stack.push_front(<PyObject*> node.value)
+            stack.push_front(<PyObject*> node._value)
             node = node.parent
 
         cursor._values = tuple(<object> ref for ref in stack)
@@ -498,13 +511,7 @@ cdef class Tree:
     @property
     def root(self):
         """Top `Tree`'s node."""
-        return (
-            None
-            if self.parent is not None
-            else next(iter(self._children.values()))
-            if self._children
-            else None
-        )
+        return None if not self.parents() else self.parents()[0]
 
     cdef inline Py_ssize_t _depth(self) noexcept:
         return len(self.parents())
@@ -607,14 +614,30 @@ cdef class Tree:
             node._children[value] = Tree._new_node(value, node)
 
     def __setitem__(self, object key, object value):
-        self.add(value, key, parent=False)
+        cdef Tree node = self
+        cdef PyObject* ref
+        cdef Cursor cursor
 
-    def __getitem__(self, object value):
-        return self._get_node_at_cursor(value, parent=False)
+        if isinstance(key, Cursor):
+            for k in key[:-1]:
+                if (ref := PyDict_GetItem(node._children, k)) is NULL:
+                    raise KeyError(key)
+                node = <Tree> ref
+            if not key:
+                return
+            key = key[-1]
 
-    def __delitem__(self, object value):
-        cdef Tree node = self._get_node_at_cursor(value, parent=False)
-        del node.parent._children[node.value]
+        if not PyDict_Contains(node._children, key):
+            raise KeyError(key)
+        PyDict_DelItem(node._children, key)
+        PyDict_SetItem(node._children, value, Tree._new_node(value, node))
+
+    def __getitem__(self, object key):
+        return self._get_node_at_cursor(key, parent=False)
+
+    def __delitem__(self, object key):
+        cdef Tree node = self._get_node_at_cursor(key, parent=False)
+        del node.parent._children[node._value]
 
     cpdef clear(self):
         """Removes all self contained nodes."""
@@ -652,7 +675,7 @@ cdef class Tree:
         return PyDict_Size(self._children) != 0
 
     def __str__(self):
-        return str(self.value)
+        return str(self._value)
 
     def __repr__(self) -> str:
         # FIXME: * bad indent when called on Node
@@ -663,7 +686,7 @@ cdef class Tree:
         tab = "  "
         start: int = self.depth
         prev_depth: int = start - 1
-        name = f"[{self.value}]" if self.parent is not None else ""
+        name = f"[{self._value}]" if self.parent is not None else ""
         string: deque[str] = deque((f"{self.__class__.__name__}{name}(",))
         expand = self.height > 3
 
@@ -681,8 +704,8 @@ cdef class Tree:
             else:
                 indent = "\n" + (tab * (prev_depth + 2))
 
-            string += f"{indent}{node.value!r}: {{"  # print value
-            # string += f"{node.value!r}: {{"  # print value
+            string += f"{indent}{node._value!r}: {{"  # print value
+            # string += f"{node._value!r}: {{"  # print value
             stack.extend(reversed(node._children.values()))
 
             if not len(stack) - size:  # empty node
@@ -696,11 +719,11 @@ cdef class Tree:
         return "".join(string)
 
     def __getstate__(self):
-        return { "parent": self.parent, "value": self.value, "children": self._children }
+        return { "parent": self.parent, "value": self._value, "children": self._children }
 
     def __setstate__(self, dict state):
         cdef dict children
-        self.value = state["value"]
+        self._value = state["value"]
         self.parent = state["parent"]
         children = state["children"]
         if PyDict_Size(children) > 0:

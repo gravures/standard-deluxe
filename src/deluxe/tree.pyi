@@ -52,8 +52,6 @@ class Tree(Generic[_VT]):
     __hash__: ClassVar[NoneType] = None  # pyright: ignore[reportIncompatibleMethodOverride]
     __reversed__: ClassVar[NoneType] = None
 
-    value: _VT
-    """Value of this `Node`."""
     parent: Tree[_VT]
     """Parent's Node."""
 
@@ -67,6 +65,14 @@ class Tree(Generic[_VT]):
 
         Cursor is a tuple like object, values of `Cursor` represents
         a path to the node from the Tree's `root`.
+        """
+
+    @property
+    def value(self) -> _VT:
+        """This node's value.
+
+        Raises:
+            AttributeError: if self is the base container.
         """
 
     @property
@@ -95,11 +101,14 @@ class Tree(Generic[_VT]):
     def clear(self) -> None:
         """Removes all self contained nodes."""
 
-    def __setitem__(self, key: Cursor[_VT], value: _VT) -> None: ...
-    def __getitem__(self, value: _VT | Cursor[_VT]) -> Tree[_VT]: ...
-    def __delitem__(self, value: _VT | Cursor[_VT]) -> None: ...
+    def __setitem__(self, key: _VT | Cursor[_VT], value: _VT) -> None: ...
+    def __getitem__(self, key: _VT | Cursor[_VT]) -> Tree[_VT]: ...
+    def __delitem__(self, key: _VT | Cursor[_VT]) -> None: ...
     def __iter__(self) -> Iterator[_VT]:
         """Returns an `Iterator` over self contained node's value in a bfs traversal oder."""
+
+    def parents(self) -> tuple[_VT, ...]:
+        """Returns a `tuple` of node from root to this node."""
 
     def children(self) -> Iterator[_VT]:
         """Returns an `Iterator` over children node's value."""
