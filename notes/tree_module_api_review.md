@@ -110,6 +110,22 @@ If reference sharing is needed, provide an explicit API:
 - `my_tree["x"] = branch` → deep copy (independent)
 - `my_tree.link("x", branch)` → shallow reference (shared)
 
+## Missing Properties & Methods
+
+Common tree operations not yet implemented:
+
+| Property/Method | Description | Status |
+|---|---|---|
+| `is_leaf` | `len(self) == 0` | Missing |
+| `is_root` | `self.parent is None` | Missing |
+| `ancestors` | All ancestors (like `parents()` but may include self or have options) | Missing |
+| `descendants` | All nodes below self (flattened) | Missing |
+| `lca(other)` | Lowest common ancestor of two nodes | Missing — **most useful missing operation** |
+| `path_to(other)` | Path (list of nodes) from self to other | Missing |
+| `nodes_at(depth)` | All nodes at a specific depth | Missing |
+
+**Note:** `width` was added but needs docstring clarification — it should return "the number of nodes at the same depth as this node."
+
 ## Negatives & API Inconsistencies
 - **Inconsistent `add` Semantics:** The `add` method's `parent` parameter and its interaction with `Cursor` are complex. The fact that `t.add(x)` and `t[x].add(y)` works, but `t.add(x, cursor=...)` behaves differently, is confusing.
 - **Missing/Incomplete API:**

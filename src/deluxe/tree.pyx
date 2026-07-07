@@ -549,7 +549,42 @@ cdef class Tree:
         return self._height()
 
     @property
+    def width(self):
+        """The number of nodes at the same depth as this node."""
+        # FIXME: missing implementation
+        raise NotImplementedError
+
+    @property
     def diameter(self):
+        r"""Length of the longest path between any two nodes in the tree.
+
+            0
+           / \
+          1   2
+         / \
+        3   4
+
+        Longest path: 3 → 1 → 0 → 2 (or 4 → 1 → 0 → 2) = 3 edges
+        So diameter = 3.
+        """
+        # FIXME: missing implementation
+        raise NotImplementedError
+
+    @property
+    def breadth(self):
+        """The number of leaves."""
+        # FIXME: missing implementation
+        raise NotImplementedError
+
+    @property
+    def degree(self):
+        """Number of children, a leaf has degree zero."""
+        # FIXME: missing implementation
+        # The degree of a tree is the maximum degree of a node in the tree.
+        raise NotImplementedError
+
+    def distance(self, Tree other):
+        """The number of edges along the shortest path between two nodes."""
         # FIXME: missing implementation
         raise NotImplementedError
 
