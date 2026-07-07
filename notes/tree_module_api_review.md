@@ -126,6 +126,135 @@ Common tree operations not yet implemented:
 
 **Note:** `width` was added but needs docstring clarification — it should return "the number of nodes at the same depth as this node."
 
+## HTree vs MultiHTree Design Decision
+
+### Current Behavior: Set-like (HTree)
+
+Each node acts like a set/dict — inserted values must be hashable, no duplicate siblings allowed.
+
+```
+tree = HTree()
+tree.add("fruit")
+tree.add("fruit")  # Error: duplicate sibling
+
+tree["fruit"] = {"apple", "banana"}  # O(1) lookup
+```
+
+**Internal storage:**
+```python
+self._children: dict[str, Tree] = {}  # key → single child
+```
+
+### Alternative: MultiHTree
+
+Each node allows multiple children with the same key (multiset-like).
+
+```
+tree = MultiHTree()
+tree.add("fruit")
+tree.add("fruit")  # OK: both exist
+
+tree["fruit"]  # → [Tree("fruit"), Tree("fruit")]
+tree["fruit", 0]  # → first "fruit"
+tree["fruit", 1]  # → second "fruit"
+```
+
+**Internal storage:**
+```python
+self._children: dict[str, list[Tree]] = defaultdict(list)  # key → list of children
+```
+
+### Trade-offs
+
+| Aspect | HTree | MultiHTree |
+|---|---|---|
+| Lookup | O(1) | O(k) where k = duplicates |
+| API | `t["key"]` → Tree | `t["key"]` → list[Tree] |
+| Memory | One dict entry per key | List per key |
+| Complexity | Simple | More complex |
+| Use case | Directories, DOM, org charts | HTML repeated tags, B-Trees |
+
+### Recommendation: Keep HTree Simple
+
+Don't implement MultiHTree as a separate class. Instead, let users handle duplicates externally or provide helper methods:
+
+```
+tree = HTree()
+tree.add("fruit")
+tree.add("fruit_1")  # user manages uniqueness
+
+# Or provide helpers:
+tree.add_multi("fruit")  # internally uses "fruit__0", "fruit__1"
+tree.get_multi("fruit")  # returns [tree["fruit__0"], tree["fruit__1"]]
+```
+
+This keeps HTree's implementation clean and O(1) without a separate class.
+
+## Sibling Reordering
+
+### Design Tension
+
+HTree is set-like (no duplicates), but insertion-ordered (like Python 3.7+ dicts). This creates a hybrid — unordered semantics, ordered behavior. As a Python developer, I expect ordering control (like `list.sort()`), but keep it minimal.
+
+### Recommended Methods
+
+```python
+def sort(self, key=None, reverse=False):
+    """Sort children in-place.
+
+    Args:
+        key: A function that extracts a comparison key from each child Tree.
+             If None, compares by child.value directly.
+        reverse: If True, sort in descending order.
+    """
+    self._children = dict(
+        sorted(self._children.items(), key=lambda item: key(item[1]) if key else item[0], reverse=reverse)
+    )
+
+def reverse(self):
+    """Reverse children order in-place."""
+    self._children = dict(reversed(self._children.items()))
+```
+
+### Usage
+
+```python
+tree.sort()  # sort by value (default)
+tree.sort(key=lambda c: c.value)  # same as above
+tree.sort(key=lambda c: len(c.value))  # sort by string length
+tree.sort(key=lambda c: c.value.lower())  # case-insensitive
+tree.sort(key=lambda c: c.value, reverse=True)  # descending
+tree.reverse()  # reverse order
+```
+
+### Why `key` not `cmp`
+
+- `key` is O(n) — extract keys once, sort once
+- `cmp` is O(n log n) — compare function called multiple times per element
+- Python moved away from `cmp` in Python 3 (`functools.cmp_to_key` exists for legacy)
+
+### What NOT to implement
+
+- `move_to_end()` — too dict-like, feels wrong for a tree
+- `insert(index, key)` — positional insertion is list-like, not set-like
+- `swap(key1, key2)` — too granular
+
+### OrderableDict Alternative
+
+`OrderableDict` in `src/deluxe/mappings.py` provides `after()` and `before()` for positional key manipulation. HTree could expose similar methods:
+
+```python
+def move_after(self, key: str, other: str):
+    """Move child after another child."""
+    self._children.after(key, other)
+
+def move_before(self, key: str, other: str):
+    """Move child before another child."""
+    self._children.before(key, other)
+```
+
+**However:** Replacing CPython's C dict with a Python `OrderableDict` would hurt performance. Not worth it unless `OrderableDict` is reimplemented in C.
+
 ## Negatives & API Inconsistencies
 - **Inconsistent `add` Semantics:** The `add` method's `parent` parameter and its interaction with `Cursor` are complex. The fact that `t.add(x)` and `t[x].add(y)` works, but `t.add(x, cursor=...)` behaves differently, is confusing.
 - **Missing/Incomplete API:**
