@@ -2,8 +2,7 @@
 
 <!-- rst content start -->
 
-[![pdm-managed](https://img.shields.io/badge/pdm-managed-blueviolet)](https://pdm-project.org) ![Python Version from PEP 621 TOML](https://img.shields.io/python/required-version-toml?tomlFilePath=https%3A%2F%2Fraw.githubusercontent.com%2Fgravures%2Fstandard-deluxe%2Fmain%2Fpyproject.toml) ![Tests](https://github.com/gravures/standard-deluxe/actions/workflows/main.yml/badge.svg) ![coverage badge](assets/coverage.svg) ![GitHub License](https://img.shields.io/github/license/gravures/standard-deluxe) ![OS support](https://img.shields.io/badge/OS-macOS%20Linux%20Windows-red) <!-- rumdl-disable-line MD013 -->
-
+[![pdm-managed](https://img.shields.io/badge/pdm-managed-blueviolet)](https://pdm-project.org) ![Python Version from PEP 621 TOML](https://img.shields.io/python/required-version-toml?tomlFilePath=https%3A%2F%2Fraw.githubusercontent.com%2Fgravures%2Fstandard-deluxe%2Fmain%2Fpyproject.toml) ![Tests](https://github.com/gravures/standard-deluxe/actions/workflows/main.yml/badge.svg) ![coverage](assets/coverage.svg) ![GitHub License](https://img.shields.io/github/license/gravures/standard-deluxe) ![OS support](https://img.shields.io/badge/OS-macOS%20Linux%20Windows-red) ![downloads](assets/downloads.svg) <!-- rumdl-disable-line MD013 -->
 
 ---
 

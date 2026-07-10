@@ -1,0 +1,59 @@
+name: Downloads Badge
+
+on:
+  schedule:
+    - cron: '0 0 * * 0'  # weekly on Sunday
+  workflow_dispatch:
+
+jobs:
+  update-badge:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
+
+    steps:
+      - name: checkout repo
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v8
+        with:
+          enable-cache: true
+          python-version: "3.14"
+
+      - name: Write Google credentials to file
+        run: |
+          echo '${{ secrets.GOOGLE_CREDENTIALS_JSON }}' > /tmp/google_credentials.json
+        shell: bash
+
+      - name: Generate downloads badge
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: /tmp/google_credentials.json
+        run: |
+          uv run tools/downloads.py
+
+      - name: Cleanup credentials
+        if: always()
+        run: rm -f /tmp/google_credentials.json
+
+      - name: Verify Changed files
+        uses: tj-actions/verify-changed-files@v20
+        id: verify-changed-files
+        with:
+          files: assets/downloads.svg
+
+      - name: Commit downloads.svg
+        if: steps.verify-changed-files.outputs.files_changed == 'true'
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add assets/downloads.svg
+          git commit -m "chore(downloads): Updated downloads.svg badge"
+
+      - name: Push changes
+        if: steps.verify-changed-files.outputs.files_changed == 'true'
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.github_token }}
+          branch: ${{ github.head_ref || github.ref_name }}
