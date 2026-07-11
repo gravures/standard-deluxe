@@ -11,6 +11,8 @@ jobs:
     permissions:
       contents: write
       actions: read
+    env:
+      GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
 
     steps:
       - name: checkout repo
@@ -29,7 +31,7 @@ jobs:
 
       - name: Generate downloads badge
         env:
-          GOOGLE_APPLICATION_CREDENTIALS: /tmp/google_credentials.json
+          GOOGLE_CREDENTIALS_JSON: /tmp/google_credentials.json
         run: |
           uv run tools/downloads.py
 
