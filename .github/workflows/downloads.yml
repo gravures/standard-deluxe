@@ -12,7 +12,7 @@ jobs:
       contents: write
       actions: read
     env:
-      GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
+      GOOGLE_TOKEN: ${{ secrets.GOOGLE_TOKEN }}
 
     steps:
       - name: checkout repo
@@ -26,12 +26,12 @@ jobs:
 
       - name: Write Google credentials to file
         run: |
-          printenv GOOGLE_APPLICATION_CREDENTIALS > /tmp/google_credentials.json
+          printenv GOOGLE_TOKEN > /tmp/google_credentials.json
         shell: bash
 
       - name: Generate downloads badge
         env:
-          GOOGLE_CREDENTIALS_JSON: /tmp/google_credentials.json
+          GOOGLE_APPLICATION_CREDENTIALS: /tmp/google_credentials.json
         run: |
           uv run tools/downloads.py
 
