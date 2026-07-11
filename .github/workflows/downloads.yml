@@ -24,7 +24,7 @@ jobs:
 
       - name: Write Google credentials to file
         run: |
-          echo '${{ secrets.GOOGLE_CREDENTIALS_JSON }}' > /tmp/google_credentials.json
+          printenv GOOGLE_CREDENTIALS_JSON > /tmp/google_credentials.json
         shell: bash
 
       - name: Generate downloads badge
