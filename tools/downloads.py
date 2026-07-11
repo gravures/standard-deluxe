@@ -56,8 +56,12 @@ def main() -> int:
         capture_output=True,
         text=True,
         shell=False,
-        check=True,
+        check=False,
     )
+    if cp.returncode:
+        sys.stderr.write(cp.stderr)
+        return cp.returncode
+
     downloads = format(json.loads(cp.stdout)["rows"][0]["download_count"], ",")
     badge: Any = Badge(left_txt="downloads", right_txt=downloads, color="purple")
     badge.write_to(file, use_shields=False)
