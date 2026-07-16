@@ -38,6 +38,7 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING, ClassVar, TypeVar, final
 
 from deluxe.console.argparser import PrettyParser
+from deluxe.types import Unset
 
 
 if TYPE_CHECKING:
@@ -201,7 +202,6 @@ class Cli(ABC):
                 super().__init__(
                     prog="greet",
                     version=__version__,
-                    prefix=True,
                 )
 
             def configure(self, parser):
@@ -332,6 +332,53 @@ class Cli(ABC):
 
             def cleanup(self, namespace):
                 pass
+
+    Header
+    ______
+
+    The ``header`` parameter controls the text displayed above the usage
+    line in help output. When left as the default (``Unset``), the header
+    is automatically generated from the ``prog`` and ``version`` arguments
+    (e.g. ``"myapp 1.0"``). Pass ``None`` to suppress the header entirely,
+    or supply a custom string.
+
+    Args:
+        prog (:obj:`str` | ``None``): The name of the program. If ``None``,
+            defaults to ``sys.argv[0]``. Default: ``None``.
+        version (:obj:`str` | ``None``): If provided, a ``-v``/``--version``
+            option is added automatically. Default: ``None``.
+        description (:obj:`str` | ``None``): Text to display before the
+            argument help. Default: ``None``.
+        usage (:obj:`str` | ``None``): Custom usage string. If ``None``,
+            it is generated from the added arguments. Default: ``None``.
+        epilog (:obj:`str` | ``None``): Text to display after the
+            argument help. Default: ``None``.
+        header (:obj:`str` | ``None`` | ``Unset``): Text to display before
+            the usage line. When ``Unset`` (the default), it is
+            automatically generated as ``"{prog} {version}"``. Pass
+            ``None`` to disable the header, or a string for a custom one.
+            Default: ``Unset``.
+        prefix (:obj:`str` | ``None``): Custom prefix for the usage message
+            (replaces the default ``"usage: "``). Default: ``None``.
+        prefix_chars (:obj:`str`): The set of characters that prefix
+            optional arguments. Default: ``"-"``.
+        fromfile_prefix_chars (:obj:`str` | ``None``): The set of characters
+            that prefix files from which additional arguments are read.
+            Default: ``None``.
+        add_help (:obj:`bool`): If ``True``, a ``-h``/``--help`` option
+            is added. Default: ``True``.
+        argument_default (:obj:`object`): The default value for all
+            arguments. Default: ``None``.
+        conflict_handler (:obj:`str`): Determines how conflicts between
+            existing and added arguments are handled (``"error"`` or
+            ``"resolve"``). Default: ``"error"``.
+        allow_abbrev (:obj:`bool`): If ``True``, allow long options to
+            be abbreviated uniquely. Default: ``True``.
+        shell_completion (:obj:`bool`): If ``True``, attempts to enable
+            shell auto-completion via ``argcomplete``. A ``--completion``
+            option is added. If ``argcomplete`` is not installed, a
+            warning is emitted and completion is disabled.
+            Default: ``False``.
     """
 
     _cli_commands: ClassVar[dict[str, Callable[..., object]]] = {}
@@ -358,7 +405,8 @@ class Cli(ABC):
         description: str | None = None,
         usage: str | None = None,
         epilog: str | None = None,
-        prefix: bool = True,
+        header: str | None = Unset,
+        prefix: str | None = None,
         prefix_chars: str = "-",
         fromfile_prefix_chars: str | None = None,
         add_help: bool = True,
@@ -368,14 +416,15 @@ class Cli(ABC):
         shell_completion: bool = False,
     ) -> None:
         self._name: str = prog or sys.argv[0]
-        self._prefix: str | None = f"{prog} {version}" if prefix else None
+        header_: str | None = f"{prog} {version}" if header is Unset else header
         self._parser: PrettyParser = PrettyParser(
             prog=self._name,
             version=version,
             description=description,
             usage=usage,
             epilog=epilog,
-            prefix=self._prefix,
+            header=header_,
+            prefix=prefix,
             prefix_chars=prefix_chars,
             fromfile_prefix_chars=fromfile_prefix_chars,
             add_help=add_help,
