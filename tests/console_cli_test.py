@@ -863,6 +863,18 @@ def test_cli_with_version_flag():
     assert exc_info.value.code in {0, None}
 
 
+def test_cli_help_returns_zero_exit_code():
+    """cli('--help') should return exit code 0 (success)."""
+    cli = SimpleCli(prog="test", version="1.0")
+    assert cli("--help") == 0
+
+
+def test_cli_version_returns_zero_exit_code():
+    """cli('--version') should return exit code 0 (success)."""
+    cli = SimpleCli(prog="test", version="1.0")
+    assert cli("--version") == 0
+
+
 def test_cli_configure_called_during_call():
     """configure is called during __call__ execution."""
 
