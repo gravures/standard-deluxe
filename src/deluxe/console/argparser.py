@@ -646,6 +646,15 @@ class PrettyParser(argparse.ArgumentParser):
     parameter, which is useful for programmes that need a different label
     in their usage output.
 
+    Header
+    ______
+
+    When a ``header`` string is provided, it is prepended to the formatted
+    help output with a blank line separating it from the usage line. This
+    is useful for adding a banner or program title above the standard help
+    text. The header is only included in the output of :meth:`format_help`
+    and :meth:`print_help`; it does not appear in usage-only output.
+
     Shell Completion
     ________________
 
@@ -673,6 +682,9 @@ class PrettyParser(argparse.ArgumentParser):
             it is generated from the added arguments. Default: ``None``.
         prefix (:obj:`str` | ``None``): Custom prefix for the usage message
             (replaces the default ``"usage: "``). Default: ``None``.
+        header (:obj:`str` | ``None``): Text to display before the usage
+            line. When provided, it is prepended to the help output with
+            a blank line separating it from the rest. Default: ``None``.
         epilog (:obj:`str` | ``None``): Text to display after the
             argument help. Default: ``None``.
         parents (:obj:`Sequence` [:class:`~argparse.ArgumentParser`] | ``None``):
@@ -715,6 +727,7 @@ class PrettyParser(argparse.ArgumentParser):
 
     Attributes:
         exit_on_error: Whether to raise :exc:`~argparse.ArgumentError` on errors.
+        header: Optional header text prepended to the help output.
         prefix: Custom prefix for usage messages.
         version: Version string for the ``--version`` option.
         shell_completion: Whether shell completion support is enabled.
@@ -732,6 +745,7 @@ class PrettyParser(argparse.ArgumentParser):
         description: str | None = None,
         usage: str | None = None,
         prefix: str | None = None,
+        header: str | None = None,
         epilog: str | None = None,
         parents: Sequence[argparse.ArgumentParser] | None = None,
         formatter_class: type[argparse.HelpFormatter] = PrettyHelpFormatter,
@@ -775,6 +789,7 @@ class PrettyParser(argparse.ArgumentParser):
 
         super().__init__(**base_kwargs)
         self.exit_on_error: bool = exit_on_error
+        self.header: str | None = header
         self.prefix: str = prefix or ""
         self.version: str = version or ""
         self.shell_completion: bool = shell_completion
@@ -784,7 +799,7 @@ class PrettyParser(argparse.ArgumentParser):
                 "-v",
                 "--version",
                 action="version",
-                version=f"{self.prog} {self.version}",
+                version=f"{self.version}",
                 default=argparse.SUPPRESS,
                 help="print version",
             )
@@ -890,6 +905,8 @@ class PrettyParser(argparse.ArgumentParser):
         formatter.add_text(self.epilog)
 
         # determine help from format above
+        if self.header:
+            return f"{self.header}\n\n{formatter.format_help()}"
         return formatter.format_help()
 
     def exit(  # noqa: PLR6301
