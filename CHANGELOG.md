@@ -2,6 +2,26 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+##  Changelog for release [v0.15.1]
+    
+    https://github.com/gravures/standard-deluxe/compare/ed7edc44919ade2b47f4701eb25462f6eeffd9fb..v0.15.1
+    2026-07-16
+  
+### Documentation
+
+  - **(deluxe)** adds os badge to readme - ([1c8ce8a](https://github.com/gravures/standard-deluxe/commit/1c8ce8ac87482c008f8bd6a7e72aaa6f8e60ab98)) - [@gravures](https://github.com/gravures)
+
+
+### Fixes
+
+  - **(cli)** fix cli instance run with --help or --version flags exiting with a positive return code insteed of 0 - ([0ed6b51](https://github.com/gravures/standard-deluxe/commit/0ed6b51bab71eefbd176cf7a6dd85bdc1bff7104)) - [@gravures](https://github.com/gravures)
+
+  - **(prettyPaser)** remove double usage: prefix in subparser help - ([c834eb1](https://github.com/gravures/standard-deluxe/commit/c834eb124d88152fbd9951f5328b2792139bd2d0)) - [@gravures](https://github.com/gravures)
+
+
+
+- - -
+
 ##  Changelog for release [v0.14.0]
     
     https://github.com/gravures/standard-deluxe/compare/7fc410feb276475f4b6bff24f52246a3924e2ed1..v0.14.0
