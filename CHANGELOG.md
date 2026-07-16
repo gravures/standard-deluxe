@@ -2,6 +2,24 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+##  Changelog for release [v0.16.0]
+    
+    https://github.com/gravures/standard-deluxe/compare/ef8745149859b971c30fd309c59de5fe4f27daa4..v0.16.0
+    2026-07-16
+  
+### Features
+
+  - **(argparsers)** add header parameter to PrettyParser - ([ef87451](https://github.com/gravures/standard-deluxe/commit/ef8745149859b971c30fd309c59de5fe4f27daa4)) - [@gravures](https://github.com/gravures)
+
+
+### Fixes
+
+  - **(cli)** [**breaking**] change prefix Cli argment type to reflect Argparser type and add header - ([47cf08e](https://github.com/gravures/standard-deluxe/commit/47cf08ea79ecc4e8512144b7d8462e8db7d495d2)) - [@gravures](https://github.com/gravures)
+
+
+
+- - -
+
 ##  Changelog for release [v0.15.1]
     
     https://github.com/gravures/standard-deluxe/compare/ed7edc44919ade2b47f4701eb25462f6eeffd9fb..v0.15.1
