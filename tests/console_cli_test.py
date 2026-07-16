@@ -274,15 +274,21 @@ def test_cli_init_commands_none_by_default():
     assert cli.commands is None
 
 
-def test_cli_init_version_prefix():
-    """Cli constructs version prefix when prefix=True."""
-    cli = SimpleCli(prog="myapp", version="1.0", prefix=True)
-    assert cli.parser.prefix == "myapp 1.0"
+def test_cli_init_version():
+    """Cli stores the version string when provided."""
+    cli = SimpleCli(prog="myapp", version="1.0")
+    assert cli.parser.version == "1.0"
+
+
+def test_cli_init_prefix():
+    """Cli stores a custom usage prefix when provided."""
+    cli = SimpleCli(prog="myapp", prefix="custom: ")
+    assert cli.parser.prefix == "custom: "
 
 
 def test_cli_init_no_prefix():
-    """Cli sets no prefix when prefix=False."""
-    cli = SimpleCli(prog="myapp", version="1.0", prefix=False)
+    """Cli defaults to empty prefix when prefix is None."""
+    cli = SimpleCli(prog="myapp")
     assert not cli.parser.prefix
 
 
