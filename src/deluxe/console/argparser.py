@@ -31,7 +31,7 @@ import re
 import sys
 import warnings
 from argparse import _MutuallyExclusiveGroup  # pyright: ignore[reportPrivateUsage]
-from typing import IO, TYPE_CHECKING, Any, ClassVar, Final, TypeVar, cast, no_type_check
+from typing import IO, TYPE_CHECKING, Any, ClassVar, Final, Never, TypeVar, cast, no_type_check
 
 from deluxe.console import ansi
 from deluxe.console.wrap import AnsiTextWrapper
@@ -524,11 +524,10 @@ class PrettyHelpFormatter(  # pyright:ignore[reportIncompatibleVariableOverride]
         self,
         usage: str | None,
         actions: Iterable[argparse.Action],
-        groups: Iterable[argparse._MutuallyExclusiveGroup],  # pyright:ignore[reportPrivateUsage]
+        groups: Iterable[argparse._MutuallyExclusiveGroup],  # pyright: ignore[reportPrivateUsage]
         prefix: str | None,
     ) -> str:
-        usage_: str = super()._format_usage(usage, actions, groups, None)
-        return f"{prefix}\n\n{usage_}"
+        return super()._format_usage(usage, actions, groups, prefix)
 
 
 class _ShellCompletion(argparse.Action):
@@ -857,7 +856,7 @@ class PrettyParser(argparse.ArgumentParser):
             usage=self.usage,
             actions=self._actions,
             groups=self._mutually_exclusive_groups,
-            prefix=self.prefix,
+            prefix=self.prefix or None,
         )
         return formatter.format_help()
 
@@ -874,7 +873,7 @@ class PrettyParser(argparse.ArgumentParser):
             usage=self.usage,
             actions=self._actions,
             groups=self._mutually_exclusive_groups,
-            prefix=self.prefix,
+            prefix=self.prefix or None,
         )
 
         # description
@@ -893,9 +892,9 @@ class PrettyParser(argparse.ArgumentParser):
         # determine help from format above
         return formatter.format_help()
 
-    def exit(  # pyright:ignore[reportIncompatibleMethodOverride]  # noqa: PLR6301
+    def exit(  # noqa: PLR6301
         self, status: int = 0, message: str | None = None
-    ) -> None:
+    ) -> Never:
         """Either raise an ArgumentError or a SystemExit exception.
 
         Args:

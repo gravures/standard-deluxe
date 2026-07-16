@@ -480,8 +480,10 @@ class Cli(ABC):
             self._parser.parse_args(argv, namespace=self._namespace)
         except (argparse.ArgumentError, argparse.ArgumentTypeError) as e:
             raise CliError(msg=str(e), quiet=False) from None
-        except SystemExit as e:  # pragma: no cover
-            raise CliError(msg=None, quiet=False) from e
+        except SystemExit as e:
+            if e.code and e.code != 0:
+                raise CliError(msg=None, quiet=False) from e
+            raise  # Successful exit—let it propagate
 
     @staticmethod
     def read_stdin() -> str | None:
@@ -545,10 +547,12 @@ class Cli(ABC):
             self.main(self._namespace)
             if hasattr(self._namespace, "callback"):
                 self._namespace.callback(self._namespace)
+        except SystemExit:
+            return 0
         except CliError as err:
             if err.msg:
                 self._message(value=err.msg, quiet=err.quiet)
-            return err.code or 1
+            return err.code
         else:
             return 0
         finally:
