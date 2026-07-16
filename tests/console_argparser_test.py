@@ -1307,3 +1307,19 @@ def test_pretty_parser_format_usage_with_actions():
     result = parser.format_usage()
     assert isinstance(result, str)
     assert "test" in result
+
+
+def test_subparser_help_no_double_usage_prefix():
+    """Regression: subparser help must not print 'usage:' twice.
+
+    When running ``prog install --help``, the usage line should read
+    ``usage: prog install [-h] ...`` and not
+    ``usage: usage: prog install [-h] ...``.
+    """
+    parser = PrettyParser(prog="prog")
+    subparsers = parser.add_subparsers(dest="command")
+    install_parser = subparsers.add_parser("install", help="Install packages")
+    install_parser.add_argument("package", help="Package to install")
+    help_text = install_parser.format_help()
+    stripped = _strip_ansi(help_text)
+    assert stripped.count("usage:") == 1, f"Expected exactly one 'usage:' prefix, got:\n{stripped}"

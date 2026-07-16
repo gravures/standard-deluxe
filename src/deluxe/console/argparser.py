@@ -524,11 +524,10 @@ class PrettyHelpFormatter(  # pyright:ignore[reportIncompatibleVariableOverride]
         self,
         usage: str | None,
         actions: Iterable[argparse.Action],
-        groups: Iterable[argparse._MutuallyExclusiveGroup],  # pyright:ignore[reportPrivateUsage]
+        groups: Iterable[argparse._MutuallyExclusiveGroup],  # pyright: ignore[reportPrivateUsage]
         prefix: str | None,
     ) -> str:
-        usage_: str = super()._format_usage(usage, actions, groups, None)
-        return f"{prefix}\n\n{usage_}"
+        return super()._format_usage(usage, actions, groups, prefix)
 
 
 class _ShellCompletion(argparse.Action):
@@ -857,7 +856,7 @@ class PrettyParser(argparse.ArgumentParser):
             usage=self.usage,
             actions=self._actions,
             groups=self._mutually_exclusive_groups,
-            prefix=self.prefix,
+            prefix=self.prefix or None,
         )
         return formatter.format_help()
 
@@ -874,7 +873,7 @@ class PrettyParser(argparse.ArgumentParser):
             usage=self.usage,
             actions=self._actions,
             groups=self._mutually_exclusive_groups,
-            prefix=self.prefix,
+            prefix=self.prefix or None,
         )
 
         # description
